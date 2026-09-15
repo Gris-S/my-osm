@@ -215,6 +215,13 @@ telles quelles.
   `SourcesList.tsx`) porte le lien vers `transitous.org/sources` qu'exige
   Transitous et la licence ODbL d'OpenStreetMap ; ses adresses sont dans
   `CONFIG.ATTRIBUTION_LINKS`.
+- **Une grande gare ne déborde plus** (demande explicite, capture de Lille
+  Flandres : 16 lignes, fiche de 1 030 px pour un écran de 914, titre caché sous
+  les boutons). La fiche montre **5 lignes d'emblée**
+  (`CONFIG.DEPARTURES_VISIBLE_LINES`, déjà classées le lourd d'abord), puis « Voir
+  les N autres lignes » ; et `.sheet` ne dépasse jamais la hauteur de l'écran
+  moins la colonne de boutons de droite — au-delà, elle défile sur place. Les
+  marques temps réel / théorique restent sur chaque ligne (choix explicite).
 - **Le référentiel d'IDFM n'est interrogé que pour les arrêts de sa région**
   (`capabilityAt(…, "stationDetails")` dans `MapView`). Mesuré avant la
   correction : chaque arrêt touché à Sydney, Tokyo ou Genève envoyait sa position

@@ -228,3 +228,19 @@
 .departures-source-name {
   margin-left: auto;
 }
+
+/* « Voir les N autres lignes » : discret, sous les lignes montrées d'emblée. */
+.departures-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}

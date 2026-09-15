@@ -412,6 +412,10 @@ export const CONFIG = {
 
   // Nombre de passages listés par destination une fois l'encart déplié.
   IDFM_MAX_DEPARTURES: 5,
+  // Lignes montrées d'emblée dans la fiche d'un arrêt, les autres se déplient
+  // (demande explicite : les 16 lignes de Lille Flandres faisaient déborder la
+  // fiche). Elles arrivent déjà classées, le lourd d'abord.
+  DEPARTURES_VISIBLE_LINES: 5,
 
   // Itinéraires en transports en commun : moteur Navitia exposé par PRIM. Même
   // clé et même quota que le temps réel, d'où le cache côté service — un

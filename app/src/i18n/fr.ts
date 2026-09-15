@@ -394,6 +394,9 @@ export const fr = {
   "departures.scheduled": "horaire théorique",
   "departures.dueNow": "départ prévu",
   "departures.source": "Source : {source}",
+  "departures.moreLines_one": "Voir l'autre ligne",
+  "departures.moreLines_other": "Voir les {count} autres lignes",
+  "departures.fewerLines": "Masquer les autres lignes",
 
   // Durées et distances
   "format.hours": "{hours} h",

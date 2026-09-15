@@ -13,6 +13,14 @@
   padding: 10px 20px max(20px, env(safe-area-inset-bottom));
   max-width: 480px;
   margin: 0 auto;
+  /* Jamais plus haute que l'écran moins la colonne de boutons de droite (météo,
+     boussole, signets, catégories) : la fiche d'une grande gare débordait par le
+     haut, titre compris, sous ces boutons (mesuré : 1 030 px sur un écran de
+     914). Au-delà, le contenu défile sur place, barre masquée. */
+  max-height: calc(100% - max(16px, env(safe-area-inset-top)) - 240px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
 
 /* Zone de prise de la poignée : on glisse vers le bas pour fermer la fiche.

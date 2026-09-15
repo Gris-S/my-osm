@@ -8,7 +8,7 @@ import { rememberStopLines } from "../transport/stopLinesStore";
 import { loadDepartures, loadStationLines } from "../transport/stations";
 import type { LineChip } from "../utils/markerImage";
 import type { Place } from "../types";
-import { currentLocale, t, useI18n } from "../i18n";
+import { currentLocale, t, tp, useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Prochains passages à un arrêt ou dans une gare.
@@ -200,6 +200,9 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
   const [state, setState] = useState<State>({ status: "loading" });
   // Ligne dépliée, s'il y en a une : l'accordéon se joue à ce niveau.
   const [openLine, setOpenLine] = useState<string | null>(null);
+  // Au-delà de `DEPARTURES_VISIBLE_LINES`, les lignes restent repliées derrière
+  // un bouton : une grande gare en aligne seize, et la fiche passait l'écran.
+  const [showAllLines, setShowAllLines] = useState(false);
   // Lignes déclarées à l'arrêt par le référentiel, pour repérer les muettes.
   const [stopLines, setStopLines] = useState<LineChip[]>([]);
 
@@ -333,7 +336,7 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
       )}
 
       {state.status === "done" &&
-        state.lines.map((line) => (
+        (showAllLines ? state.lines : state.lines.slice(0, CONFIG.DEPARTURES_VISIBLE_LINES)).map((line) => (
           <LineCard
             key={line.lineId}
             line={line}
@@ -341,6 +344,27 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
             onToggle={() => setOpenLine((current) => (current === line.lineId ? null : line.lineId))}
           />
         ))}
+
+      {state.status === "done" && state.lines.length > CONFIG.DEPARTURES_VISIBLE_LINES && (
+        <button
+          className="departures-more"
+          aria-expanded={showAllLines}
+          onClick={() => {
+            // Replier les autres lignes replie aussi celle qui était dépliée parmi
+            // elles : son tracé ne doit pas rester sur la carte, ligne invisible.
+            if (showAllLines) {
+              const hidden = state.lines.slice(CONFIG.DEPARTURES_VISIBLE_LINES).map((line) => line.lineId);
+              setOpenLine((current) => (current && hidden.includes(current) ? null : current));
+            }
+            setShowAllLines((all) => !all);
+          }}
+        >
+          {showAllLines
+            ? t("departures.fewerLines")
+            : tp("departures.moreLines", state.lines.length - CONFIG.DEPARTURES_VISIBLE_LINES)}
+          <ChevronDown size={15} className={`departure-chevron ${showAllLines ? "is-open" : ""}`} />
+        </button>
+      )}
 
       {/* D'où viennent ces horaires, et comment lire les deux marques. */}
       {state.status === "done" && state.lines.length > 0 && (

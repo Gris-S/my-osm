@@ -360,6 +360,9 @@ export const en: Dict = {
   "departures.scheduled": "scheduled",
   "departures.dueNow": "due now",
   "departures.source": "Source: {source}",
+  "departures.moreLines_one": "Show 1 more line",
+  "departures.moreLines_other": "Show {count} more lines",
+  "departures.fewerLines": "Hide the other lines",
 
   "format.hours": "{hours} hr",
   "format.hoursMinutes": "{hours} hr {minutes} min",
