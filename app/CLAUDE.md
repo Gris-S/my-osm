@@ -138,13 +138,18 @@ Points à connaître avant d'y toucher :
   `data.geopf.fr` doit rester dans la règle de cache du Service Worker aux
   côtés d'`arcgisonline`, sinon la moitié de la vue repart sur le réseau.
 
-### Plateforme transport (`src/transport/`) — refonte en cours
+### Plateforme transport (`src/transport/`)
 
-**Chantier ouvert le 15 septembre 2026** sur la branche `plateforme-transport` :
-reproduire l'expérience parisienne partout. Le document de référence est
-`docs/ARCHITECTURE-API.md` (validé) — le lire avant d'y toucher. Tant que la
-refonte n'est pas terminée, les sections IDFM ci-dessous décrivent toujours ce
-qui tourne à Paris.
+**Chantier du 15 septembre 2026**, branche `plateforme-transport` : reproduire
+l'expérience parisienne partout. Le document de référence est
+`docs/ARCHITECTURE-API.md` (validé ; son §6 dit ce qui a été fait autrement que
+prévu) — le lire avant d'y toucher. **L'audit est `docs/AUDIT.md`** : sept villes,
+non-régression de Paris, budget, mémoire, sécurité, limites connues. Les sections
+IDFM ci-dessous décrivent toujours ce qui tourne à Paris : l'adaptateur les reprend
+telles quelles.
+- **Le budget de requêtes est un test** (`tests/transportBudget.test.ts`, adaptateur
+  et orchestrateur réels, réseau simulé) : une capacité qui demande plus que §2g le
+  fait échouer.
 
 - **Une région d'abord, ses fournisseurs ensuite** (`registry.ts`,
   `regions.json`) : seuls les fournisseurs de la région active sont chargés,

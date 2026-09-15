@@ -616,3 +616,65 @@ Commits atomiques, version incrémentée à chaque étape, Paris revérifié à 
 5. **Transitous demande d'être contacté avant un usage important** (Matrix). Je propose
    de le faire avant la sortie officielle, pas pendant le développement. D'accord ?
 6. **Le budget de requêtes (§2g)** te convient-il comme engagement contractuel ?
+
+---
+
+## 6. Mise en œuvre (15 septembre 2026)
+
+Branche `plateforme-transport`, commits `446694b` → `3881d05`, version 0.1.0-alpha.12.
+Mesures et vérifications détaillées : `docs/AUDIT.md`. Ce qui suit dit **ce qui a été
+fait autrement que prévu**, et pourquoi — le reste du document est appliqué tel quel.
+
+### 6.1 Ce qui est en place
+
+| Étape | Contenu | Commit |
+|---|---|---|
+| 1 | `transport/` : modèle, registre, orchestrateur, `HttpClient`, disjoncteurs, cache | `446694b` |
+| 2a | Départs, lignes déclarées, tracés de Paris par l'orchestrateur (adaptateur IDFM) | `c72b0ac` |
+| 2b | Itinéraires par l'orchestrateur ; « hors zone » = liste vide, pas une panne | `0d7a038` |
+| 3 | Adaptateur Transitous : départs, tracés, itinéraires | `3e97b6a` |
+| 4 | Arrêts hybrides OSM + Transitous, un marqueur par station, cache IndexedDB | `3881d05` |
+| 5 | Qualité de chaque horaire, source nommée, « Sources et licences » | `e86272f` |
+| 6 | Navigation guidée partout : aucune modification nécessaire (voir 6.3) | — |
+
+### 6.2 Écarts avec le §3, et leur raison
+
+- **Arrêts (§3.4) — OSM passe devant, pas l'officiel.** La seule source d'arrêts par
+  tuile disponible est Transitous, un agrégateur, et les tuiles d'OSM sont à la fois
+  plus précises et déjà en mémoire. Mesuré : à Genève Cornavin et Amsterdam Centraal,
+  OSM a tout, Transitous n'ajoute rien ; à São Paulo, il ajoute 5 arrêts sur 19.
+  Transitous ne fait donc que **combler les manques**.
+- **Arrêts — à partir du zoom 16, pas 15, et jamais en Île-de-France.** Au zoom 15 une
+  vue couvre jusqu'à six tuiles z15, au-delà du budget de 3. En Île-de-France la
+  capacité `stops` n'est pas déclarée : le budget parisien mesuré (§1) ne bouge pas.
+- **Pas de grappes MapLibre.** Aucun arrêt n'est demandé sous le zoom 16, et plus loin
+  les tuiles d'OSM ne portent que les arrêts lisibles à l'échelle.
+- **Fusion plus simple que prévu.** Pas de table d'abréviations ni de partie latine des
+  noms bilingues : les noms se comparent par mots significatifs, sans le préfixe de
+  ville que certains flux ajoutent (« Genève, Mercier »). Pas de contrôle de mode : le
+  `parentId` réunit déjà les stations multimodales.
+- **Temps réel (§3.5) — pas de rafraîchissement périodique.** La règle parisienne est
+  gardée partout (quota PRIM) : un nouveau contact sur l'arrêt redemande les départs.
+- **Affichage (§3.6) — la source est nommée sous les horaires et sous les trajets**,
+  en petit. Sans elle, un horaire de Transitous et un horaire d'IDFM ne se
+  distinguent pas ; le document prévoyait de ne la dire que dans « Sources et
+  licences ». Le badge ne dit pas l'âge (« il y a 12 s ») : un point plein ou un cercle.
+- **Navigation (§3.7) — le guidage lit une vue déduite du `Journey` canonique**
+  (`journeyView.ts`, formes `TransitJourney` inchangées), et non le `Journey`
+  directement : `src/navigation/` n'a pas eu à changer, et reste retirable.
+- **Perturbations — non faites.** La capacité `alerts` est déclarée pour Transitous
+  mais l'adaptateur ne l'implémente pas : l'orchestrateur la rend « non prise en
+  charge ». Transitous en joint aux départs (`place.alerts`) ; c'est la suite logique.
+- **Sécurité (§3.8)** — pas de liste blanche d'hôtes dans le registre : les adresses
+  ne viennent que de `config.ts`. Photon et Nominatim restent appelés depuis la
+  WebView, sans `User-Agent` dédié (hors du périmètre transport).
+- **Budget (§2g) — changement de région.** Le cache mémoire d'une région quittée est
+  oublié ; au retour, départs et itinéraires sont redemandés. Les arrêts par tuile,
+  eux, reviennent d'IndexedDB sans requête.
+
+### 6.3 Ce qui n'a pas eu à changer
+
+La navigation guidée en transports (`useTransitNavigation`, `transitSteps.ts`) lit des
+arrêts desservis avec leurs positions et un tracé par étape : l'adaptateur Transitous
+les fournit (`intermediateStops`, `legGeometry`). Seules les sorties de station sont
+réservées aux régions qui en déclarent la source (`exits`), par `capabilityAt`.
