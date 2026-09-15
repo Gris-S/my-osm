@@ -1,7 +1,19 @@
 import { getDepartures, type TransitMode as IdfmMode } from "../../services/idfm";
 import { getLineShape, getStopLines } from "../../services/idfmNetwork";
+import { getJourneysBetween } from "../../services/transit";
 import type { Place } from "../../types";
-import type { DepartureGroup, LineRef, Shape, Station, StationRef, TransitMode } from "../model";
+import type { TransitJourney, TransitLeg } from "../journeyView";
+import type {
+  DepartureGroup,
+  Journey,
+  JourneyLeg,
+  LineRef,
+  Position,
+  Shape,
+  Station,
+  StationRef,
+  TransitMode,
+} from "../model";
 import type { ProviderFactory } from "../orchestrator";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +53,71 @@ function toPlace(station: StationRef): Place {
 
 export function idfmLineId(canonical: string): string | null {
   return canonical.startsWith(LINE_PREFIX) ? canonical.slice(LINE_PREFIX.length) : null;
+}
+
+/** Mode commercial de Navitia (« Métro », « RER », « Train Transilien »…) -> mode canonique. */
+function modeFromLabel(label: string): TransitMode {
+  if (/m[ée]tro/i.test(label)) return "metro";
+  if (/\brer\b/i.test(label)) return "regional-rail";
+  if (/tram/i.test(label)) return "tram";
+  if (/funi/i.test(label)) return "funicular";
+  if (/c[âa]ble/i.test(label)) return "cable";
+  if (/bus|navette|noctilien/i.test(label)) return "bus";
+  if (/train|transilien|ter\b/i.test(label)) return "rail";
+  return "other";
+}
+
+/** `line:IDFM:C01742` -> `C01742`, la clé du référentiel ouvert. */
+const navitiaLineKey = (lineId: string) => lineId.replace(/^line:IDFM:/, "");
+
+function toCanonicalLeg(leg: TransitLeg, fetchedAt: number): JourneyLeg {
+  const first = leg.stops?.[0];
+  const last = leg.stops?.[leg.stops.length - 1];
+  return {
+    source: "idfm",
+    dataQuality: leg.realtime ? "realtime" : "scheduled",
+    fetchedAt,
+    attribution: ATTRIBUTION,
+    originIds: leg.lineId ? [leg.lineId] : [],
+    kind: leg.kind,
+    from: { name: leg.from ?? "", lat: first?.lat, lon: first?.lon, departureAt: leg.departure.getTime() },
+    to: { name: leg.to ?? "", lat: last?.lat, lon: last?.lon, arrivalAt: leg.arrival.getTime() },
+    departAt: leg.departure.getTime(),
+    arriveAt: leg.arrival.getTime(),
+    durationSeconds: leg.durationSeconds,
+    line: leg.line && {
+      id: `${LINE_PREFIX}${leg.lineId ? navitiaLineKey(leg.lineId) : leg.line.label}`,
+      shortName: leg.line.label,
+      mode: modeFromLabel(leg.line.mode),
+      modeLabel: leg.line.mode,
+      color: leg.line.color,
+      textColor: leg.line.textColor,
+    },
+    headsign: leg.direction,
+    intermediateStops: leg.stops?.map((stop) => ({ name: stop.name, lat: stop.lat, lon: stop.lon, arrivalAt: stop.at.getTime() })),
+    stopCount: leg.stopCount,
+    boarding: leg.lineId || leg.stopPointId ? { lineId: leg.lineId, stopId: leg.stopPointId } : undefined,
+    shape: leg.geometry ? { type: "LineString", coordinates: leg.geometry.coordinates as Position[] } : undefined,
+  };
+}
+
+/** Un trajet de Navitia, dans le modèle canonique — sans rien perdre de ce que lit l'interface. */
+export function toCanonicalJourney(journey: TransitJourney, fetchedAt: number): Journey {
+  const legs = journey.legs.map((leg) => toCanonicalLeg(leg, fetchedAt));
+  return {
+    source: "idfm",
+    dataQuality: legs.some((leg) => leg.dataQuality === "realtime") ? "realtime" : "scheduled",
+    fetchedAt,
+    attribution: ATTRIBUTION,
+    originIds: [],
+    id: journey.id,
+    legs,
+    departAt: journey.departure.getTime(),
+    arriveAt: journey.arrival.getTime(),
+    transfers: journey.transfers,
+    durationSeconds: journey.durationSeconds,
+    walkingSeconds: journey.walkingSeconds,
+  };
 }
 
 export const createIdfmProvider: ProviderFactory = (context) => ({
@@ -112,5 +189,17 @@ export const createIdfmProvider: ProviderFactory = (context) => ({
     const geometry = await getLineShape(lineId, signal);
     if (!geometry || (geometry.type !== "LineString" && geometry.type !== "MultiLineString")) return null;
     return { type: geometry.type, coordinates: geometry.coordinates as Shape["coordinates"] };
+  },
+
+  async planJourney(from, to, options, signal): Promise<Journey[]> {
+    // Navitia, avec son cache d'une minute par couple et par heure de départ.
+    const journeys = await getJourneysBetween(
+      { lon: from[0], lat: from[1] },
+      { lon: to[0], lat: to[1] },
+      options.at === undefined ? undefined : new Date(options.at),
+      signal
+    );
+    const fetchedAt = Date.now();
+    return journeys.map((journey) => toCanonicalJourney(journey, fetchedAt));
   },
 });

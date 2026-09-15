@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONFIG, type TravelMode } from "../config";
 import { getRoute } from "../services/routing";
-import { getTransitJourneys, journeyToRoute, type TransitJourney } from "../services/transit";
+import { journeyToRoute, type TransitJourney } from "../transport/journeyView";
+import { loadJourneys } from "../transport/journeys";
 import { t } from "../i18n";
 import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit } from "../types";
 
@@ -129,7 +130,7 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
 
   // Le parcours complet, du départ à l'arrivée en passant par les étapes. C'est
   // cette liste que les deux moteurs reçoivent : OSRM l'enchaîne en un appel,
-  // Navitia tronçon par tronçon (voir `services/transit.ts`). `null` tant qu'un
+  // la source tronçon par tronçon (voir `transport/journeys.ts`). `null` tant qu'un
   // point manque — il n'y a pas de demi-parcours à calculer.
   const routePoints: LonLat[] | null =
     itineraryOpen && stopCoords.every((coords): coords is LonLat => coords !== null)
@@ -142,8 +143,8 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
   const routeKey = routePoints?.map((p) => `${p.lon},${p.lat}`).join(";") ?? null;
 
   // Calcule / recalcule l'itinéraire quand le parcours ou le mode changent. En
-  // transports, c'est Navitia qui répond, sur les horaires du moment (voir
-  // `services/transit.ts`) ; ailleurs, OSRM.
+  // transports, c'est la source de la région qui répond, sur les horaires du moment (voir
+  // `transport/journeys.ts`) ; ailleurs, OSRM.
   useEffect(() => {
     if (!routePoints) return;
     const points = routePoints;
@@ -158,7 +159,7 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
 
     const request =
       routeMode === "transit"
-        ? getTransitJourneys(points, controller.signal).then((list) => {
+        ? loadJourneys(points, controller.signal).then((list) => {
             if (cancelled) return;
             setJourneys(list);
             setJourneyIndex(0);

@@ -36,7 +36,7 @@ export type ProviderLoader = () => Promise<ProviderFactory>;
 
 export interface AttemptReport {
   providerId: ProviderId;
-  outcome: "success" | "skipped-key" | "skipped-breaker" | "unsupported" | "failed";
+  outcome: "success" | "empty" | "skipped-key" | "skipped-breaker" | "unsupported" | "failed";
   error?: string;
 }
 
@@ -70,6 +70,16 @@ export interface OrchestratorOptions {
 
 /** Choisit, dans un fournisseur, la méthode qui répond à la capacité ; `undefined` si absente. */
 export type Invoke<T> = (provider: TransportProvider, signal: AbortSignal) => Promise<T> | undefined;
+
+export interface RunOptions<T> {
+  /**
+   * Faux pour une réponse qui ne répond pas vraiment — aucun trajet, aucun
+   * départ : le fournisseur suivant est essayé. Ce n'est pas une panne, le
+   * disjoncteur n'en sait rien ; et si personne ne fait mieux, la première
+   * réponse vide est rendue.
+   */
+  accept?: (value: T) => boolean;
+}
 
 export class TransportOrchestrator {
   private readonly options: OrchestratorOptions;
@@ -143,12 +153,18 @@ export class TransportOrchestrator {
    * Répond à une capacité avec le meilleur fournisseur disponible de la région
    * active. `invoke` choisit la méthode : `(p, s) => p.getDepartures?.(id, {}, s)`.
    */
-  async run<T>(capability: Capability, invoke: Invoke<T>, signal?: AbortSignal): Promise<RunResult<T>> {
+  async run<T>(
+    capability: Capability,
+    invoke: Invoke<T>,
+    signal?: AbortSignal,
+    options: RunOptions<T> = {}
+  ): Promise<RunResult<T>> {
     const region = this.region;
     if (!region) throw new NoProviderError(capability, []);
     const policy = CAPABILITY_POLICY[capability];
     const regionSignal = this.regionController.signal;
     const attempts: AttemptReport[] = [];
+    let empty: { value: T; providerId: ProviderId } | null = null;
 
     for (const candidate of providersFor(region, capability)) {
       if (signal?.aborted || regionSignal.aborted) throw abortError();
@@ -189,6 +205,11 @@ export class TransportOrchestrator {
           continue;
         }
         this.breakers.success(breakerKey);
+        if (options.accept && !options.accept(value)) {
+          attempts.push({ providerId: candidate.id, outcome: "empty" });
+          empty ??= { value, providerId: candidate.id };
+          continue;
+        }
         attempts.push({ providerId: candidate.id, outcome: "success" });
         return { value, providerId: candidate.id, attempts };
       } catch (error) {
@@ -201,6 +222,7 @@ export class TransportOrchestrator {
         attempts.push({ providerId: candidate.id, outcome: "failed", error: String((error as Error)?.message ?? error) });
       }
     }
+    if (empty) return { ...empty, attempts };
     throw new NoProviderError(capability, attempts);
   }
 }

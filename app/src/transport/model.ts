@@ -64,6 +64,8 @@ export interface LineRef {
   id: CanonicalId;
   shortName: string;
   mode: TransitMode;
+  /** Le mode tel que la source l'écrit (« Métro », « RER ») : c'est lui qu'on affiche. */
+  modeLabel?: string;
   color?: string;
   textColor?: string;
 }
@@ -112,9 +114,11 @@ export interface Route extends Provenance {
 
 export interface TripStop {
   quayId?: CanonicalId;
+  /** Vide quand la source ne le donne pas. */
   name: string;
-  lat: number;
-  lon: number;
+  /** Absentes quand la source ne situe pas l'arrêt : jamais un zéro inventé. */
+  lat?: number;
+  lon?: number;
   arrivalAt?: number;
   departureAt?: number;
 }
@@ -151,17 +155,31 @@ export interface JourneyLeg extends Provenance {
   to: TripStop;
   departAt: number;
   arriveAt: number;
+  /** Durée annoncée par la source, quand elle diffère de l'écart entre les heures. */
+  durationSeconds?: number;
   line?: LineRef;
   headsign?: string;
+  /** Les arrêts desservis, de la montée à la descente comprises. */
   intermediateStops?: TripStop[];
+  stopCount?: number;
+  /**
+   * Identifiants propres à la source de la ligne et de l'arrêt de montée, pour
+   * lui redemander les départs suivants. Ils n'ont de sens que pour elle.
+   */
+  boarding?: { lineId?: string; stopId?: string };
   shape?: Shape;
 }
 
 export interface Journey extends Provenance {
+  /** Stable pour une même réponse ; déduit de l'heure de départ à défaut. */
+  id?: string;
   legs: JourneyLeg[];
   departAt: number;
   arriveAt: number;
   transfers: number;
+  durationSeconds?: number;
+  /** Marche cumulée, accès et correspondances compris, quand la source la chiffre. */
+  walkingSeconds?: number;
 }
 
 export interface Alert extends Provenance {

@@ -1,5 +1,5 @@
 import type { LonLat } from "../types";
-import type { TransitJourney, TransitLeg, TransitLine } from "../services/transit";
+import type { TransitJourney, TransitLeg, TransitLine } from "../transport/journeyView";
 
 // ---------------------------------------------------------------------------
 // Un trajet en transports, découpé en **actions**.

@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MapPin, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
 import { CONFIG, type TravelMode } from "../config";
 import type { LonLat, Place, RouteResult, RouteStop, StopEdit } from "../types";
-import { getNextDepartures, type NextDeparture, type TransitJourney, type TransitLeg } from "../services/transit";
+import { getNextDepartures, type NextDeparture } from "../services/transit";
+import type { TransitJourney, TransitLeg } from "../transport/journeyView";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
 import { HOME_WORK_ROLES, type HomeWork, type HomeWorkRole } from "../hooks/useHomeWork";
 // Navigation guidée — voir `src/navigation/README.md`. Le bouton est fourni
@@ -130,7 +131,7 @@ function JourneyDetail({ journey, stopoverNames }: { journey: TransitJourney; st
   const [openStops, setOpenStops] = useState<number | null>(null);
 
   // Où le parcours marque un arrêt voulu, et sous quel nom. Un parcours à
-  // étapes est recousu de plusieurs trajets (voir `services/transit.ts`) :
+  // étapes est recousu de plusieurs trajets (voir `transport/journeyView.ts`) :
   // sans ce repère, la frise enchaînerait « Descendre à… » puis « Monter à… »
   // sans dire qu'on est arrivé quelque part entre-temps.
   const stopovers = new Map<number, string>();

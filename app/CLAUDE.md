@@ -168,6 +168,19 @@ qui tourne à Paris.
   `TransitDepartures` exactement les formes d'avant. Ne pas « simplifier » en
   réécrivant la résolution d'arrêt IDFM dans l'adaptateur : ses règles sont
   mesurées (sections IDFM plus bas).
+- **Étape 2b, en place** : les itinéraires en transports passent par
+  l'orchestrateur (`transport/journeys.ts`). Le parseur Navitia de
+  `services/transit.ts` n'a pas changé ; l'adaptateur IDFM traduit ses trajets
+  vers le modèle canonique, et `journeyView.ts` en redéduit les formes que lisent
+  le panneau et le guidage (`TransitJourney`) — l'aller-retour est vérifié sans
+  perte par un test. Le recousage des parcours à étapes vit dans
+  `journeyView.ts`, commun à toutes les sources.
+- **« Hors zone » n'est pas une panne.** Navitia rend `no_origin` et
+  `no_solution` en liste vide, et `run(…, { accept })` passe alors à la source
+  suivante sans toucher au disjoncteur (issue `empty`). Sans cela, deux trajets
+  demandés hors d'Île-de-France coupaient Navitia cinq minutes — le disjoncteur
+  des itinéraires s'ouvre à deux échecs. Même règle pour les départs : une source
+  qui ne connaît pas l'arrêt laisse la main.
 - **Un fournisseur déclaré au registre sans adaptateur** est « non pris en
   charge » et sauté, sans toucher au disjoncteur.
 - **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et

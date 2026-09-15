@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat } from "../types";
-import type { TransitJourney } from "../services/transit";
+import type { TransitJourney } from "../transport/journeyView";
 import { distance } from "./geo";
 import { bestExit, type StationExit } from "./exits";
 import {

@@ -1,7 +1,8 @@
 import { CONFIG } from "../config";
 import { hasIdfmKey } from "./idfm";
-import type { LonLat, RouteResult, RouteSegment } from "../types";
+import type { LonLat } from "../types";
 import { t } from "../i18n";
+import type { TransitJourney, TransitLeg, TransitLegKind, TransitLine, TransitStop } from "../transport/journeyView";
 
 // ---------------------------------------------------------------------------
 // Itinéraires en transports en commun.
@@ -22,76 +23,14 @@ import { t } from "../i18n";
 //    périodique : un itinéraire ne se rafraîchit qu'à la demande.
 //  - **La couverture s'arrête à l'Île-de-France.** Hors de la région, Navitia
 //    répond quand même — par un trajet à pied, faute de réseau connu. Ces
-//    trajets sans transport sont écartés ici : le mode « À pied » existe déjà,
-//    et une liste vide se dit clairement dans le panneau.
+//    trajets sans transport sont écartés ici, et « hors zone » ou « aucune
+//    solution » rendent une liste vide plutôt qu'une erreur : c'est ce qui
+//    laisse l'orchestrateur passer à la source suivante sans tenir Navitia pour
+//    en panne (`transport/providers/idfm.ts`).
+//
+// Les formes rendues sont celles de l'interface (`transport/journeyView.ts`) ;
+// l'adaptateur IDFM les traduit vers le modèle canonique.
 // ---------------------------------------------------------------------------
-
-/** Nature d'une étape du trajet. */
-export type TransitLegKind = "walk" | "transit";
-
-/** Ligne empruntée, telle que l'annonce le référentiel (pastille officielle). */
-export interface TransitLine {
-  label: string;
-  color: string;
-  textColor: string;
-  /** Mode commercial affiché par IDFM : « Métro », « RER », « Bus »… */
-  mode: string;
-}
-
-/** Un arrêt desservi par une étape. */
-export interface TransitStop {
-  /** Nom nu, sans la commune entre parenthèses. */
-  name: string;
-  lon: number;
-  lat: number;
-  /** Heure de passage prévue. */
-  at: Date;
-}
-
-export interface TransitLeg {
-  kind: TransitLegKind;
-  departure: Date;
-  arrival: Date;
-  durationSeconds: number;
-  from?: string;
-  to?: string;
-  line?: TransitLine;
-  /** Terminus de la course empruntée. */
-  direction?: string;
-  /** Nombre d'arrêts parcourus, quand la source détaille la desserte. */
-  stopCount?: number;
-  /**
-   * Les arrêts desservis, de la montée à la descente, avec leurs coordonnées et
-   * l'heure de passage. Navitia les envoie de toute façon dans la réponse ;
-   * les garder ne coûte rien et permet de dire, en cours de route, combien
-   * d'arrêts restent et lequel on vient de passer.
-   */
-  stops?: TransitStop[];
-  /** Ligne et quai de montée, pour aller chercher les départs suivants. */
-  lineId?: string;
-  stopPointId?: string;
-  /** Vrai quand l'horaire de l'étape tient compte du temps réel du jour. */
-  realtime?: boolean;
-  geometry?: GeoJSON.LineString;
-}
-
-export interface TransitJourney {
-  id: string;
-  departure: Date;
-  arrival: Date;
-  durationSeconds: number;
-  transfers: number;
-  /** Marche cumulée, temps d'accès et correspondances compris. */
-  walkingSeconds: number;
-  legs: TransitLeg[];
-  /**
-   * Indices des étapes après lesquelles on atteint un point de passage voulu,
-   * quand le parcours en comporte (voir `getTransitJourneys`). C'est ce qui
-   * distingue, dans le détail du trajet, une correspondance subie d'un arrêt
-   * demandé — le panneau y intercale le nom de l'étape.
-   */
-  stopoverAfter?: number[];
-}
 
 // --- Réponse Navitia -------------------------------------------------------
 
@@ -285,19 +224,11 @@ function cacheKey(from: LonLat, to: LonLat, at: Date | undefined): string {
 
 // --- Requête ---------------------------------------------------------------
 
-/** Message d'erreur lisible pour les identifiants d'erreur de Navitia. */
-function messageForError(id: string | undefined): string {
-  switch (id) {
-    case "no_origin":
-    case "no_destination":
-    case "no_origin_nor_destination":
-      return t("error.transitOutside");
-    case "no_solution":
-      return t("error.transitNoSolution");
-    default:
-      return t("error.transitUnavailable");
-  }
-}
+/**
+ * Identifiants d'erreur de Navitia qui disent « pas ici » plutôt que « en
+ * panne » : départ ou arrivée hors du réseau, ou aucun trajet possible.
+ */
+const NOT_COVERED = new Set(["no_origin", "no_destination", "no_origin_nor_destination", "no_solution"]);
 
 /**
  * Un tronçon de parcours : les trajets proposés entre deux points, au départ
@@ -308,7 +239,7 @@ function messageForError(id: string | undefined): string {
  * le plus souvent) : ce n'est pas une panne, et le panneau le dit autrement
  * qu'une erreur.
  */
-async function journeysBetween(
+export async function getJourneysBetween(
   from: LonLat,
   to: LonLat,
   at: Date | undefined,
@@ -339,7 +270,10 @@ async function journeysBetween(
   if (!res.ok) throw new Error(t("error.transitFailed", { status: res.status }));
 
   const data: NavitiaResponse = await res.json();
-  if (!data.journeys) throw new Error(messageForError(data.error?.id));
+  if (!data.journeys) {
+    if (NOT_COVERED.has(data.error?.id ?? "")) return [];
+    throw new Error(t("error.transitUnavailable"));
+  }
 
   const journeys = data.journeys
     .map(journeyFromNavitia)
@@ -349,80 +283,6 @@ async function journeysBetween(
 
   cache.set(key, { at: Date.now(), value: journeys });
   return journeys;
-}
-
-/**
- * Recoud en un seul trajet les tronçons d'un parcours à étapes.
- *
- * Les correspondances comptées restent celles des tronçons : s'arrêter à une
- * étape n'est pas subir un changement, c'est le but du voyage. La durée, en
- * revanche, est bien celle du premier départ à la dernière arrivée — elle
- * comprend donc l'attente du véhicule suivant à chaque étape, ce qui est
- * l'honnête réponse à « quand j'y serai ».
- */
-function stitchJourneys(parts: TransitJourney[]): TransitJourney {
-  const legs: TransitLeg[] = [];
-  const stopoverAfter: number[] = [];
-  for (const [index, part] of parts.entries()) {
-    legs.push(...part.legs);
-    // Après le dernier tronçon on est arrivé, pas en escale.
-    if (index < parts.length - 1) stopoverAfter.push(legs.length - 1);
-  }
-  const departure = parts[0].departure;
-  const arrival = parts[parts.length - 1].arrival;
-  return {
-    id: parts.map((part) => part.id).join("+"),
-    departure,
-    arrival,
-    durationSeconds: Math.round((arrival.getTime() - departure.getTime()) / 1000),
-    transfers: parts.reduce((total, part) => total + part.transfers, 0),
-    walkingSeconds: parts.reduce((total, part) => total + part.walkingSeconds, 0),
-    legs,
-    stopoverAfter,
-  };
-}
-
-/**
- * Trajets en transports en commun le long d'un parcours, au départ de
- * maintenant. `points` va du départ à l'arrivée, étapes comprises.
- *
- * **Sans étape**, c'est un appel et une liste de propositions parmi lesquelles
- * choisir. **Avec étapes**, c'est un appel par tronçon : Navitia ne sait pas
- * router par des points de passage, il faut donc enchaîner — chaque tronçon
- * part de l'arrivée du précédent, et le meilleur de chacun (le premier, la
- * liste étant triée) est retenu. Le résultat est alors **un seul trajet** et
- * non un choix : comparer les combinaisons de trois propositions sur cinq
- * tronçons n'aurait ni sens à lire ni un coût d'appels tenable.
- *
- * C'est ce coût qui justifie le plafond `CONFIG.MAX_WAYPOINTS` : le quota est
- * de 1 000 appels par jour, partagé avec les prochains passages.
- *
- * Un tronçon sans solution rend une liste vide pour le parcours entier — il
- * n'y a pas de demi-trajet à proposer.
- */
-export async function getTransitJourneys(
-  points: LonLat[],
-  signal?: AbortSignal
-): Promise<TransitJourney[]> {
-  if (!hasIdfmKey()) {
-    throw new Error(t("error.transitNoKey"));
-  }
-  if (points.length < 2) return [];
-  if (points.length === 2) return journeysBetween(points[0], points[1], undefined, signal);
-
-  const parts: TransitJourney[] = [];
-  // Le premier tronçon part de maintenant (`undefined`), les suivants de
-  // l'arrivée du précédent. La boucle est **séquentielle par nécessité** : on
-  // ne peut pas demander le tronçon suivant avant de savoir à quelle heure on
-  // arrive au point de passage.
-  let at: Date | undefined;
-  for (let index = 0; index < points.length - 1; index++) {
-    const leg = await journeysBetween(points[index], points[index + 1], at, signal);
-    if (!leg.length) return [];
-    parts.push(leg[0]);
-    at = leg[0].arrival;
-  }
-  return [stitchJourneys(parts)];
 }
 
 // --- Départs suivants à l'arrêt de montée --------------------------------
@@ -501,32 +361,4 @@ export async function getNextDepartures(
 
   departuresCache.set(key, { at: Date.now(), value: departures });
   return departures;
-}
-
-/** Couleur des portions à pied d'un trajet en transports. */
-const WALK_COLOR = "#007AFF";
-
-/**
- * Tracé du trajet choisi : un tronçon par étape, à la couleur de sa ligne, la
- * marche en pointillés. C'est ce qui distingue d'un coup d'œil les cinq
- * minutes à pied du quart d'heure de RER.
- */
-export function journeyToRoute(journey: TransitJourney): RouteResult {
-  const segments: RouteSegment[] = [];
-  for (const leg of journey.legs) {
-    if (!leg.geometry) continue;
-    segments.push({
-      geometry: leg.geometry,
-      color: leg.kind === "transit" ? (leg.line?.color ?? WALK_COLOR) : WALK_COLOR,
-      dashed: leg.kind === "walk",
-    });
-  }
-  return {
-    mode: "transit",
-    // La distance parcourue n'a pas de sens ici : seule la marche est mesurée,
-    // et l'annoncer se lirait comme la longueur du trajet.
-    distanceMeters: null,
-    durationSeconds: journey.durationSeconds,
-    segments,
-  };
 }
