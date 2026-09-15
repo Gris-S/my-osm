@@ -11,6 +11,9 @@ import { getTrafficEvents, type TrafficEvent } from "../services/traffic";
 import { getLinesForStops, type StopLines } from "../services/idfmNetwork";
 import { capabilityAt } from "../transport/registry";
 import { rememberedStopLines, subscribeStopLines } from "../transport/stopLinesStore";
+import { TRANSITOUS_STOPS } from "../transport/policy";
+import { loadStopsInView, stopTilesKey } from "../transport/stops";
+import { mergeTransitousStops } from "../transport/stopsMerge";
 import { loadLineShape } from "../transport/stations";
 import type { PoiStatus } from "./MapStatus";
 import type { LonLat, Place, RouteResult, RouteStopMarker } from "../types";
@@ -234,6 +237,42 @@ export function MapView({
   const basemapRef = useRef(basemap);
   basemapRef.current = basemap;
 
+  // Arrêts de Transitous que les tuiles d'OSM n'ont pas, là où la région en a la
+  // source (voir `transport/stops.ts`). Demandés après 400 ms sans mouvement,
+  // la demande précédente annulée ; la carte ne les attend jamais.
+  const transitStopsRef = useRef<{ key: string; places: Place[] }>({ key: "", places: [] });
+  const transitStopsPending = useRef<string | null>(null);
+  const transitStopsTimer = useRef<number | null>(null);
+  const transitStopsAbort = useRef<AbortController | null>(null);
+  const refreshPoisLatest = useRef<() => void>(() => {});
+  const refreshTransitStops = useCallback((map: MLMap) => {
+    const center = map.getCenter();
+    if (!capabilityAt(center.lng, center.lat, "stops")) return;
+    const bbox = currentBbox(map);
+    const key = stopTilesKey(bbox);
+    if (key === transitStopsRef.current.key || key === transitStopsPending.current) return;
+    transitStopsPending.current = key;
+    if (transitStopsTimer.current !== null) window.clearTimeout(transitStopsTimer.current);
+    transitStopsTimer.current = window.setTimeout(() => {
+      transitStopsTimer.current = null;
+      transitStopsAbort.current?.abort();
+      const controller = new AbortController();
+      transitStopsAbort.current = controller;
+      loadStopsInView(bbox, controller.signal)
+        .then((places) => {
+          if (controller.signal.aborted) return;
+          transitStopsRef.current = { key, places };
+          refreshPoisLatest.current();
+        })
+        .catch(() => {
+          /* sans eux, la carte garde les arrêts d'OSM */
+        })
+        .finally(() => {
+          if (transitStopsPending.current === key) transitStopsPending.current = null;
+        });
+    }, TRANSITOUS_STOPS.debounceMs);
+  }, []);
+
   // Remplace le pictogramme des arrêts par les pastilles de leurs lignes.
   // Se fait après l'affichage : la carte ne doit pas attendre le réseau, les
   // pastilles se substituent aux pictogrammes dès qu'elles arrivent.
@@ -324,6 +363,11 @@ export function MapView({
         bbox,
         limit: CONFIG.MAX_VISIBLE_POIS,
       });
+      // Les arrêts d'OSM d'abord ; Transitous ne comble que les manques.
+      if (zoom >= TRANSITOUS_STOPS.minZoom && groupsRef.current.includes("transport")) {
+        places = mergeTransitousStops(places, transitStopsRef.current.places, bbox);
+        refreshTransitStops(map);
+      }
     }
     placesRef.current = places;
     // **Rien à renvoyer si rien n'a changé.** `setLayoutProperty` relance le
@@ -360,7 +404,12 @@ export function MapView({
     }
     const tilesPending = zoom >= CONFIG.MIN_ZOOM_FOR_POIS && !!map.getSource(VECTOR_SOURCE_ID) && !map.isSourceLoaded(VECTOR_SOURCE_ID);
     onPoiStatusRef.current(tilesPending ? "loading" : "idle");
-  }, [refreshStopLines]);
+  }, [refreshStopLines, refreshTransitStops]);
+
+  // Les arrêts de Transitous arrivent après coup : la couche se relit alors.
+  useEffect(() => {
+    refreshPoisLatest.current = refreshPois;
+  }, [refreshPois]);
 
   // Les lignes d'un arrêt viennent d'être lues dans sa fiche : ses pastilles
   // remplacent le pictogramme, sans attendre le prochain déplacement.

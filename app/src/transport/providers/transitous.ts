@@ -1,7 +1,12 @@
 import { CONFIG } from "../../config";
+import { readPersistent, writePersistent } from "../persistentCache";
+import { groupStops, TRANSITOUS_PLACE_PREFIX } from "../stopsMerge";
+import { tileBounds, tileKey } from "../tiles";
 import type {
   CanonicalId,
   DepartureGroup,
+  GeoTile,
+  Station,
   Journey,
   JourneyLeg,
   LineRef,
@@ -29,6 +34,9 @@ import { decodePolyline } from "../polyline";
 //  - `/v5/plan` : itinéraires, `time` respecté ; les extrémités sans arrêt
 //    s'appellent littéralement `START` et `END`.
 //  - `/v5/trip` : une course, avec son tracé en polyligne de précision 6.
+//  - `/v1/map/stops` : les arrêts d'une emprise (`min`, `max` en lat,lon), quais
+//    compris, avec `parentId` ; `/v5/stoptimes` accepte ce `parentId` et rend
+//    alors les départs de toute la station (vérifié à Genève Cornavin).
 //
 // **Conditions d'usage** : projet ouvert et non commercial, `User-Agent` qui
 // identifie l'application (posé par `httpClient.ts`), réponses mises en cache,
@@ -36,8 +44,15 @@ import { decodePolyline } from "../polyline";
 // ---------------------------------------------------------------------------
 
 const ATTRIBUTION = "transitous";
-/** Préfixe d'un lieu venu des arrêts de Transitous : on l'interroge alors par son identifiant. */
-export const TRANSITOUS_PLACE_PREFIX = "transitous/";
+
+interface MotisStop {
+  name?: string;
+  stopId?: string;
+  parentId?: string | null;
+  lat?: number;
+  lon?: number;
+  modes?: string[];
+}
 
 interface MotisPlace {
   name?: string;
@@ -227,6 +242,47 @@ export const createTransitousProvider: ProviderFactory = (context) => {
 
   return {
     id: "transitous",
+
+    async getStopsInViewport(tile: GeoTile, signal): Promise<Station[]> {
+      const key = `stops:${tileKey(tile)}`;
+      const { value } = await context.cached<Station[]>({
+        key,
+        ...CACHE_POLICY.stopsTile,
+        load: async () => {
+          // Sept jours sur l'appareil : relancer l'application ne redemande rien.
+          const persistentKey = `${regionId}:transitous:${key}`;
+          const stored = await readPersistent<Station[]>(persistentKey);
+          if (stored) return stored;
+          const [west, south, east, north] = tileBounds(tile);
+          const url = api("v1/map/stops");
+          url.searchParams.set("min", `${south},${west}`);
+          url.searchParams.set("max", `${north},${east}`);
+          const stops = await context.http.getJson<MotisStop[]>({
+            url: url.href,
+            timeoutMs: CAPABILITY_POLICY.stops.timeoutMs,
+            signal,
+          });
+          const raw = (Array.isArray(stops) ? stops : []).flatMap((stop) =>
+            stop.stopId && stop.name && typeof stop.lat === "number" && typeof stop.lon === "number"
+              ? [
+                  {
+                    stopId: stop.stopId,
+                    parentId: stop.parentId,
+                    name: stop.name,
+                    lat: stop.lat,
+                    lon: stop.lon,
+                    modes: [...new Set((stop.modes ?? []).map((mode) => MODES[mode] ?? ("other" as const)))],
+                  },
+                ]
+              : []
+          );
+          const stations = groupStops(raw, regionId, Date.now());
+          void writePersistent(persistentKey, stations, CACHE_POLICY.stopsTile.ttlMs);
+          return stations;
+        },
+      });
+      return value;
+    },
 
     async getDepartures(station: StationRef, options, signal): Promise<DepartureGroup[]> {
       const url = api("v5/stoptimes");

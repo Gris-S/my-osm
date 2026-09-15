@@ -220,6 +220,26 @@ qui tourne à Paris.
   WebView ne voit pas. Dans l'APK de travail, `window.__myosm.transportRequests`
   note les 300 derniers (hôte, chemin, durée, issue) : c'est là que se vérifie le
   budget de requêtes.
+- **Étape 4, en place : arrêts hybrides.** Les arrêts des tuiles d'OSM
+  s'affichent d'abord, sans attendre. Au zoom 16, là où la région a une source
+  d'arrêts (capacité `stops` — **pas en Île-de-France**, où OSM et IDFM suffisent
+  et où le budget de requêtes est mesuré), Transitous comble les manques
+  (`transport/stops.ts`) : une requête `/v1/map/stops` par tuile z15, trois au
+  plus par vue, après 400 ms sans mouvement, gardée sept jours sur l'appareil
+  (`persistentCache.ts`, IndexedDB).
+- **Un marqueur par station** (`stopsMerge.ts`) : les quais se réunissent sous
+  leur `parentId` (14 quais à Genève Cornavin), deux stations voisines de même
+  nom venues de flux différents se fondent (Amsterdam Centraal), et rien de ce
+  qu'OSM a déjà ne se redessine (un arrêt d'OSM à 80 m, ou de nom voisin à
+  300 m). Les noms se comparent **sans le préfixe de ville** (« Genève,
+  Mercier ») : sans cela, toute station ressemblerait à la gare « Genève ».
+- **La fiche d'une station de Transitous l'interroge par son `parentId`**
+  (`/v5/stoptimes?stopId=`, vérifié : bus, tram et train de Cornavin ensemble).
+  Son identifiant (`transitous/…`) n'est pas une référence OSM : pas de détails
+  demandés à Overpass.
+- **Pas de grappes d'arrêts** : ils ne sont demandés qu'à partir du zoom 16, et
+  plus loin les tuiles d'OSM ne portent que ceux qui se lisent à l'échelle — il
+  n'y a rien à regrouper.
 - **Un fournisseur déclaré au registre sans adaptateur** est « non pris en
   charge » et sauté, sans toucher au disjoncteur.
 - **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et

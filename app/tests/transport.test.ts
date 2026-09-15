@@ -24,7 +24,10 @@ describe("registre des régions", () => {
   it("classe les fournisseurs par rang, et ne rend que ceux de la capacité", () => {
     const paris = REGIONS.find((region) => region.id === "paris")!;
     expect(providersFor(paris, "departures").map((p) => p.id)).toEqual(["idfm", "transitous"]);
-    expect(providersFor(paris, "stops").map((p) => p.id)).toEqual(["transitous"]);
+    // En Île-de-France, les arrêts viennent des tuiles d'OSM : aucune source d'arrêts à interroger.
+    expect(providersFor(paris, "stops")).toEqual([]);
+    const world = REGIONS.find((region) => region.id === "world")!;
+    expect(providersFor(world, "stops").map((p) => p.id)).toEqual(["transitous"]);
   });
 });
 

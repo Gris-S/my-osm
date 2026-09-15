@@ -16,7 +16,7 @@
         {
           "id": "transitous",
           "rank": 2,
-          "capabilities": ["stops", "departures", "shapes", "alerts", "journeys"]
+          "capabilities": ["departures", "shapes", "alerts", "journeys"]
         }
       ]
     },

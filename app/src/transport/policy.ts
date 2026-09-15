@@ -93,3 +93,23 @@ export const TRANSITOUS_DEPARTURES = {
   perGroup: 4,
   horizonMinutes: 120,
 } as const;
+
+/**
+ * Arrêts demandés à Transitous pour compléter ceux des tuiles d'OSM
+ * (`transport/stops.ts`, `stopsMerge.ts`).
+ *
+ * Seulement de près (zoom 16) : au-delà, les tuiles d'OSM portent déjà les
+ * arrêts lisibles à cette échelle. Trois tuiles z15 au plus par vue — le budget
+ * d'une vue posée (§2g) —, après 400 ms sans mouvement. Les distances viennent
+ * des relevés de Genève et d'Amsterdam : une gare étale ses quais sur 150 m, et
+ * un arrêt d'OSM à 80 m est le même arrêt.
+ */
+export const TRANSITOUS_STOPS = {
+  minZoom: 16,
+  tileZoom: 15,
+  maxTilesPerView: 3,
+  debounceMs: 400,
+  sameStationMeters: 150,
+  osmNearMeters: 80,
+  osmSameNameMeters: 300,
+} as const;
