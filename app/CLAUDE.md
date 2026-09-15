@@ -161,6 +161,15 @@ qui tourne à Paris.
   `User-Agent` (`MY-OSM/<version> (+https://github.com/Gris-S/my-osm)`, exigé
   par Transitous) : délai, taille plafonnée, 4 appels simultanés par hôte,
   demandes identiques partagées, erreurs typées (`ProviderError`).
+- **Étape 2a, en place** : départs d'une station, lignes déclarées et tracé d'une
+  ligne passent par l'orchestrateur (`transport/stations.ts`). L'adaptateur
+  `providers/idfm.ts` **reprend `services/idfm.ts` et `idfmNetwork.ts` tels
+  quels** et traduit vers le modèle canonique ; `departuresView.ts` rend à
+  `TransitDepartures` exactement les formes d'avant. Ne pas « simplifier » en
+  réécrivant la résolution d'arrêt IDFM dans l'adaptateur : ses règles sont
+  mesurées (sections IDFM plus bas).
+- **Un fournisseur déclaré au registre sans adaptateur** est « non pris en
+  charge » et sauté, sans toucher au disjoncteur.
 - **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et
   ne déclenche aucun repli (`abort.ts`). Un 429 met la source au repos pour la
   durée de `Retry-After`, sans reprise.

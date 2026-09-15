@@ -8,7 +8,8 @@ import type { FilterGroupId } from "../filters";
 import { collectTilePois, VECTOR_SOURCE_ID } from "../services/tilePois";
 import { isTransitStop } from "../services/idfm";
 import { getTrafficEvents, type TrafficEvent } from "../services/traffic";
-import { getLineShape, getLinesForStops, type StopLines } from "../services/idfmNetwork";
+import { getLinesForStops, type StopLines } from "../services/idfmNetwork";
+import { loadLineShape } from "../transport/stations";
 import type { PoiStatus } from "./MapStatus";
 import type { LonLat, Place, RouteResult, RouteStopMarker } from "../types";
 
@@ -638,7 +639,7 @@ export function MapView({
     map.setPaintProperty(LINE_SHAPE_LAYER_ID, "line-color", lineColor);
     const controller = new AbortController();
     let cancelled = false;
-    getLineShape(lineId, controller.signal)
+    loadLineShape(lineId, controller.signal)
       .then((geometry) => {
         if (cancelled || !geometry) return;
         source.setData({ type: "FeatureCollection", features: [{ type: "Feature", geometry, properties: {} }] });

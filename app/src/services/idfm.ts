@@ -37,6 +37,8 @@ export interface Departure {
   /** Quai ou voie, quand la source le donne. */
   platform?: string;
   cancelled: boolean;
+  /** Heure attendue (temps réel) plutôt que planifiée : la source l'a annoncée ainsi. */
+  realtime: boolean;
 }
 
 /** Les passages vers une même destination. */
@@ -439,6 +441,7 @@ function toRawDeparture(visit: MonitoredStopVisit, stopName: string, now: number
       destination,
       platform: call.DeparturePlatformName?.value ?? call.ArrivalPlatformName?.value ?? undefined,
       cancelled: status === "cancelled",
+      realtime: Boolean(call.ExpectedDepartureTime ?? call.ExpectedArrivalTime),
     },
   };
 }

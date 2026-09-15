@@ -156,6 +156,12 @@ export class TransportOrchestrator {
         attempts.push({ providerId: candidate.id, outcome: "skipped-key" });
         continue;
       }
+      // Déclaré au registre mais pas encore écrit (ou retiré) : ce n'est pas un
+      // échec de la source, le disjoncteur n'a rien à en savoir.
+      if (!this.options.loaders[candidate.id]) {
+        attempts.push({ providerId: candidate.id, outcome: "unsupported" });
+        continue;
+      }
       const breakerKey = `${candidate.id}:${capability}`;
       if (!this.breakers.allow(breakerKey)) {
         attempts.push({ providerId: candidate.id, outcome: "skipped-breaker" });

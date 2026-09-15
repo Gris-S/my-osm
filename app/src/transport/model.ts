@@ -179,11 +179,28 @@ export interface GeoTile {
   y: number;
 }
 
+/**
+ * Ce que l'interface sait d'une station quand elle demande ses départs : le
+ * lieu touché sur la carte. Un adaptateur en tire ce que sa source attend —
+ * IDFM résout sa zone d'arrêt par la position, le nom et la nature de l'arrêt
+ * OSM ; Transitous interroge autour de la position.
+ */
+export interface StationRef {
+  id: CanonicalId;
+  name: string;
+  lat: number;
+  lon: number;
+  /** Le lieu de la carte d'où vient la demande (identifiant et sous-classe OSM). */
+  origin?: { placeId: string; rawType?: string };
+}
+
 export interface DepartureOptions {
   /** Nombre maximal de départs par ligne et destination. */
   perGroup?: number;
   /** Instant de référence, maintenant par défaut. */
   from?: number;
+  /** Demande explicite de l'utilisateur : sauter le cache. */
+  fresh?: boolean;
 }
 
 export interface JourneyOptions {

@@ -488,14 +488,19 @@ interface TransportProvider {
   capabilities(): Capability[];
   searchPlaces?(query: string, bbox: BBox, signal: AbortSignal): Promise<Place[]>;
   getStopsInViewport?(tile: GeoTile, signal: AbortSignal): Promise<Station[]>;
-  getStationDetails?(stationId: CanonicalId, signal: AbortSignal): Promise<Station>;
-  getDepartures?(stationId: CanonicalId, options: DepartureOptions, signal: AbortSignal): Promise<DepartureGroup[]>;
+  getStationDetails?(station: StationRef, signal: AbortSignal): Promise<Station>;
+  getDepartures?(station: StationRef, options: DepartureOptions, signal: AbortSignal): Promise<DepartureGroup[]>;
   getLineShape?(ref: { lineId: CanonicalId; tripId?: string }, signal: AbortSignal): Promise<Shape | null>;
   getStopsOfLine?(lineId: CanonicalId, signal: AbortSignal): Promise<Quay[]>;
   getAlerts?(scope: AlertScope, signal: AbortSignal): Promise<Alert[]>;
   planJourney?(from: LonLat, to: LonLat, options: JourneyOptions, signal: AbortSignal): Promise<Journey[]>;
 }
 ```
+
+`StationRef` (ajout de l'implémentation) : la station **telle que touchée sur la
+carte** — identifiant, nom, position et lieu OSM d'origine. Un identifiant seul ne
+suffisait pas : IDFM résout sa zone d'arrêt par la position, le nom et la nature
+de l'arrêt OSM, et Transitous interroge autour de la position.
 
 Adaptateurs prévus : `idfm` (reprise **à comportement identique** de `idfm.ts`,
 `idfmNetwork.ts`, `transit.ts`), `transitous` (MOTIS 2), puis, sur demande et après

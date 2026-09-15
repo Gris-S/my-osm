@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, TrainFront } from "lucide-react";
 import { CONFIG } from "../config";
-import { getDepartures, hasIdfmKey, type Departure, type DepartureGroup, type LineDepartures } from "../services/idfm";
-import { getStopLines } from "../services/idfmNetwork";
+import { hasIdfmKey } from "../services/idfm";
+import type { Departure, DepartureGroup, LineDepartures } from "../transport/departuresView";
+import { loadDepartures, loadStationLines } from "../transport/stations";
 import type { LineChip } from "../utils/markerImage";
 import type { Place } from "../types";
 import { currentLocale, t, useI18n } from "../i18n";
@@ -182,7 +183,7 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
     // Le référentiel des lignes est interrogé en parallèle : il dit ce qui
     // dessert l'arrêt, le temps réel ce qui y passe. L'écart entre les deux est
     // précisément ce qu'on veut montrer.
-    getStopLines(placeRef.current, controller.signal)
+    loadStationLines(placeRef.current, controller.signal)
       .then((lines) => {
         if (!cancelled) setStopLines(lines);
       })
@@ -190,7 +191,7 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
         /* sans cette liste, la fiche se contente des lignes qui répondent */
       });
 
-    getDepartures(placeRef.current, controller.signal)
+    loadDepartures(placeRef.current, controller.signal)
       .then((lines) => {
         if (cancelled) return;
         setState({ status: "done", lines });
@@ -220,7 +221,7 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
     const controller = new AbortController();
     let cancelled = false;
     setRefresh("running");
-    getDepartures(placeRef.current, controller.signal, { fresh: true })
+    loadDepartures(placeRef.current, controller.signal, { fresh: true })
       .then((lines) => {
         if (cancelled) return;
         setState({ status: "done", lines });

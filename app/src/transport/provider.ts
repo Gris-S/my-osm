@@ -13,6 +13,7 @@ import type {
   Quay,
   Shape,
   Station,
+  StationRef,
 } from "./model";
 
 // ---------------------------------------------------------------------------
@@ -39,8 +40,8 @@ export interface TransportProvider {
   readonly id: ProviderId;
   searchPlaces?(query: string, near: Position, signal: AbortSignal): Promise<Place[]>;
   getStopsInViewport?(tile: GeoTile, signal: AbortSignal): Promise<Station[]>;
-  getStationDetails?(stationId: CanonicalId, signal: AbortSignal): Promise<Station>;
-  getDepartures?(stationId: CanonicalId, options: DepartureOptions, signal: AbortSignal): Promise<DepartureGroup[]>;
+  getStationDetails?(station: StationRef, signal: AbortSignal): Promise<Station>;
+  getDepartures?(station: StationRef, options: DepartureOptions, signal: AbortSignal): Promise<DepartureGroup[]>;
   getLineShape?(ref: { lineId: CanonicalId; tripId?: string }, signal: AbortSignal): Promise<Shape | null>;
   getStopsOfLine?(lineId: CanonicalId, signal: AbortSignal): Promise<Quay[]>;
   getAlerts?(scope: AlertScope, signal: AbortSignal): Promise<Alert[]>;
