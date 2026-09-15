@@ -1,0 +1,123 @@
+/* -------------------------------------------------------------------------
+   Fiche lieu : encart des horaires (ouvert/fermé + semaine dépliable)
+   ------------------------------------------------------------------------- */
+.hours-box {
+  margin-top: 12px;
+  border-radius: 14px;
+  background: rgba(120, 120, 128, 0.1);
+  overflow: hidden;
+}
+
+/* L'encart prend la couleur de l'état, en fond très dilué pour rester lisible
+   dans les deux thèmes. */
+.hours-box.is-unknown .hours-detail {
+  color: var(--text-primary);
+}
+
+.hours-box.is-open {
+  background: rgba(52, 199, 89, 0.14); /* repli sans color-mix */
+  background: color-mix(in srgb, var(--open) 14%, transparent);
+}
+
+.hours-box.is-closed {
+  background: rgba(255, 59, 48, 0.13); /* repli sans color-mix */
+  background: color-mix(in srgb, var(--closed) 14%, transparent);
+}
+
+.hours-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.hours-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.hours-state {
+  font-weight: 700;
+}
+
+.hours-box.is-open .hours-state {
+  color: var(--open);
+}
+
+.hours-box.is-closed .hours-state {
+  color: var(--closed);
+}
+
+.hours-detail {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.hours-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.hours-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* Tableau de la semaine, sous l'encart. */
+.hours-week {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 4px;
+  font-size: 13.5px;
+}
+
+.hours-week th,
+.hours-week td {
+  padding: 4px 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.hours-week th {
+  text-align: left;
+}
+
+.hours-week td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hours-week tr.is-today th,
+.hours-week tr.is-today td {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* Jours fériés, dates particulières : sous le tableau, en retrait. */
+.hours-notes {
+  margin: 2px 0 8px;
+  padding: 6px 12px 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.hours-notes li + li {
+  margin-top: 2px;
+}
+
+/* L'adresse que porte parfois un commentaire d'horaires : un lien court, nommé
+   par son domaine. Écrite en entier elle débordait sur trois lignes et ne se
+   touchait pas — pour une page d'horaires, c'était le comble. */
+.hours-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}

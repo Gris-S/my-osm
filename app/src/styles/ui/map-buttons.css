@@ -1,0 +1,65 @@
+/* -------------------------------------------------------------------------
+   Boutons flottants de la colonne de droite (position, thème, affichage)
+   ------------------------------------------------------------------------- */
+.locate-button,
+.map-options-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--accent);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Le menu d'affichage est positionné par son enveloppe, pas par son bouton :
+   le panneau qui s'ouvre au-dessus fait partie du même bloc flottant. */
+.locate-button,
+.map-options {
+  position: absolute;
+  right: 16px;
+  z-index: 10;
+  transition: bottom 0.25s ease;
+}
+
+.map-options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* Pastille des photos de rue : le vert de Mapillary, cerclé du fond du bouton
+   pour rester lisible qu'il soit clair ou bleu. */
+.map-options-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #05cb63;
+  border: 2px solid var(--surface-solid);
+  box-sizing: content-box;
+}
+
+.map-options-button.is-active .map-options-badge {
+  border-color: var(--accent);
+}
+
+.map-options-button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.locate-button.is-loading {
+  animation: pulse-scale 1s ease-in-out infinite;
+}
+
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+}

@@ -1,0 +1,72 @@
+apply plugin: 'com.android.application'
+
+// La version vient de l'application web (`app/package.json`), seule source :
+// `0.1.0-alpha.N` pendant l'alpha. Le code de version doit monter à chaque
+// livraison ; il se déduit du numéro : 0.1.0-alpha.3 -> 1000003.
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../../app/package.json')).version
+def appVersionCode = { String v ->
+    def m = (v =~ /^(\d+)\.(\d+)\.(\d+)(?:-alpha\.(\d+))?/)
+    if (!m.find()) return 1
+    def base = ((m.group(1) as int) * 100 + (m.group(2) as int)) * 100 + (m.group(3) as int)
+    // Une version finale passe devant toutes ses alphas.
+    return base * 10000 + (m.group(4) != null ? (m.group(4) as int) : 9999)
+}(appVersion)
+
+android {
+    namespace = "org.osmlocal.plans"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "org.osmlocal.plans"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            // Version à partager : non débogable (ni `run-as`, ni débogage de la
+            // WebView, que Capacitor suit sur ce drapeau). Signée pour l'instant
+            // avec la clé de débogage de la machine — même signature que la
+            // version debug, les deux s'installent l'une sur l'autre. La vraie
+            // clé viendra avec la sortie officielle.
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

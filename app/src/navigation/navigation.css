@@ -1,0 +1,2213 @@
+/* -------------------------------------------------------------------------
+   Navigation guidée (voir `src/navigation/README.md`).
+
+   Toute la feuille est ici, et tous ses sélecteurs commencent par `nav-` :
+   supprimer la fonctionnalité, c'est supprimer ce fichier et sa ligne
+   d'`@import` dans `src/App.css`.
+
+   Les couleurs viennent des variables du projet (`base.css`) : le guidage suit
+   le thème clair comme le sombre sans palette à lui.
+   ------------------------------------------------------------------------- */
+
+/* Les voies qu'on ne prend pas ont leurs propres teintes, et non une opacité :
+   une opacité les délave sur un fond translucide déjà clair, et c'est
+   exactement ce qui les rendait impossibles à compter. Elles suivent le thème
+   comme le reste. */
+.app-shell {
+  --lane-skip-bg: #e9e9ed;
+  --lane-skip-edge: rgba(60, 60, 67, 0.32);
+  --lane-skip-ink: #3a3a3c;
+}
+
+:root[data-theme="dark"] .app-shell {
+  --lane-skip-bg: #3a3a3c;
+  --lane-skip-edge: rgba(235, 235, 245, 0.34);
+  --lane-skip-ink: #e5e5ea;
+}
+
+/* Bouton « Démarrer » du panneau d'itinéraire ---------------------------- */
+.nav-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  /* `.itinerary-result` aligne ses enfants sur la ligne de base, ce qui
+     conviendrait à du texte mais ferait pendre un bouton sous les chiffres. */
+  align-self: center;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.nav-start:active {
+  opacity: 0.82;
+}
+
+/* Bandeau de manœuvre ---------------------------------------------------- */
+.nav-banner {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  z-index: 12;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+}
+
+.nav-maneuver {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* La pastille de manœuvre est teintée du côté vers lequel on tourne : à
+   distance de bras, c'est la couleur qu'on saisit avant la flèche. */
+.nav-maneuver-icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--accent);
+}
+
+.nav-maneuver-icon.is-arrival {
+  background: var(--closed);
+}
+
+.nav-maneuver-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* La distance est le chiffre qu'on lit en marchant : elle prime sur la
+   phrase, qu'on ne relit qu'une fois. */
+.nav-maneuver-distance {
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-maneuver-instruction {
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.nav-maneuver.is-arrival .nav-maneuver-instruction {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.nav-banner-waiting,
+.nav-banner-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.nav-banner-note {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.nav-spin {
+  animation: nav-spin 1s linear infinite;
+  flex: none;
+}
+
+@keyframes nav-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* La colonne du bas : le bouton de recentrage, puis la barre de route.
+   Ils sont empilés plutôt que positionnés chacun de son côté — le bouton doit
+   rester *au-dessus* de la barre, y compris quand le détail se déplie et la
+   fait grandir de deux cents pixels. Même motif que `.map-dock` pour la météo
+   et la boussole. */
+.nav-dock {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  /* La colonne ne recouvre que ses enfants : entre le bouton et la barre, la
+     carte reste attrapable. */
+  pointer-events: none;
+}
+
+.nav-dock > * {
+  pointer-events: auto;
+}
+
+/* Reprise du suivi -------------------------------------------------------- */
+.nav-recenter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-float);
+}
+
+/* Barre de route ---------------------------------------------------------- */
+.nav-bar {
+  width: 100%;
+  border-radius: var(--radius-card);
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+
+.nav-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.nav-bar-figures {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+  text-align: left;
+}
+
+.nav-eta,
+.nav-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Le temps restant est la réponse à la seule question qu'on se pose : il porte
+   le plus gros corps de l'interface et la couleur d'accent. Sous le nombre,
+   l'unité en petit — et rien du tout au-delà de l'heure, où « 1h20 » se lit
+   d'un bloc. */
+.nav-eta {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+
+.nav-figure {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.nav-eta small {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+.nav-chevron-slot {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-secondary);
+  align-self: center;
+}
+
+.nav-chevron {
+  transition: transform 0.18s ease;
+}
+
+.nav-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.nav-stop {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--closed);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nav-sim {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+}
+
+.nav-sim.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Détail : le profil du dénivelé ------------------------------------------ */
+.nav-detail {
+  padding: 14px 14px 4px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.nav-detail-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Le nombre de pas : un ordre de grandeur du parcours entier, posé au-dessus
+   du profil parce qu'il en décrit la longueur et non le relief. */
+.nav-detail-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-detail-steps svg {
+  color: var(--text-secondary);
+  flex: none;
+}
+
+.nav-detail-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.nav-profile {
+  /* L'encre du relief : la couleur d'accent, dont le graphe hérite pour la
+     partie qui reste à parcourir. */
+  --nav-profile-ink: var(--accent);
+}
+
+.nav-profile-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.nav-profile-stat b {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-profile-stat.is-muted {
+  margin-left: auto;
+}
+
+.nav-profile-plot {
+  position: relative;
+  margin-top: 2px;
+}
+
+.nav-profile-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+
+/* Axes en retrait : ils situent, ils ne se lisent pas. */
+.nav-profile-axis,
+.nav-profile-grid {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.nav-profile-grid {
+  stroke-dasharray: 2 4;
+}
+
+.nav-profile-tick {
+  font-size: 9px;
+  fill: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ce qui reste à parcourir garde la couleur du trajet ; ce qui est derrière
+   passe à l'encre grise. C'est le seul encodage du graphe. */
+.nav-profile-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.is-ahead .nav-profile-line {
+  stroke: var(--nav-profile-ink);
+}
+
+.is-past .nav-profile-line {
+  stroke: var(--text-secondary);
+}
+
+.is-past .nav-profile-area {
+  fill: var(--text-secondary);
+  opacity: 0.12;
+}
+
+.nav-profile-here-line {
+  stroke: var(--text-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+}
+
+/* L'anneau clair détache la pastille du relief, quelle que soit la pente
+   sous elle. */
+.nav-profile-here-dot {
+  fill: var(--nav-profile-ink);
+  stroke: var(--surface-solid);
+  stroke-width: 2.5;
+}
+
+.nav-profile-cursor {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+.nav-profile-tooltip {
+  position: absolute;
+  top: -2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.nav-profile-tooltip b {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-profile-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.nav-profile-axis-labels .is-muted {
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Repère du marcheur sur la carte : un cône orienté, comme celui de la vue de
+   rue. Il ne capte pas le clic — la carte reste utilisable dessous. */
+.nav-marker {
+  pointer-events: none;
+  /* Toujours au-dessus des repères d'incident qu'elle croise. */
+  z-index: 2;
+}
+
+/* Repère d'incident sur le parcours voiture — travaux, fermeture, accident.
+   Une pastille franche, cerclée de blanc, qui se lit d'un coup d'œil sur le
+   trait coloré : orange pour ce qui gêne, rouge pour ce qui arrête. */
+.traffic-incident {
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.traffic-incident svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+
+.traffic-incident.is-roadworks,
+.traffic-incident.is-incident {
+  background: #ff9f0a;
+}
+
+.traffic-incident.is-closure,
+.traffic-incident.is-accident {
+  background: #ff3b30;
+}
+
+/* La grande flèche de la voiture se détache du trait bleu épais par une ombre,
+   à la manière de Waze. */
+.nav-marker.is-large svg {
+  display: block;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+
+/* Section « Navigation » de la fenêtre des paramètres ---------------------- */
+
+/* Un intertitre, parce que la fenêtre alignait jusqu'ici des réglages de même
+   nature (thème, langue) : ceux du guidage forment un groupe à part, et le
+   filet le dit sans peser autant qu'un second cadre. */
+.nav-settings {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.nav-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Menu déroulant natif : la flèche est dessinée ici plutôt que laissée au
+   système, dont le chevron gris ne suit pas le thème sombre. */
+.nav-settings-select {
+  width: 100%;
+  padding: 10px 34px 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background-color: rgba(120, 120, 128, 0.14);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.nav-settings-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Les options sont dessinées par le système : sans couleurs explicites, elles
+   restent en noir sur blanc dans une fenêtre sombre. */
+.nav-settings-select option {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+}
+
+/* Cohabitation avec le reste de l'interface pendant le guidage ------------- */
+
+/* Les menus restent tous accessibles en marchant — changer de fond de carte ou
+   rouvrir un signet ne doit pas demander d'arrêter le guidage. Deux d'entre eux
+   occupent la ligne du bandeau de manœuvre : le burger à gauche, la colonne
+   météo/boussole à droite. Ils descendent donc sous lui.
+
+   Le décalage est **constant** et taillé pour le bandeau le plus haut, celui
+   qui porte en plus la ligne « recalcul » : un décalage qui suivrait la hauteur
+   réelle ferait sauter les deux boutons chaque fois que cette ligne apparaît ou
+   s'efface. */
+.app-shell.is-navigating .app-menu,
+.app-shell.is-navigating .map-dock {
+  top: calc(max(16px, env(safe-area-inset-top)) + 132px);
+}
+
+/* Les boutons du bas remontent au-dessus de la barre de route. La transition
+   est déjà portée par `.map-buttons` : ils glissent au lieu de sauter. */
+
+/* Second réglage de la section Navigation : un filet léger le sépare du
+   premier sans ouvrir une section de plus. */
+.nav-settings-second {
+  margin-top: 20px;
+}
+
+/* Fiche de fin de trajet --------------------------------------------------- */
+
+.trip-summary {
+  width: min(380px, 100%);
+}
+
+.trip-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.trip-summary-badge {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+}
+
+/* Arrivé ou interrompu : la pastille le dit avant qu'on lise la phrase. */
+.trip-summary-badge.is-arrived {
+  background: var(--open);
+  color: #fff;
+}
+
+.trip-summary-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.trip-summary-route {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.trip-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  margin: 0;
+}
+
+.trip-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trip-stat-value {
+  margin: 3px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La glose sous un chiffre : le temps annoncé, l'origine des pas, l'allure. */
+.trip-stat-note {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+.trip-stat-note.is-ahead {
+  color: var(--open);
+}
+
+.trip-stat-note.is-late {
+  color: var(--closed);
+}
+
+.trip-summary-foot {
+  margin: 18px 0 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.trip-summary-close {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Historique --------------------------------------------------------------- */
+
+.history-dialog {
+  width: min(440px, 100%);
+}
+
+/* Les deux actions d'un trajet, au bas de son détail : on agit sur celui qu'on
+   regarde, ce qui rend impossible de partager ou d'effacer le mauvais. */
+.history-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.history-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.history-action.is-danger {
+  color: var(--closed);
+}
+
+.history-action:disabled {
+  opacity: 0.4;
+}
+
+.history-confirm {
+  padding: 12px 14px;
+  margin-top: 4px;
+  border-radius: 14px;
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.history-confirm p {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.history-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.history-confirm-actions button {
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(120, 120, 128, 0.18);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.history-confirm-actions .is-danger {
+  background: var(--closed);
+  color: #fff;
+}
+
+.history-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-item + .history-item {
+  border-top: 1px solid var(--hairline);
+}
+
+.history-item-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  text-align: left;
+}
+
+.history-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.history-item-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item-button .nav-chevron {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.history-detail {
+  padding: 4px 0 14px;
+}
+
+.history-detail-route {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.history-figures {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.history-figures li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-figures svg {
+  color: var(--text-secondary);
+  align-self: center;
+  flex: none;
+}
+
+.history-figures small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.history-detail-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Les flèches du trajet déplié : il est seul à l'écran, et c'est par elles
+   qu'on passe à ses voisins de la liste. **Elles ne bougent pas d'un trajet à
+   l'autre** : la fenêtre prend toute la hauteur pendant la lecture et la barre
+   reste collée en bas. Sans cela, passer d'une course (longue) à une marche
+   (courte) déplaçait le bouton sous le doigt, et le second appui tombait à
+   côté. */
+.history-dialog.is-reading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-dialog.is-reading .history-list,
+.history-dialog.is-reading .history-item {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-stepper {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-solid);
+}
+
+.history-step {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  /* Le fond de la fenêtre est déjà `--surface-solid` : il faut un voile pour
+     que le bouton se voie. */
+  background: rgba(120, 120, 128, 0.18);
+  color: var(--text-primary);
+}
+
+.history-step:disabled {
+  opacity: 0.35;
+}
+
+.history-step-position {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La carte d'un trajet : une hauteur explicite, sans quoi MapLibre n'a rien
+   à peindre et le conteneur reste plat. */
+.trip-map {
+  width: 100%;
+  height: 190px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: rgba(120, 120, 128, 0.12);
+}
+
+.trip-map-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Guidage en transports en commun ------------------------------------------ */
+
+/* La pastille de manœuvre porte ici la ligne, à ses couleurs officielles :
+   c'est elle qu'on cherche des yeux sur un quai. */
+.nav-maneuver-icon.is-board,
+.nav-maneuver-icon.is-alight {
+  background: var(--step-color, var(--accent));
+}
+
+.nav-maneuver-icon.is-walk {
+  background: rgba(120, 120, 128, 0.24);
+  color: var(--text-primary);
+}
+
+.nav-maneuver-icon.is-arrive {
+  background: var(--closed);
+}
+
+.transit-icon-badge {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* En transports, l'instruction est une phrase et non un chiffre : elle prend
+   la place que la distance occupe à pied. */
+.nav-maneuver-instruction.is-transit {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.transit-aside {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La sortie se détache : c'est la seule information qui ne se déduit ni de la
+   ligne ni de l'heure, et celle qu'on cherche en arrivant sur le quai. */
+.transit-exit {
+  margin-top: 4px;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 122, 255, 0.14);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.transit-resync {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* La suite du trajet, dans la barre du bas. Elle défile sur place quand le
+   trajet est long : le bandeau du haut et les commandes ne doivent jamais
+   sortir de l'écran. */
+.transit-remaining {
+  padding: 12px 14px 4px;
+  max-height: 40vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.transit-remaining::-webkit-scrollbar {
+  display: none;
+}
+
+.transit-remaining-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transit-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transit-step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.transit-step-time {
+  flex: none;
+  width: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.transit-badge {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(120, 120, 128, 0.2);
+  color: var(--text-secondary);
+}
+
+.transit-badge.is-arrive {
+  background: var(--closed);
+  color: #fff;
+}
+
+.transit-step .line-badge {
+  flex: none;
+}
+
+.transit-step-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+/* Les deux flèches de recalage : discrètes, à gauche des commandes, parce
+   qu'on ne s'en sert que lorsque l'horaire a tort. */
+.transit-nudge {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.transit-nudge button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+}
+
+/* Zone de toucher agrandie sans changer le dessin (« Zones de toucher » dans
+   app/CLAUDE.md). Les deux boutons sont séparés de 4 px : la zone ne déborde
+   que de 2 px sur le côté. */
+.transit-nudge button::after {
+  content: "";
+  position: absolute;
+  inset: -6px -2px;
+}
+
+.nav-bar.is-transit .nav-bar-main {
+  border-top: 1px solid var(--hairline);
+}
+
+/* =========================================================================
+   Navigation voiture (`src/navigation/car/`)
+
+   Tous les sélecteurs commencent par `car-`, et ceux qui modifient le guidage
+   piéton le font en **composant** avec lui (`.nav-banner.car-banner`) plutôt
+   qu'en le redéclarant : les deux guidages partagent le bandeau, la barre du
+   bas et le socle, et seule la voiture s'en écarte.
+
+   Les styles vivent dans la même feuille que la marche, et non dans un fichier
+   voisin, pour que la règle du module tienne toujours : une seule ligne
+   d'`@import` dans `src/App.css`.
+   ========================================================================= */
+
+/* Le choix d'itinéraire, sur la carte -------------------------------------- */
+
+/* La fenêtre au centre a disparu : elle masquait précisément ce qu'on veut
+   regarder pour choisir. Ne reste qu'une barre basse, et les bulles posées sur
+   les tracés. */
+.car-choice-bar {
+  /* Centrée **par ses marges entre les deux bords**, pas par `left: 50%` et
+     une translation. Un élément absolu posé à `left: 50%` sans largeur ne peut
+     pas dépasser la moitié droite de l'écran : la barre était plafonnée à la
+     moitié de la largeur, son `max-width` ne jouait jamais, et le texte se
+     cassait sur quatre lignes à côté d'« Annuler » (constaté sur une capture).
+     `fit-content` garde une barre courte quand le texte l'est. */
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: fit-content;
+  max-width: 520px;
+  margin-inline: auto;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: var(--radius-pill);
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+}
+
+/* Le texte prend toute la place qu'« Annuler » laisse, et se répartit en
+   lignes égales quand il en faut deux — plutôt qu'un mot orphelin. */
+.car-choice-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  text-wrap: balance;
+}
+
+.car-choice-failed {
+  color: var(--closed);
+}
+
+.car-choice-hint {
+  display: none;
+}
+
+/* Sur un écran assez large, la précision sur la clé manquante tient sur la
+   même ligne ; en dessous, elle sauterait à la ligne et doublerait la hauteur
+   de la barre pour une phrase qu'on ne lit qu'une fois. */
+@media (min-width: 720px) {
+  .car-choice-hint {
+    display: inline;
+    max-width: 320px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.85;
+  }
+}
+
+.car-choice-cancel {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--hover);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* La bulle d'un itinéraire proposé ------------------------------------------
+   Elle est posée sur la carte par `MapView` (marqueur du DOM), à l'endroit où
+   ce parcours s'écarte le plus des autres. C'est elle qu'on touche — il n'y a
+   pas d'autre bouton de départ. */
+.route-choice-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 11px 7px;
+  border-radius: 13px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  /* La pointe qui désigne la route sous la bulle. Un simple décalage vers le
+     bas suffit : l'ancrage du marqueur est déjà `bottom`. */
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  cursor: pointer;
+  /* Les bulles se recouvrent quand deux parcours se frôlent : celle qu'on
+     regarde passe devant les autres. */
+  z-index: 1;
+}
+
+.route-choice-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  /* La pointe dépasse par le bas : moitié dans la bulle, moitié dehors, pour
+     qu'elle se lise comme une flèche et non comme un coin arraché. */
+  bottom: -3px;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%) rotate(45deg);
+  background: inherit;
+  border-radius: 2px;
+}
+
+.route-choice-bubble strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.route-choice-bubble span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Celle du parcours mis en avant : pleine, à la couleur de l'itinéraire, et
+   au-dessus des autres. C'est la seule différence visible entre « je regarde
+   ce trajet » et « je pars sur celui-là », et elle suffit — le second contact
+   valide. */
+.route-choice-bubble.is-active {
+  background: var(--accent);
+  z-index: 2;
+}
+
+.route-choice-bubble.is-active strong,
+.route-choice-bubble.is-active span {
+  color: #fff;
+}
+
+.route-choice-bubble.is-active span {
+  opacity: 0.92;
+}
+
+/* Bandeau de manœuvre ----------------------------------------------------- */
+
+/* Plus large qu'à pied : il porte l'action **et** la direction, et la bande
+   des voies vient parfois s'y ajouter. */
+.nav-banner.car-banner {
+  width: min(480px, calc(100vw - 24px));
+}
+
+.car-maneuver-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* La distance d'abord, l'action ensuite, sur la même ligne : c'est la distance
+   qui dit si la manœuvre est pour tout de suite, donc si elle nous concerne. */
+.car-maneuver .nav-maneuver-distance {
+  font-size: 24px;
+  flex: none;
+}
+
+.car-maneuver-action {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La direction sur sa propre ligne : c'est ce qu'on cherche sur les panneaux,
+   et l'écraser dans la phrase de l'action obligerait à lire jusqu'au bout pour
+   savoir s'il faut tourner. */
+.car-maneuver-direction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 3px;
+}
+
+/* Le numéro de route, en pastille. Il est **plus gros que le nom de la rue**,
+   et c'est le point : on repère « A6 » sans le lire, alors qu'un nom de voie se
+   lit. Agrandir les deux n'aurait fait qu'allonger la ligne. */
+.car-road {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 7px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #fff;
+  /* Les chiffres d'un numéro de route s'alignent : « D906 » et « D14 » doivent
+     avoir la même assise d'une manœuvre à l'autre. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Les couleurs des **bornes routières françaises**, celles qu'on a déjà vues au
+   bord de la chaussée. On ne fabrique pas une convention quand il en existe une
+   que l'œil connaît.
+
+   Deux regroupements surprennent si l'on raisonne en importance plutôt qu'en
+   signalisation, et ils sont pourtant justes : l'autoroute et la nationale
+   partagent le rouge, l'européenne partage le vert avec la forestière.
+
+   Les fonds clairs — jaune et blanc — portent un texte sombre, sans quoi ils ne
+   se liraient pas. */
+.car-road.is-national {
+  background: #d70015; /* autoroutes (A) et nationales (N) */
+}
+
+.car-road.is-departmental {
+  background: #ffcc00; /* départementales (D) */
+  color: #1c1c1e;
+}
+
+/* Le blanc a besoin d'un cerne : posé sur le bandeau, lui-même clair, il
+   disparaîtrait sans lui. Un cerne intérieur plutôt qu'une bordure, pour que la
+   pastille garde exactement la même taille que les autres. */
+.car-road.is-communal {
+  background: #ffffff; /* voies communales (C) et rurales (R) */
+  color: #1c1c1e;
+  box-shadow: inset 0 0 0 2px rgba(60, 60, 67, 0.45);
+}
+
+.car-road.is-european {
+  background: #248a3d; /* européennes (E) et forestières (F) */
+}
+
+/* Assez foncé pour porter du texte blanc — un cyan clair passerait sous le
+   seuil de contraste — mais assez franc pour se lire comme du cyan et non
+   comme le bleu de l'itinéraire. */
+.car-road.is-metropolitan {
+  background: #0093b0; /* réseaux métropolitains (M) */
+}
+
+.car-road.is-other {
+  background: var(--text-secondary);
+}
+
+/* Le nom de la voie : la taille du texte courant, et il cède la place en
+   premier quand la ligne déborde — la pastille, elle, ne se tronque jamais. */
+.car-maneuver-street {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.car-maneuver-then {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Les voies ---------------------------------------------------------------- */
+
+/* Une rangée de flèches, à l'image du panneau d'affectation de voies : ce
+   qu'on reconnaît en arrivant dessus, plutôt qu'une phrase à lire. */
+.car-lanes {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Les voies sont le seul endroit du bandeau où l'on doit **compter** : trouver
+   la troisième file en partant de la droite, et s'y mettre. Tout y est donc
+   dimensionné pour être compté d'un regard — cases larges, flèches tirées en
+   hauteur, et surtout des voies écartées qui restent parfaitement lisibles. */
+.car-lane {
+  /* 46 px de large, et moins **seulement si la chaussée ne tient pas** dans le
+     bandeau. Une règle `max-width: 420px` les passait à 36 × 50 sur tous les
+     téléphones — le Pixel 8 fait 412 px — même pour deux voies : on les
+     trouvait plus petites qu'avant, et elles l'étaient. */
+  flex: 0 1 46px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58px;
+  border-radius: 10px;
+  /* Les voies qu'on ne prend pas ne sont PAS effacées. C'est le point : sur une
+     quatre-voies où il faut aller à gauche, ce sont les trois files de droite
+     qu'il faut voir pour comprendre qu'on doit traverser. Une version
+     précédente les posait à 45 % d'opacité en gris sur gris — on ne les
+     comptait plus. Elles ont désormais leur propre fond, un cerne franc et une
+     flèche à pleine encre : ce qui les distingue de la bonne voie n'est plus
+     leur pâleur mais leur couleur. */
+  background: var(--lane-skip-bg);
+  box-shadow: inset 0 0 0 1.5px var(--lane-skip-edge);
+  color: var(--lane-skip-ink);
+}
+
+/* La voie à prendre : pleine, à la couleur de l'itinéraire. Le contraste entre
+   les deux états tient à l'inversion — encre claire sur fond plein contre encre
+   sombre sur fond clair — et non à un écart d'intensité. */
+.car-lane.is-follow {
+  background: var(--accent);
+  box-shadow: none;
+  color: #fff;
+}
+
+/* La flèche occupe toute la case : c'est son allongement qui la rend
+   reconnaissable de loin, pas son épaisseur. */
+.car-lane-arrow {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Une chaussée large — huit voies à l'approche d'un échangeur — ne doit pas
+   faire déborder le bandeau : les cases rétrécissent alors (`flex-shrink`)
+   plutôt que de passer à la ligne, ce qui casserait la lecture de la chaussée.
+   La flèche garde ses proportions : c'est un SVG, il se met à l'échelle. */
+
+/* Le compteur -------------------------------------------------------------- */
+
+/* À gauche, à l'opposé du volant, et à hauteur du regard quand la carte occupe
+   le centre. */
+.car-speed {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 66px;
+  padding: 9px 8px 7px;
+  border-radius: 18px;
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  /* La bascule au rouge doit se voir sans attirer l'œil par un clignotement :
+     une transition courte suffit à la rendre perceptible. */
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.car-speed-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.car-speed-unit {
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* La limite reprend le dessin du panneau : un disque cerclé de rouge. C'est
+   la seule forme qui se lise sans légende. */
+.car-speed-limit {
+  margin-top: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--closed);
+  border-radius: 50%;
+  background: #fff;
+  color: #1c1c1e;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* En excès, c'est le **fond** qui change et pas seulement le chiffre : un
+   chiffre rouge sur fond clair se repère mal du coin de l'œil, ce qui est
+   pourtant la seule façon dont on regarde son compteur en conduisant. */
+.car-speed.is-over {
+  background: var(--closed);
+}
+
+/* Plus aucun relevé depuis quelques secondes : le chiffre reste — c'est la
+   dernière vitesse connue, et c'est mieux que rien — mais il pâlit pour cesser
+   de se donner pour le présent. */
+.car-speed.is-stale {
+  opacity: 0.5;
+}
+
+.car-speed.is-over .car-speed-value,
+.car-speed.is-over .car-speed-unit {
+  color: #fff;
+}
+
+/* Avertissement de radar --------------------------------------------------- */
+
+/* Sous le bandeau de manœuvre, et non à sa place : on doit continuer de savoir
+   où tourner pendant qu'on lève le pied. */
+.car-radar {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  /* Sous le bandeau, dont la hauteur varie avec la direction et les voies :
+     la marge est prise sur le cas le plus haut, pour que l'encart ne saute pas
+     d'une manœuvre à l'autre. */
+  margin-top: 128px;
+  z-index: 13;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--closed);
+  color: #fff;
+  box-shadow: var(--shadow-float);
+}
+
+.car-radar-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.car-radar-text strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.car-radar-text span {
+  font-size: 12px;
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barre du bas ------------------------------------------------------------- */
+
+/* L'heure d'arrivée est centrée sur **toute** la barre, et non sur la place que
+   laisse le bouton « Terminer » : celui-ci est posé en absolu à droite, et la
+   barre garde de chaque côté une marge égale à sa largeur. Dessous, temps
+   restant et distance sur une seule ligne. */
+.car-bar .nav-bar-main {
+  position: relative;
+  justify-content: center;
+  padding: 10px 66px;
+}
+
+.car-figures {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  text-align: center;
+}
+
+/* L'heure d'arrivée porte le plus gros corps, à l'inverse du guidage piéton où
+   c'est le temps restant. Sur vingt minutes on compte en minutes ; sur quatre
+   heures de route, c'est « j'arrive à 17:40 » qu'on retient et qu'on annonce. */
+.car-arrival {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.car-side {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.car-remaining,
+.car-distance,
+.car-dot {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* « Terminer » réduit à un rond : même rouge, même geste, sans libellé. */
+.car-bar .nav-stop {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* Le bouton de simulation (développement seulement) prend le côté gauche. */
+.car-bar .nav-sim {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Sur un écran étroit, le compteur et la barre du bas se disputent le coin
+   gauche : le compteur remonte au-dessus d'elle. */
+@media (max-height: 620px) {
+  .car-speed {
+    top: auto;
+    bottom: 130px;
+    transform: none;
+  }
+}
+
+/* Le changement d'itinéraire dû au trafic se distingue du simple recalcul :
+   c'est une bonne nouvelle, pas une attente. */
+.nav-banner-note.is-traffic {
+  color: var(--open);
+  font-weight: 600;
+}
+
+/* Musique en cours (`music/`) ---------------------------------------------
+   Au-dessus de la barre du bas, dans la même colonne (`.nav-dock`) et avec la
+   même matière. Il n'existe que s'il y a de la musique : son apparition est
+   donc un événement, d'où la courte entrée par le bas. Les boutons font 52 et
+   60 px — ils se touchent au volant, sans viser. */
+.music-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-card);
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  animation: music-in 0.22s ease-out;
+}
+
+.music-art {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.music-art.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+}
+
+.music-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.music-title,
+.music-artist {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.music-artist {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.music-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.music-controls button {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.music-controls button:active {
+  background: var(--hover);
+}
+
+.music-controls button.is-main {
+  width: 60px;
+  height: 60px;
+  background: rgba(120, 120, 128, 0.16);
+}
+
+/* Accès non accordé : le message remplace l'encart, et se masque d'une croix. */
+.music-notice {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.music-dismiss {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.music-dismiss:active {
+  background: var(--hover);
+}
+
+@keyframes music-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Réglage « Musique pendant le guidage » */
+.nav-settings-button {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent, #007aff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nav-settings-link {
+  margin-top: 4px;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: var(--accent, #007aff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-settings-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #34c759;
+}
+
+/* Mode course (`running/`) ------------------------------------------------
+   Tout ce qui appartient à une course est orange : le bouton, le bandeau, le
+   tracé, le graphe, et la course dans l'historique. */
+:root {
+  --run-color: #ff9500;
+}
+
+:root[data-theme="dark"] {
+  --run-color: #ff9f0a;
+}
+
+/* Sous le burger, en face de la boussole : même taille, même matière. */
+.run-button {
+  position: absolute;
+  top: calc(max(16px, env(safe-area-inset-top)) + 52px);
+  left: 16px;
+  z-index: 19;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--run-color);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Fenêtre « Modes » du menu : un interrupteur par ligne, sa phrase d'aide
+   dessous. */
+.modes-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.modes-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.modes-row + .modes-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.modes-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.modes-row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.modes-row-hint {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+/* La confirmation du lancement : deux boutons larges, l'orange pour partir. */
+.run-confirm-text {
+  margin: 8px 0 18px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.run-confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.run-confirm-actions button {
+  flex: 1;
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.run-confirm-cancel {
+  background: rgba(120, 120, 128, 0.18);
+  color: var(--text-primary);
+}
+
+.run-confirm-go {
+  background: var(--run-color);
+  color: #fff;
+}
+
+/* Le bandeau est plus court que celui de la navigation : le burger et la
+   colonne de droite se rangent juste dessous. */
+.app-shell.is-running .app-menu,
+.app-shell.is-running .map-dock {
+  top: calc(max(16px, env(safe-area-inset-top)) + 84px);
+}
+
+.run-banner {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: var(--radius-card);
+  border-left: 5px solid var(--run-color);
+  /* Fond plein, sans flou : le flou se recalcule à chaque image de la carte
+     qui défile dessous (voir « Performances » dans `app/CLAUDE.md`). */
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+}
+
+.run-pulse {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--run-color);
+  /* Quelques battements au départ, puis fixe : une course dure longtemps, et
+     une animation infinie recompose l'écran à chaque image (voir le point de
+     position, `map-markers.css`). « En course » le dit déjà en toutes lettres. */
+  animation: run-pulse 1.4s ease-in-out 3;
+}
+
+.run-banner.is-paused .run-pulse {
+  animation: none;
+  opacity: 0.45;
+}
+
+@keyframes run-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(255, 149, 0, 0);
+  }
+}
+
+.run-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Sur une seule ligne : repliée, elle épaississait le bandeau (constaté sur
+   Pixel 8, où Pause et Terminer ne laissent qu'un tiers de la largeur). */
+.run-banner-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--run-color);
+}
+
+.run-banner-time {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.run-banner-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.run-pause {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.run-stop {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 48px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--run-color);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.run-bar .run-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 12px 8px;
+}
+
+.run-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.run-figure-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.run-figure-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.run-figure.is-main .run-figure-value {
+  color: var(--run-color);
+}
+
+/* Fiche de fin et historique, en orange */
+.trip-summary-badge.is-run {
+  background: rgba(255, 149, 0, 0.16);
+  color: var(--run-color);
+}
+
+.trip-summary.is-run .trip-summary-title {
+  color: var(--run-color);
+}
+
+.trip-summary.is-run .trip-summary-close {
+  background: var(--run-color);
+}
+
+.history-item-name.is-run {
+  color: var(--run-color);
+}
+
+.history-detail.is-run .nav-profile {
+  --nav-profile-ink: var(--run-color);
+}
+
+.run-stats {
+  margin-bottom: 14px;
+}
+
+/* Le graphe de l'allure */
+.run-chart {
+  margin-top: 6px;
+}
+
+.run-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.run-chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.run-chart-regularity {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--run-color);
+}
+
+.run-chart-regularity.is-high,
+.run-chart-regularity.is-good {
+  color: var(--open);
+}
+
+.run-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.run-chart-area {
+  fill: var(--run-color);
+  opacity: 0.16;
+}
+
+.run-chart-line {
+  fill: none;
+  stroke: var(--run-color);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.run-chart-mean {
+  stroke: var(--text-secondary);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+
+.run-chart-grid {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.run-chart-axis {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.run-chart-label {
+  font-size: 10.5px;
+  fill: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-chart-label.is-mean {
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.run-chart-hint,
+.run-chart-empty {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

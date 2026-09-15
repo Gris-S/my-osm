@@ -1,0 +1,192 @@
+/* -------------------------------------------------------------------------
+   Fiche lieu : prochains passages (bus, métro, RER, tramway, Transilien)
+   ------------------------------------------------------------------------- */
+.departures {
+  margin-top: 12px;
+}
+
+.departures-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.departures-note {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.1);
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+/* Explication placée sous les lignes muettes. */
+.departures-note.is-aside {
+  margin-top: 6px;
+  background: none;
+  padding: 0 4px;
+  font-size: 12.5px;
+}
+
+.departures-note code {
+  font-size: 12.5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(120, 120, 128, 0.18);
+}
+
+/* Un encart par ligne. */
+.line-card {
+  border-radius: 14px;
+  background: rgba(120, 120, 128, 0.1);
+  overflow: hidden;
+}
+
+.line-card + .line-card {
+  margin-top: 6px;
+}
+
+/* Ligne desservant l'arrêt mais dont la source ne dit rien : présente, en
+   retrait, et non dépliable — il n'y a rien à déplier. */
+.line-card.is-silent {
+  opacity: 0.65;
+}
+
+.line-card.is-silent .line-summary {
+  cursor: default;
+}
+
+.line-summary,
+.departure-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.line-summary:hover,
+.departure-summary:hover {
+  background: var(--hover);
+}
+
+/* Pastille de ligne, aux couleurs officielles du réseau. */
+.line-badge {
+  flex-shrink: 0;
+  min-width: 30px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.departure-direction {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.departure-next {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.departure-next.is-ended {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.departure-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.departure-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* Encarts de destination, à l'intérieur d'une ligne. */
+.line-groups {
+  padding: 0 8px 8px;
+}
+
+.departure-group {
+  border-radius: 11px;
+  background: var(--surface-solid);
+}
+
+.departure-group + .departure-group {
+  margin-top: 6px;
+}
+
+.departure-group .departure-summary {
+  padding: 8px 10px;
+}
+
+/* Aucun passage au-delà du prochain : on le dit plutôt que d'ouvrir sur du vide. */
+.departure-none {
+  margin: 0;
+  padding: 0 10px 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.departure-list {
+  margin: 0;
+  padding: 0 10px 8px;
+  list-style: none;
+}
+
+.departure-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 13.5px;
+}
+
+.departure-list li.is-cancelled .departure-wait {
+  color: var(--closed);
+  text-decoration: line-through;
+}
+
+.departure-wait {
+  min-width: 84px;
+  font-weight: 600;
+}
+
+.departure-time,
+.departure-platform {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.departure-platform {
+  margin-left: auto;
+}
+
+/* Nouveau contact sur l'arrêt ouvert : les passages précédents restent en
+   place, estompés, le temps que les nouveaux arrivent. */
+.departures.is-refreshing .line-card {
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}

@@ -1,0 +1,57 @@
+/* -------------------------------------------------------------------------
+   Fiche lieu : menu de partage
+   ------------------------------------------------------------------------- */
+.share-wrap {
+  position: relative;
+}
+
+.share-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  width: max(240px, 100%);
+  padding: 6px;
+  background: var(--surface-solid);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+}
+
+.share-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.share-option:hover {
+  background: var(--hover);
+}
+
+.share-option svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.share-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.share-option-label {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.share-option-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

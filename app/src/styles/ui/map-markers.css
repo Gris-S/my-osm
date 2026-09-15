@@ -1,0 +1,48 @@
+/* -------------------------------------------------------------------------
+   Marqueurs carte : pin de destination + point "position actuelle"
+   ------------------------------------------------------------------------- */
+.map-pin {
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+}
+
+.user-dot-wrap {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.user-dot-core {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent, #007aff);
+  border: 2.5px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.user-dot-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 122, 255, 0.35);
+  /* Trois pulsations à l'apparition, puis le point reste fixe. Infinie, cette
+     animation obligeait la WebView à recomposer l'écran à 120 Hz sans arrêt :
+     mesuré sur Pixel 8, carte au repos, 1,30 cœur et 123 images par seconde,
+     contre 0,01 cœur et 0 image une fois coupée. Le marqueur est créé une fois
+     puis déplacé : la pulsation ne repart pas à chaque relevé. */
+  animation: user-dot-pulse 2s ease-out 3 forwards;
+}
+
+@keyframes user-dot-pulse {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Repère de la vue de rue : le cône montre la direction du regard. Il ne
+   capte pas le clic — la carte doit rester cliquable dessous. */
+.street-view-marker {
+  pointer-events: none;
+}

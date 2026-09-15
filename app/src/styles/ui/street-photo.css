@@ -1,0 +1,129 @@
+/* -------------------------------------------------------------------------
+   Photo de rue (Mapillary)
+   ------------------------------------------------------------------------- */
+.street-photo {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 30;
+  width: min(420px, calc(100vw - 32px));
+  background: var(--surface-solid);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+
+.street-photo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px 14px;
+}
+
+.street-photo-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.street-photo-close {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zone de toucher agrandie sans changer le dessin (« Zones de toucher » dans
+   app/CLAUDE.md). Les deux boutons sont séparés de 8 px : la zone ne déborde
+   que de 4 px sur le côté. */
+.street-photo-close::after {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+
+/* La scène du visualiseur. Il dessine en WebGL dans un conteneur qu'il faut
+   dimensionner : sans hauteur explicite, il ne s'affiche pas du tout. */
+.street-photo-stage {
+  position: relative;
+  height: 260px;
+  background: var(--hover);
+  overflow: hidden;
+}
+
+/* Sélecteur volontairement plus précis que `.mapillary-viewer` : la
+   bibliothèque ajoute cette classe **à notre propre conteneur**, et sa feuille
+   de style — injectée après la nôtre — y impose `position: relative`. À
+   spécificité égale, c'est elle qui l'emportait : le cadre repliait alors sa
+   hauteur sur son contenu, c'est-à-dire zéro, et la vue se dessinait dans le
+   vide. La taille est donc redonnée deux fois, par le calage et par les
+   dimensions. */
+.street-photo .street-photo-viewer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.street-photo-note {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Le message brut de l'erreur : illisible pour l'utilisateur, décisif pour
+   qui vient réparer. */
+.street-photo-failure {
+  font-size: 11px;
+  opacity: 0.8;
+  word-break: break-word;
+}
+
+/* Plein écran : la vue prend toute la place, l'interface s'efface (voir
+   `App`) — c'est la rue qu'on regarde, pas les boutons. */
+.street-photo.is-expanded {
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #f2f2f7;
+}
+
+.street-photo.is-expanded .street-photo-stage {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  background: #000;
+}
+
+.street-photo.is-expanded .street-photo-close {
+  background: rgba(255, 255, 255, 0.16);
+  color: #f2f2f7;
+}
+
+.street-photo.is-expanded .street-photo-note {
+  color: rgba(242, 242, 247, 0.7);
+}

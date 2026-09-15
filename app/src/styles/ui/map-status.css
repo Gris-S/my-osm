@@ -1,0 +1,55 @@
+/* -------------------------------------------------------------------------
+   Bandeau d'état du chargement des commerces
+   ------------------------------------------------------------------------- */
+.map-status {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100vw - 120px);
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--shadow-float);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  pointer-events: none;
+  /* Les commerces viennent des tuiles déjà chargées : l'attente, quand il y en
+     a une, se compte en dixièmes de seconde. Le bandeau n'apparaît donc qu'au
+     bout d'une demi-seconde, pour ne pas clignoter à chaque déplacement. */
+  animation: map-status-in 0.2s ease 0.5s both;
+}
+
+@keyframes map-status-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.map-status-spinner {
+  animation: map-status-spin 1s linear infinite;
+}
+
+@keyframes map-status-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Une panne de carte n'est pas un chargement : elle se distingue, et elle
+   reste. C'est souvent la seule information disponible sur un téléphone, où
+   aucune console n'est ouverte. */
+.map-status.is-error {
+  background: var(--closed);
+  color: #fff;
+  max-width: min(92vw, 520px);
+  text-align: left;
+  line-height: 1.35;
+  /* Le bandeau de chargement apparaît en fondu différé ; une erreur, non. */
+  animation: none;
+  opacity: 1;
+}

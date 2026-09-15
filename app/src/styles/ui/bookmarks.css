@@ -1,0 +1,256 @@
+/* -------------------------------------------------------------------------
+   Menu des lieux enregistrés (signet, au-dessus des catégories)
+   ------------------------------------------------------------------------- */
+.bookmarks-menu {
+  position: absolute;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  transition: bottom 0.25s ease, opacity 0.18s ease;
+}
+
+/* Recouvert par le panneau d'un menu voisin : le bouton s'efface au lieu de
+   flotter par-dessus lui. */
+.bookmarks-menu.is-covered {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bookmarks-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmarks-button.is-open {
+  background: var(--accent);
+  color: #fff;
+}
+
+.bookmarks-panel {
+  width: min(300px, calc(100vw - 32px));
+  max-height: min(560px, calc(100dvh - var(--bookmarks-offset, 200px) - 78px));
+  overflow-y: auto;
+  background: var(--surface-solid);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding: 12px 10px 10px;
+}
+
+.bookmarks-title {
+  padding: 0 6px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bookmark-folder + .bookmark-folder {
+  border-top: 1px solid var(--hairline);
+}
+
+.bookmark-folder-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+/* Allumer un dossier : la pastille se remplit de sa couleur, et ses points
+   apparaissent sur la carte. */
+.bookmark-toggle {
+  flex-shrink: 0;
+  padding: 4px;
+  display: flex;
+}
+
+.bookmark-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmark-folder-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.bookmark-folder-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.bookmark-rename {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: var(--hover);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bookmark-icon-button {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmark-icon-button:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.bookmark-icon-button.is-danger:hover {
+  color: var(--closed);
+}
+
+.bookmark-colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px 10px 30px;
+}
+
+.bookmark-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.bookmark-color.is-active {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+/* Confirmation de suppression : elle s'ouvre sous le dossier visé, avec son
+   nom et ce qu'il contient — on ne supprime pas à l'aveugle. */
+.bookmark-confirm {
+  margin: 2px 0 8px 30px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--hover);
+}
+
+.bookmark-confirm-text {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.bookmark-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bookmark-confirm-cancel,
+.bookmark-confirm-delete {
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bookmark-confirm-cancel {
+  color: var(--text-secondary);
+}
+
+.bookmark-confirm-cancel:hover {
+  background: var(--surface-solid);
+}
+
+.bookmark-confirm-delete {
+  background: var(--closed);
+  color: #fff;
+}
+
+.bookmark-places {
+  padding: 0 0 8px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bookmark-empty {
+  margin: 0;
+  padding: 2px 0 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bookmark-place {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 0;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.bookmark-place:hover {
+  background: var(--hover);
+}
+
+.bookmark-place-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bookmark-place-name {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-place-addr {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

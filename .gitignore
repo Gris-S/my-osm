@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------------------
+# Ce qui ne va pas dans le dépôt : ce qui se régénère, ce qui est personnel,
+# et ce qui existe déjà ailleurs.
+# ---------------------------------------------------------------------------
+
+# Copies complètes du projet (outils/save.sh) et APK construits : le dépôt les
+# remplace pour l'historique, les livrables se reconstruisent.
+saves/
+livrables/
+
+# Dépendances
+node_modules/
+
+# Clés d'API locales — jamais dans le dépôt.
+.env
+.env.local
+*.local
+
+# Build web, et sa copie que `cap sync` pose dans le projet Android.
+app/dist/
+apk/android/app/src/main/assets/public/
+apk/android/app/src/main/assets/capacitor.config.json
+apk/android/app/src/main/assets/capacitor.plugins.json
+apk/android/capacitor-cordova-android-plugins/
+
+# Divers
+.DS_Store
+*.log
+
+# Captures de référence prises sur l'appareil (position visible) : locales seulement.
+docs/reference-*/

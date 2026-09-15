@@ -1,0 +1,98 @@
+/* -------------------------------------------------------------------------
+   Recherche d'enseigne : bandeau et bouton « rechercher ici »
+   ------------------------------------------------------------------------- */
+/* Rangé dans le flux de la barre de recherche, après les résultats : il suit
+   donc la liste des suggestions au lieu de la recouvrir. */
+.brand-banner {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  font-size: 14px;
+}
+
+.brand-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.brand-name {
+  font-weight: 700;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-count {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+
+
+/* Proposé seulement quand la carte a bougé : la recherche ne se relance pas
+   d'elle-même à chaque geste. */
+.brand-search-here {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-float);
+}
+
+/* Recherche récente, tout en tête : le pictogramme est en gris, elle rappelle
+   ce qu'on a cherché et n'est pas un résultat de plus. */
+.search-result.is-recent .search-result-icon {
+  color: var(--text-secondary);
+}
+
+/* Proposition d'enseigne, en tête des résultats de recherche. */
+.search-result.is-brand {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.search-result.is-brand .search-result-icon {
+  color: var(--accent);
+}
+
+/* La pastille ne dépasse jamais de l'écran : un nom d'enseigne long se coupe
+   d'une ellipse, le compte et la croix restent visibles. Pendant la recherche,
+   le texte se réduit à « recherche… » — le pictogramme qui tourne dit déjà ce
+   qui se passe (le libellé long dépassait de l'écran sur téléphone). */
+.brand-pill {
+  /* Bornée à l'espace entre les deux colonnes de boutons ronds (16 px de marge,
+     44 px de bouton, 8 px d'écart de chaque côté) : sur la ligne sous la barre
+     de recherche, le bouton de course est à gauche, la boussole à droite, et la
+     toupie passait derrière le premier. */
+  max-width: calc(100vw - 136px);
+  min-width: 0;
+}
+
+.brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-count {
+  flex: none;
+  white-space: nowrap;
+}

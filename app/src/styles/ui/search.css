@@ -1,0 +1,136 @@
+/* -------------------------------------------------------------------------
+   Barre de recherche flottante
+   ------------------------------------------------------------------------- */
+.search-wrap {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  /* 88px réservés de chaque côté : le bouton du menu principal à gauche,
+     l'encart météo à droite. */
+  width: min(420px, calc(100vw - 176px));
+  z-index: 10;
+}
+
+/* Sur un téléphone, la réserve symétrique de 88 px ne suffit pas : l'encart
+   météo est plus large que cela — il porte une température et son
+   pictogramme — et il mordait sur la barre de recherche (constaté sur
+   appareil). En dessous de 640 px, la barre cesse donc d'être centrée sur une
+   largeur fixe et s'**ancre entre ses deux voisins** : elle ne peut plus les
+   chevaucher, quelle que soit la largeur de l'encart. */
+@media (max-width: 640px) {
+  .search-wrap {
+    left: 68px;
+    right: 116px;
+    width: auto;
+    transform: none;
+  }
+}
+
+.search-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-float);
+  padding: 11px 14px;
+}
+
+.search-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.search-clear {
+  color: var(--text-secondary);
+  display: flex;
+  padding: 2px;
+}
+
+.search-results {
+  margin-top: 8px;
+  background: var(--surface-solid);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.search-result {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.search-result:last-child {
+  border-bottom: none;
+}
+
+.search-result:hover,
+.search-result:active {
+  background: var(--hover);
+}
+
+.search-result-icon {
+  color: var(--accent);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.search-result-name {
+  font-size: 15px;
+  font-weight: 590;
+}
+
+.search-result-address {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.search-result-loading {
+  padding: 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Domicile ou travail pas encore défini : la ligne s'efface à demi — elle
+   invite à définir l'adresse, elle ne mène encore nulle part. */
+.search-result.is-unset .search-result-name,
+.search-result.is-unset .search-result-icon {
+  color: var(--text-secondary);
+}
+
+/* La barre est armée pour retenir une adresse : on le dit en tête de liste,
+   là où l'on regarde. */
+.search-assigning {
+  color: var(--accent);
+  font-weight: 590;
+}
+
+/* « Chercher sur le web », en dernier : un recours, pas un résultat. */
+.search-result.is-web .search-result-icon {
+  color: var(--text-secondary);
+}

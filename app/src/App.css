@@ -1,0 +1,46 @@
+/* ---------------------------------------------------------------------------
+   Feuilles de style de l'interface.
+
+   Ce fichier ne porte plus de règles : il **ordonne** les feuilles, une par
+   zone de l'interface (`src/styles/ui/`). Le découpage est un confort de
+   lecture, pas un découpage de chargement — Vite les réunit en une seule
+   feuille au build, et l'ordre ci-dessous est celui de la cascade.
+
+   Deux conséquences à ne pas perdre de vue :
+
+   - **L'ordre des `@import` est celui du fichier d'origine.** Quelques règles
+     se recouvrent d'une zone à l'autre (`.sheet-action-secondary` complétée
+     par la fenêtre d'enregistrement, `.toggle-switch` partagé par le menu des
+     calques et celui des catégories) : les réordonner reviendrait à changer
+     qui l'emporte. `base.css` d'abord, puisqu'il porte les variables.
+   - **Une feuille ne s'importe pas depuis son composant.** L'ordre viendrait
+     alors du graphe des modules, que React et Vite décident, et non de ce
+     fichier — le même piège, mais sans endroit où le lire.
+   --------------------------------------------------------------------------- */
+
+@import "./styles/ui/base.css";
+@import "./styles/ui/error-boundary.css";
+@import "./styles/ui/search.css";
+@import "./styles/ui/place-sheet.css";
+@import "./styles/ui/hours.css";
+@import "./styles/ui/departures.css";
+@import "./styles/ui/share-menu.css";
+@import "./styles/ui/place-info.css";
+@import "./styles/ui/itinerary.css";
+@import "./styles/ui/journeys.css";
+@import "./styles/ui/map-buttons.css";
+@import "./styles/ui/map-markers.css";
+@import "./styles/ui/brand-search.css";
+@import "./styles/ui/street-photo.css";
+@import "./styles/ui/weather.css";
+@import "./styles/ui/app-menu.css";
+@import "./styles/ui/bookmarks.css";
+@import "./styles/ui/save-place.css";
+@import "./styles/ui/filter-menu.css";
+@import "./styles/ui/map-options.css";
+@import "./styles/ui/map-status.css";
+@import "./styles/ui/download.css";
+/* Navigation guidée — voir `src/navigation/README.md`. Elle vient en dernier :
+   elle se pose par-dessus tout le reste, et retirer cette ligne suffit à la
+   décrocher de l'application. */
+@import "./navigation/navigation.css";

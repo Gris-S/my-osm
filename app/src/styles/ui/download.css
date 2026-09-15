@@ -1,0 +1,284 @@
+/* ---------------------------------------------------------------------------
+   Fenêtre « Téléchargement ».
+
+   Elle est plus large que celle des paramètres parce qu'elle porte une carte :
+   choisir une emprise sur 360 pixels serait un supplice. Le corps défile, la
+   carte non — on ne doit jamais perdre le carré de sélection en faisant
+   défiler la liste des zones.
+   --------------------------------------------------------------------------- */
+.download-dialog {
+  width: min(560px, 100%);
+  padding-bottom: 8px;
+}
+
+.download-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.download-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* La carte de sélection. `touch-action: none` sur le carré et ses poignées
+   est indispensable : sans lui, un glissement sur mobile fait défiler la
+   fenêtre au lieu de déplacer la sélection. */
+.download-map-surface {
+  position: relative;
+  height: 260px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface-muted, rgba(120, 120, 128, 0.12));
+}
+
+.download-map {
+  position: absolute;
+  inset: 0;
+}
+
+/* Ce qu'on a touché sur la carte réduite, ou ce qui se passe. */
+.download-pick-status {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Paliers de détail : empilés et non en segments, parce que chacun porte une
+   phrase d'explication — trois colonnes les rendraient illisibles. */
+.download-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.download-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.12);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.download-tier.is-active {
+  border-color: var(--accent, #ff3b30);
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.download-tier span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.download-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.download-zoom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.download-zoom input[type="range"] { width: 100%; }
+
+.download-name {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.14);
+  color: inherit;
+  font: inherit;
+}
+
+.download-estimate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Au-delà du seuil, le poids se met à l'accent : c'est le seul avertissement
+   avant la confirmation, il doit se voir sans être lu. */
+.download-estimate.is-heavy {
+  color: var(--accent, #ff3b30);
+  font-weight: 600;
+}
+
+.download-quota { margin-left: auto; }
+
+.download-launch,
+.download-check-button,
+.download-resume {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent, #ff3b30);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.download-launch:disabled { opacity: 0.5; cursor: default; }
+
+.download-check-button,
+.download-resume {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-primary);
+}
+
+.download-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.download-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.download-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.12);
+}
+
+.download-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.download-item-meta,
+.download-item-progress,
+.download-item-ready {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.download-item-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #34c759;
+}
+
+.download-item-progress progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-bottom: 3px;
+}
+
+.download-delete {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.download-delete:hover { color: var(--accent, #ff3b30); }
+
+.spin { animation: download-spin 1s linear infinite; }
+
+@keyframes download-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Confirmations **dans l'application**, jamais par `window.confirm` : une
+   fenêtre système sort du cadre de l'interface, ne suit pas le thème, et sur
+   mobile certains navigateurs l'escamotent purement et simplement. Le motif
+   est celui des dossiers de signets : le bloc se déplie à la place de ce qu'il
+   remplace, et l'action destructrice n'est jamais celle qu'on atteint en
+   premier. */
+.download-confirm {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--hover, rgba(120, 120, 128, 0.16));
+}
+
+.download-confirm-text {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.download-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.download-confirm-cancel,
+.download-confirm-go {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.download-confirm-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.download-confirm-cancel:hover {
+  background: var(--surface-solid);
+}
+
+.download-confirm-go {
+  background: var(--closed, #ff3b30);
+  color: #fff;
+}
+
+/* Sélecteur de pays : un `select` natif plutôt qu'une liste maison. Deux cents
+   entrées se parcourent bien mieux avec le sélecteur du système — surtout sur
+   mobile, où il occupe l'écran entier et accepte la frappe au clavier. */
+
+/* Pourquoi une zone attend : la place, une écriture refusée, ou des cartes à
+   retélécharger depuis qu'elles sont rangées dans l'application. */
+.download-item-failure {
+  font-size: 12px;
+  color: var(--closed, #ff3b30);
+}

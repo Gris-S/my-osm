@@ -1,0 +1,73 @@
+/* -------------------------------------------------------------------------
+   Design tokens — palette et matériaux inspirés d'iOS / Apple Plans.
+   ------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------
+   Les surfaces flottantes sont **opaques par défaut**, et translucides
+   seulement là où le flou d'arrière-plan fonctionne vraiment.
+
+   C'est une correction, pas un choix esthétique. La translucidité ne tient que
+   par le flou : c'est lui qui détache le panneau de la carte. Là où
+   `backdrop-filter` n'est pas appliqué — certaines WebView Android, dont celle
+   de l'APK — il ne reste qu'un blanc délavé à travers lequel les rues
+   transparaissent, et le texte devient pénible à lire. Constaté sur appareil.
+
+   Un premier essai laissait la translucidité derrière un `@supports
+   (backdrop-filter)`. Il ne suffit pas : **la WebView déclare savoir flouter et
+   ne floute pas** — vérifié sur capture d'écran d'un Pixel 8, où les pastilles
+   de commerces se lisent nettement à travers la barre de recherche. La
+   déclaration ne dit rien de ce qui est réellement peint, on ne peut donc pas
+   s'y fier. Les surfaces sont désormais **pleines partout**, et
+   `backdrop-filter` ne reste que comme agrément là où il fonctionne : il n'a
+   plus rien à rattraper.
+   ------------------------------------------------------------------------- */
+.app-shell {
+  --accent: #007aff;
+  --open: #34c759;
+  --closed: #ff3b30;
+  --text-primary: #1c1c1e;
+  --text-secondary: #8e8e93;
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --hairline: rgba(60, 60, 67, 0.12);
+  --hover: rgba(0, 0, 0, 0.04);
+  --radius-pill: 999px;
+  --radius-card: 20px;
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+}
+
+/* Mode sombre — mêmes rôles de couleurs, palette iOS "dark". */
+:root[data-theme="dark"] .app-shell {
+  --accent: #0a84ff;
+  --open: #30d158;
+  --closed: #ff453a;
+  --text-primary: #f2f2f7;
+  --text-secondary: #98989f;
+  --surface: #1c1c1e;
+  --surface-solid: #1c1c1e;
+  --hairline: rgba(120, 120, 128, 0.28);
+  --hover: rgba(255, 255, 255, 0.07);
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* L'attribution de MapLibre porte sa propre feuille de style, écrite pour un
+   fond clair : en mode sombre elle posait un bandeau blanc en bas de l'écran
+   (constaté sur appareil). Elle doit rester lisible — la licence ODbL l'exige —
+   donc on la recolore au lieu de la masquer. */
+:root[data-theme="dark"] .maplibregl-ctrl-attrib {
+  background: rgba(28, 28, 30, 0.85);
+  color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .maplibregl-ctrl-attrib a {
+  color: var(--text-secondary);
+}
+
+.map-container {
+  position: absolute;
+  inset: 0;
+}

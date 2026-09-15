@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Écran d'accueil iOS : le même dessin, en bitmap, seul format que ce
+         système accepte, et pleine bord car iOS applique son propre masque.
+         Généré par `npm run build:icons`, comme le SVG ci-dessus et les deux
+         icônes du manifeste. Il servira tel quel au packaging APK. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Couleur de la barre du navigateur : le fond de carte clair, le
+         charcoal du mode sombre. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f2ed" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1c1e" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="description" content="Carte locale basée sur OpenStreetMap : commerces, horaires, itinéraires." />
+    <title>MY OSM</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

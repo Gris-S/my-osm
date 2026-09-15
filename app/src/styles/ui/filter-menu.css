@@ -1,0 +1,224 @@
+/* -------------------------------------------------------------------------
+   Menu des catégories affichées sur la carte
+   ------------------------------------------------------------------------- */
+
+/* Les catégories rejoignent la colonne de droite, juste au-dessus du bouton
+   des calques : les réglages de la carte sont ainsi tous du même côté. La
+   position exacte vient d'`App` (elle remonte quand une fiche s'ouvre), d'où
+   la seule `bottom` en attribut de style. */
+.filter-menu {
+  position: absolute;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  transition: bottom 0.25s ease, opacity 0.18s ease;
+}
+
+/* Recouvert par le panneau des calques : le bouton s'efface au lieu de flotter
+   par-dessus lui. */
+.filter-menu.is-covered {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter-burger {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-burger.is-open {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Pastille rappelant qu'un filtre est actif (masquée quand tout est affiché). */
+.filter-burger-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid var(--surface-solid);
+  box-sizing: content-box;
+}
+
+.filter-panel {
+  position: relative;
+  width: min(300px, calc(100vw - 32px));
+  background: var(--surface-solid);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding: 12px 8px 8px;
+  /* Le panneau pousse vers le haut depuis le bouton : sa hauteur est bornée
+     par ce qui reste d'écran au-dessus de lui (bouton + gouttière compris),
+     sinon la liste sortait par le haut dès qu'une fiche remontait la colonne. */
+  max-height: min(560px, calc(100dvh - var(--filter-offset, 200px) - 78px));
+  /* Le titre reste en place, seule la liste défile. */
+  display: flex;
+  flex-direction: column;
+  /* Le rayon des coins mord sur la zone de la liste : sans découpe, la
+     surbrillance d'une catégorie arrivée tout en bas dépassait de la carte. */
+  overflow: hidden;
+}
+
+.filter-panel-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Bascule unique « Tout / Aucun », à trois arrêts : plein, à mi-course quand
+   la sélection est partielle, vide. */
+.filter-all {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.filter-all:hover {
+  background: var(--hover);
+}
+
+.filter-all-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.filter-list {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+  overflow-y: auto;
+  min-height: 0;
+  /* La liste se pousse au clic maintenu (voir `FilterMenu`) : le curseur
+     l'annonce, et rien ne doit se sélectionner pendant le glissement. */
+  cursor: grab;
+  user-select: none;
+  scrollbar-width: none;
+}
+
+.filter-list::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-list:active {
+  cursor: grabbing;
+}
+
+/* Bande de bas de liste : indique la suite, la fait défiler au clic, et
+   intercepte le survol pour qu'une catégorie à demi recouverte ne s'allume pas
+   sous le voile. */
+.filter-more {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  color: var(--text-secondary);
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(rgba(255, 255, 255, 0), var(--surface-solid) 55%);
+  /* Trois invites, puis la bande reste : une animation infinie recomposerait
+     l'écran tant que le menu est ouvert. */
+  animation: filter-more-nudge 1.8s ease-in-out 3;
+}
+
+.filter-more:hover {
+  color: var(--accent);
+}
+
+:root[data-theme="dark"] .filter-more {
+  background: linear-gradient(rgba(28, 28, 30, 0), var(--surface-solid) 55%);
+}
+
+@keyframes filter-more-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+
+.filter-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.filter-item:hover {
+  background: var(--hover);
+}
+
+.filter-item-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Catégorie décochée : la pastille colorée s'éteint. */
+.filter-item:not(.is-checked) .filter-item-icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.filter-item-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.filter-item:not(.is-checked) .filter-item-label {
+  color: var(--text-secondary);
+}
+
+.filter-item-check {
+  flex-shrink: 0;
+  width: 18px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

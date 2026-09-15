@@ -1,0 +1,265 @@
+/* -------------------------------------------------------------------------
+   Colonne du haut à droite : encart météo, puis boussole
+   ------------------------------------------------------------------------- */
+
+/* Les deux sont empilés dans une même colonne plutôt que positionnés chacun de
+   son côté : la boussole doit rester **sous** la météo, y compris quand
+   celle-ci se déplie et pousse tout vers le bas. */
+.map-dock {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.weather {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Boussole : même galet que les boutons flottants du bas. L'aiguille tourne
+   avec la carte — elle dit où est le nord autant qu'elle y ramène. */
+.compass-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Carte déjà au nord : l'aiguille reste lisible mais s'efface un peu, pour ne
+   pas réclamer un geste qui ne changerait rien. */
+.compass-button.is-aligned {
+  opacity: 0.65;
+}
+
+.compass-button svg {
+  transition: transform 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compass-button svg {
+    transition: none;
+  }
+}
+
+.weather-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-float);
+  color: var(--text-primary);
+}
+
+.weather-card.is-open {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Pastille de vigilance, en tête du bandeau : elle prend la couleur officielle
+   du niveau — jaune, orange, rouge — et bat doucement, une alerte devant se
+   remarquer sans ouvrir l'encart. Elle occupe sa place dans la rangée plutôt
+   que de se poser par-dessus, où elle mordait sur la température. */
+.weather-badge {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* Quelques battements pour attirer l'œil, puis fixe : une vigilance dure des
+     heures, et une animation infinie recompose l'écran à chaque image. */
+  animation: weather-badge-pulse 2s ease-in-out 4;
+}
+
+@keyframes weather-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-badge {
+    animation: none;
+  }
+}
+
+.weather-temp {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-panel {
+  width: min(300px, calc(100vw - 32px));
+  /* L'encart est posé sous le poinçon de la caméra (`safe-area-inset-top`) :
+     déplié, il ne doit pas non plus passer sous la barre de gestes du bas. */
+  max-height: calc(100dvh - 80px - max(16px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--surface-solid);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding: 14px 16px 16px;
+}
+
+.weather-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weather-head-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-place {
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.weather-big {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-stats {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.weather-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.weather-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.weather-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weather-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Vigilance : la couleur officielle porte l'information, le libellé la répète
+   pour qui ne la distingue pas. */
+.weather-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.weather-alert-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.weather-alert-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.weather-alert-level {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.weather-aqi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weather-aqi-index {
+  min-width: 34px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  /* Les couleurs de l'indice européen sont vives : le texte reste sombre pour
+     rester lisible sur le jaune comme sur le turquoise. */
+  color: #1c1c1e;
+}
+
+.weather-aqi-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.weather-aqi-scale {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.weather-pollen {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.weather-pollen-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.weather-pollen-level {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.weather-pollen-value {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}

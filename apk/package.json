@@ -1,0 +1,27 @@
+{
+  "name": "my-osm-apk",
+  "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "description": "Enveloppe Android de MY OSM. Le code source reste dans ../app : ce dossier ne contient que la coquille native.",
+  "type": "module",
+  "scripts": {
+    "web": "OSM_TARGET=apk npm --prefix ../app run build",
+    "sync": "npm run web && cap sync android",
+    "apk": "npm run sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../../livrables/MY-OSM-debug.apk",
+    "install": "adb install -r ../livrables/MY-OSM-debug.apk",
+    "web:release": "OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix ../app run build",
+    "apk:release": "npm run web:release && cap sync android && cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release.apk ../../livrables/MY-OSM.apk"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/geolocation": "^8.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

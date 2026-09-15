@@ -1,0 +1,122 @@
+/* -------------------------------------------------------------------------
+   Fenêtre d'enregistrement d'un lieu
+   ------------------------------------------------------------------------- */
+.save-field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.save-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: rgba(120, 120, 128, 0.14);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.save-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.save-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.save-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.save-folder:hover {
+  background: var(--hover);
+}
+
+.save-folder.is-active {
+  background: var(--hover);
+  color: var(--accent);
+}
+
+.save-folder-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.save-folder-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-new-folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.save-confirm {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-add-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.save-add-folder:hover {
+  background: var(--hover);
+}
+
+.save-submit {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.save-submit:disabled {
+  opacity: 0.5;
+}
+
+/* Un lieu enregistré, dans la fiche : le bouton porte la couleur de son
+   dossier, c'est ce qui rappelle où il est rangé. */
+.sheet-action-secondary.is-saved {
+  font-weight: 700;
+}

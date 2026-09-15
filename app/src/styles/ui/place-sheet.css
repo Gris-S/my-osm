@@ -1,0 +1,75 @@
+/* -------------------------------------------------------------------------
+   Fiche lieu (bottom sheet)
+   ------------------------------------------------------------------------- */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  background: var(--surface-solid);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+  padding: 10px 20px max(20px, env(safe-area-inset-bottom));
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Zone de prise de la poignée : on glisse vers le bas pour fermer la fiche.
+   Plus large et plus haute que la barre dessinée, qui ne se vise pas au doigt ;
+   les marges latérales laissent libre le bouton de fermeture. `touch-action`
+   réserve le geste à la fiche, sans quoi la WebView le prendrait pour un
+   défilement. Les marges compensent le rembourrage de `.sheet` : la barre ne
+   bouge pas d'un pixel. */
+.sheet-grab {
+  margin: -10px 56px 0;
+  padding: 10px 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet-grab:active {
+  cursor: grabbing;
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--hairline);
+  margin: 0 auto;
+}
+
+.sheet-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zone de toucher agrandie sans changer le dessin : voir « Zones de toucher »
+   dans app/CLAUDE.md. */
+.sheet-close::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+}
+
+.sheet-title {
+  font-size: 21px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  padding-right: 40px;
+}
+
+.sheet-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}

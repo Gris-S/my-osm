@@ -1,0 +1,262 @@
+/* -------------------------------------------------------------------------
+   Panneau d'itinéraire : trajets en transports et frise du détail
+   ------------------------------------------------------------------------- */
+
+/* Trajets en transports en commun : une carte par proposition, la sélection
+   étant ce que la carte trace. La liste défile — trois trajets tiennent, mais
+   le panneau reste sous la barre de recherche. */
+.itinerary-journeys {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journey {
+  border-radius: 14px;
+  background: var(--surface-solid);
+  border: 1.5px solid transparent;
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.journey-summary {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  color: inherit;
+}
+
+.journey-summary:hover {
+  background: var(--hover);
+}
+
+.journey.is-selected {
+  border-color: var(--accent);
+}
+
+.journey-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.journey-duration {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.journey-times {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.journey-legs {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+}
+
+.journey-leg-slot {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.journey-arrow {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Étape à pied : même gabarit qu'une pastille de ligne, en retrait. */
+.journey-leg.is-walk {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.journey-foot {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Détail du trajet retenu : une frise verticale, une ligne par étape.
+   Colonnes : heure, pastille, contenu. Le trait de liaison est tracé par le
+   ::after de chaque étape, à la couleur de la ligne qu'on suit. */
+.journey-steps {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--hairline);
+}
+
+.journey-step {
+  --step-color: var(--hairline);
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px 14px 1fr;
+  align-items: start;
+  gap: 0 8px;
+  padding-bottom: 12px;
+}
+
+/* Trait de liaison jusqu'à l'étape suivante, aligné sur le centre de la
+   pastille. Pointillé pendant la marche, comme sur la carte. */
+.journey-step:not(.is-last)::after {
+  content: "";
+  position: absolute;
+  left: 51px;
+  top: 14px;
+  bottom: 0;
+  border-left: 2px solid var(--step-color);
+}
+
+.journey-step.is-walk::after {
+  border-left-style: dotted;
+  border-left-color: var(--text-secondary);
+}
+
+.journey-step-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: right;
+}
+
+.journey-step-mark {
+  margin-top: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Montée : pastille pleine à la couleur de la ligne.
+   Descente : même pastille, évidée — on la quitte. */
+.journey-step-mark.is-board {
+  background: var(--step-color);
+}
+
+.journey-step-mark.is-alight {
+  background: var(--surface-solid);
+  border: 2.5px solid var(--text-secondary);
+}
+
+.journey-step-mark.is-dest {
+  background: var(--closed);
+}
+
+/* Escale : un arrêt voulu, et non subi. Il reprend le bleu des repères
+   d'étape de la carte, pour qu'on reconnaisse dans la frise le point qu'on y a
+   posé. */
+.journey-step-mark.is-stopover {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.journey-step-mark.is-walk {
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.journey-step-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 16px;
+}
+
+.journey-step-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.journey-step-title strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.journey-step-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.journey-step-direction,
+.journey-step-aside {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Desserte détaillée : repliée par défaut, un arrêt bien desservi allongerait
+   la frise sur plusieurs écrans. */
+.journey-stops-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.journey-stops-toggle:not(:disabled):hover {
+  color: var(--accent);
+}
+
+/* Départs suivants de la même ligne, au même quai : des heures en file, la
+   plus proche en tête. Le temps réel se distingue de l'horaire théorique. */
+.journey-departures {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.journey-departures li {
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: rgba(120, 120, 128, 0.16);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.journey-departures li.is-realtime {
+  color: var(--accent);
+}
+
+.journey-departures-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.itinerary-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}

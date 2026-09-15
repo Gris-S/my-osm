@@ -1,0 +1,407 @@
+/* -------------------------------------------------------------------------
+   Panneau d'itinéraire
+   ------------------------------------------------------------------------- */
+.itinerary-panel {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  z-index: 10;
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding: 16px 18px;
+  /* Le détail d'un trajet dépasse vite la hauteur de l'écran : c'est le
+     panneau entier qui descend, d'un seul tenant, plutôt qu'une liste
+     enfermée dans son propre cadre. La barre de défilement est masquée — la
+     molette et le doigt suffisent, et un ascenseur dans une carte flottante
+     alourdirait la surface. */
+  max-height: calc(100vh - 32px); /* repli si `dvh` n'est pas connu */
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.itinerary-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.itinerary-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zone de toucher agrandie sans changer le dessin : voir « Zones de toucher »
+   dans app/CLAUDE.md. */
+.itinerary-close::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+/* Points de départ / d'arrivée (façon Plans) */
+.itinerary-points {
+  padding-right: 30px;
+}
+
+.itinerary-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  position: relative;
+  /* Toutes les lignes ont la même hauteur : c'est elle qui règle la hauteur de
+     la zone défilante des étapes, calculée pour en laisser voir quatre et un
+     fragment de la cinquième. */
+  min-height: 26px;
+}
+
+.itinerary-points > .itinerary-point + .itinerary-point {
+  margin-top: 10px;
+}
+
+/* Trait de liaison entre les pastilles. Il court du départ et de chaque étape
+   vers le point suivant, et s'arrête donc à l'arrivée. Les rôles sont nommés
+   plutôt que déduits de `:first-child` / `:last-child` : les étapes vivent dans
+   leur propre conteneur défilant, où la position dans la fratrie ne dit plus
+   rien du rang dans le parcours. */
+.itinerary-point.is-origin-row::after,
+.itinerary-point.is-step-row::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 16px;
+  bottom: -12px;
+  width: 2px;
+  background: var(--hairline);
+}
+
+.itinerary-point-dot.is-step {
+  background: var(--accent);
+}
+
+/* Les étapes du parcours. Au-delà de quatre, la liste défile sur place plutôt
+   que d'allonger le panneau : elle est suivie des modes, du résultat et parfois
+   du détail d'un trajet, qui doivent rester atteignables. La hauteur laisse
+   voir un fragment de la cinquième ligne — c'est ce qui dit que ça continue. */
+.itinerary-steps {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.itinerary-steps.is-scrolling {
+  max-height: 146px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.itinerary-steps.is-scrolling::-webkit-scrollbar {
+  display: none;
+}
+
+.itinerary-steps + .itinerary-point {
+  margin-top: 10px;
+}
+
+/* Réordonner et retirer. Les flèches sont préférées au glisser-déposer : le
+   glissement natif ne fonctionne pas au doigt, et cette application est faite
+   pour être emportée. */
+.itinerary-step-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.itinerary-step-actions button {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pas de zone de toucher agrandie ici : les lignes d'étape ne font que 26 px
+   de haut, et la zone d'une ligne recouvrait le bas des boutons de la ligne
+   voisine — mesuré sur le téléphone (« Zones de toucher » dans app/CLAUDE.md). */
+
+.itinerary-step-actions button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.itinerary-step-actions button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.itinerary-add-step {
+  margin-top: 10px;
+  margin-left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--accent);
+}
+
+.itinerary-add-step:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.itinerary-point-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.itinerary-point-dot.is-origin {
+  background: var(--open);
+}
+
+.itinerary-point-dot.is-destination {
+  background: var(--closed);
+}
+
+.itinerary-point-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  padding: 2px 0;
+}
+
+.itinerary-point-label:hover {
+  color: var(--accent);
+}
+
+.itinerary-point-kind {
+  flex-shrink: 0;
+  width: 34px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.itinerary-point-value {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Éditeur d'adresse de départ */
+.itinerary-origin-editor {
+  flex: 1;
+  min-width: 0;
+}
+
+.itinerary-origin-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-solid);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+}
+
+.itinerary-origin-field input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.itinerary-origin-field button {
+  color: var(--text-secondary);
+  display: flex;
+}
+
+.itinerary-origin-results {
+  margin-top: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.itinerary-origin-result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 6px;
+  text-align: left;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.itinerary-origin-result:last-child {
+  border-bottom: none;
+}
+
+.itinerary-origin-result:hover {
+  background: var(--hover);
+}
+
+.itinerary-origin-result svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.itinerary-origin-result-text {
+  min-width: 0;
+}
+
+.itinerary-origin-result-name {
+  font-size: 14px;
+  font-weight: 590;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.itinerary-origin-result-addr {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.itinerary-origin-hint {
+  padding: 10px 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* L'invitation à désigner l'endroit sur la carte. Elle est en tête des
+   résultats parce que c'est là que se porte le regard une fois le champ
+   ouvert, et elle n'a pas l'aspect d'un bouton : ce n'est pas elle qu'on
+   clique, c'est la carte. */
+.itinerary-origin-hint.is-map {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--accent);
+  font-weight: 590;
+}
+
+.itinerary-origin-hint.is-map svg {
+  flex-shrink: 0;
+}
+
+/* Carte armée : le curseur dit que le clic servira à répondre à la question
+   posée, et non à ouvrir une fiche. Le viseur ne remplace pas la phrase du
+   panneau — il n'existe pas au doigt. */
+.app-shell.is-picking .maplibregl-canvas,
+.app-shell.is-picking .maplibregl-canvas-container.maplibregl-interactive {
+  cursor: crosshair;
+}
+
+.itinerary-modes {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.itinerary-mode {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.itinerary-mode.is-active {
+  background: var(--accent);
+  color: white;
+}
+
+.itinerary-status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.itinerary-status.is-error {
+  color: var(--closed);
+}
+
+.itinerary-result {
+  margin-top: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.itinerary-duration {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.itinerary-distance {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* Domicile et travail : deux raccourcis **empilés** au-dessus des résultats, et
+   non côte à côte. Ce sont deux destinations parmi celles qu'on peut choisir,
+   pas deux boutons d'une barre d'outils : ils appartiennent donc à la même
+   colonne que les résultats, et se lisent d'un même mouvement de l'œil. Ils
+   s'effacent dès qu'on tape — c'est alors la recherche qui doit occuper la
+   place. */
+.itinerary-origin-result.is-shortcut .itinerary-origin-result-addr {
+  opacity: 0.75;
+}
+
+/* Le rôle qu'on est en train de définir : le champ attend une adresse, et la
+   ligne le dit au lieu de laisser croire à un raccourci inerte. */
+.itinerary-origin-result.is-assigning {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.itinerary-origin-result.is-assigning .itinerary-origin-result-addr {
+  color: var(--accent);
+  opacity: 1;
+  font-weight: 600;
+}

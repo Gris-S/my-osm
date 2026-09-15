@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Aucune donnée de l'application ne quitte le téléphone (demande explicite : le
+  but de l'application est que Google n'ait pas ces données). Clés d'API,
+  historique des trajets avec leurs tracés, adresses Maison et Travail, journal,
+  cartes hors ligne : rien ne part dans la sauvegarde Google, ni ne suit un
+  transfert vers un nouveau téléphone.
+
+  `android:allowBackup="false"` suffit jusqu'à Android 11. À partir d'Android 12,
+  il n'empêche plus le transfert d'appareil à appareil : ces règles excluent
+  explicitement tous les domaines, pour les deux.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

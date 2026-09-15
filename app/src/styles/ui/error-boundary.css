@@ -1,0 +1,38 @@
+/* -------------------------------------------------------------------------
+   Écran de repli en cas d'erreur (ErrorBoundary)
+   ------------------------------------------------------------------------- */
+.error-boundary {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface-solid, #fff);
+  color: var(--text-primary, #1c1c1e);
+}
+
+.error-boundary h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.error-boundary p {
+  font-size: 14px;
+  color: var(--text-secondary, #8e8e93);
+  max-width: 32ch;
+  margin: 0;
+}
+
+.error-boundary button {
+  margin-top: 8px;
+  background: var(--accent, #007aff);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+}

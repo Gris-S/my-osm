@@ -1,0 +1,476 @@
+/* -------------------------------------------------------------------------
+   Menu principal (burger en haut à gauche) et fenêtre des paramètres
+   ------------------------------------------------------------------------- */
+.app-menu {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 20;
+}
+
+.app-menu-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-menu-button.is-open {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Le menu découvert par le burger : une table des matières, pas des réglages.
+   Chaque entrée ouvre sa propre fenêtre. */
+.app-menu-panel {
+  margin-top: 8px;
+  width: max-content;
+  min-width: 190px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface-solid);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+  padding: 6px;
+}
+
+.app-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.app-menu-item:hover {
+  background: var(--hover);
+}
+
+.app-menu-item svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Voile plein écran : il assombrit la carte et reçoit le clic de fermeture.
+
+   **Toute fenêtre de l'application se pose dans ce voile**, et c'est lui qui la
+   tient à l'écart des zones que le téléphone se réserve : le poinçon de la
+   caméra frontale en haut, la barre de gestes en bas. Sa marge suit donc les
+   `safe-area-inset-*` (16 px au minimum, sur ordinateur où elles valent zéro),
+   et la fenêtre se borne à la hauteur **du voile** (`max-height: 100%` dans
+   `.settings-dialog`), pas à celle de l'écran — avec `100dvh`, une fenêtre
+   haute passait sous la caméra. Une fenêtre future n'a rien à prévoir si elle
+   reprend ce voile. */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: modal-fade 0.15s ease;
+}
+
+.settings-dialog {
+  width: min(360px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding: 16px 18px 18px;
+  animation: modal-pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+}
+
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.94); }
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.settings-close {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zone de toucher agrandie sans changer le dessin : voir « Zones de toucher »
+   dans app/CLAUDE.md. */
+.settings-close::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+/* Les réglages s'empilent : thème, puis langue. L'écart les sépare franchement,
+   sans quoi le libellé du second se lirait comme une légende du premier. */
+.settings-field + .settings-field {
+  margin-top: 20px;
+}
+
+.settings-field-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.settings-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Sélecteur à segments, façon iOS : les choix se partagent la largeur, celui
+   qui est actif porte la pastille. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.14);
+}
+
+.segmented-option {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.segmented-option:hover {
+  color: var(--text-primary);
+}
+
+.segmented-option.is-active {
+  background: var(--surface-solid);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+/* Fenêtre « API » du menu burger -------------------------------------------
+   Les clés se saisissent dans l'application (voir `services/apiKeys.ts`) : un
+   fichier `.env.local` n'existe plus une fois l'application empaquetée. */
+.apikeys {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.apikey-group {
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+}
+
+.apikey-group-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.apikey-group-hint {
+  margin: 3px 0 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.apikey-row + .apikey-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.apikey-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.apikey-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+}
+
+.apikey-input:focus-within {
+  border-color: var(--accent);
+}
+
+.apikey-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  /* Une clé est une suite de caractères qu'on compare caractère par caractère
+     en la relisant : une chasse fixe est le seul rendu qui s'y prête. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.apikey-input input:focus {
+  outline: none;
+}
+
+.apikey-eye {
+  flex: none;
+  display: flex;
+  padding: 6px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+}
+
+.apikey-eye:hover {
+  background: var(--hover);
+}
+
+.apikey-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+/* L'état de la clé, établi par un appel réel au service. Six formes, parce que
+   « refusée » et « service injoignable » ne se valent pas : la première accuse
+   la clé, la seconde avoue qu'on ne sait pas. */
+.apikey-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--hover);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.apikey-pill.is-valid {
+  background: color-mix(in srgb, var(--open) 18%, transparent);
+  color: var(--open);
+}
+
+.apikey-pill.is-invalid {
+  background: color-mix(in srgb, var(--closed) 18%, transparent);
+  color: var(--closed);
+}
+
+.apikey-pill.is-draft {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.apikey-save,
+.apikey-clear,
+.apikey-restore {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.apikey-save {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+}
+
+.apikey-clear {
+  margin-left: auto;
+  background: var(--hover);
+  color: var(--closed);
+}
+
+.apikey-restore {
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+
+/* D'où vient la clé employée. Sans cette ligne, supprimer une clé saisie ferait
+   réapparaître celle du fichier sans explication, et l'on croirait la
+   suppression sans effet. */
+.apikey-origin {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+/* Les crédits des sources, au bas du menu principal.
+   Ils occupaient un bandeau pleine largeur sur la carte, qui passait par-dessus
+   les boutons flottants sur un téléphone. La licence ODbL demande de les
+   conserver, pas de les imposer en permanence : ici ils restent à un geste,
+   lisibles, et leurs liens mènent aux licences. */
+.app-menu-credits {
+  margin-top: 4px;
+  padding: 10px 14px 2px;
+  border-top: 1px solid var(--hairline);
+}
+
+.app-menu-credits p {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.app-menu-version {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-menu-credits a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+
+/* Maison et travail, dans les paramètres ------------------------------------
+   Une ligne par rôle : son nom, l'adresse retenue, et deux gestes. « Modifier »
+   déplie la recherche sur place, sans quitter la fenêtre. */
+.homework-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.homework-row + .homework-row,
+.homework-row + .homework-editor,
+.homework-editor + .homework-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.homework-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.homework-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.homework-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.homework-address {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.homework-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.homework-actions button {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--hover);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.homework-editor {
+  padding: 8px 0 12px;
+}
+
+.homework-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.homework-results {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.homework-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 4px;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.homework-result:hover {
+  background: var(--hover);
+}
