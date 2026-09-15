@@ -34,8 +34,12 @@ et `.env.local` sont exclus (`.gitignore`).
 
 ## Langue
 
-Le README et les commentaires de code sont **en français**, et les identifiants
-en anglais. Toute contribution suit cette convention.
+Les commentaires de code sont **en français**, et les identifiants en anglais.
+Toute contribution suit cette convention. **Ce qui est public sur GitHub est en
+anglais** (demande explicite) : le `README.md` racine — sa version française est
+`README.fr.md`, à tenir à jour en même temps —, la description du dépôt et les
+notes de release. Les autres documents (`app/README.md`, `docs/`, `notes/`)
+restent en français.
 
 L'interface, elle, est **traduite** : le français reste la langue de référence
 (`src/i18n/fr.ts`), l'anglais en est la traduction (`src/i18n/en.ts`), et le
