@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "id": "paris",
+      "name": { "fr": "Île-de-France", "en": "Île-de-France" },
+      "bbox": [1.44, 48.12, 3.56, 49.24],
+      "timezone": "Europe/Paris",
+      "providers": [
+        {
+          "id": "idfm",
+          "rank": 1,
+          "capabilities": ["stationDetails", "departures", "shapes", "journeys", "exits"],
+          "needsKey": "idfm"
+        },
+        {
+          "id": "transitous",
+          "rank": 2,
+          "capabilities": ["stops", "departures", "shapes", "alerts", "journeys"]
+        }
+      ]
+    },
+    {
+      "id": "world",
+      "name": { "fr": "Reste du monde", "en": "Rest of the world" },
+      "bbox": [-180, -90, 180, 90],
+      "providers": [
+        {
+          "id": "transitous",
+          "rank": 2,
+          "capabilities": ["stops", "stationDetails", "departures", "shapes", "alerts", "journeys"]
+        }
+      ]
+    }
+  ]
+}

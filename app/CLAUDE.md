@@ -138,6 +138,33 @@ Points à connaître avant d'y toucher :
   `data.geopf.fr` doit rester dans la règle de cache du Service Worker aux
   côtés d'`arcgisonline`, sinon la moitié de la vue repart sur le réseau.
 
+### Plateforme transport (`src/transport/`) — refonte en cours
+
+**Chantier ouvert le 15 septembre 2026** sur la branche `plateforme-transport` :
+reproduire l'expérience parisienne partout. Le document de référence est
+`docs/ARCHITECTURE-API.md` (validé) — le lire avant d'y toucher. Tant que la
+refonte n'est pas terminée, les sections IDFM ci-dessous décrivent toujours ce
+qui tourne à Paris.
+
+- **Une région d'abord, ses fournisseurs ensuite** (`registry.ts`,
+  `regions.json`) : seuls les fournisseurs de la région active sont chargés,
+  par import dynamique ; changer de région annule les requêtes en vol, libère
+  les fournisseurs (`dispose`) et oublie leur cache mémoire.
+- **L'orchestrateur est seul à connaître rangs, disjoncteurs et replis**
+  (`orchestrator.ts`) ; un adaptateur ne connaît que sa source et rend le
+  modèle canonique (`model.ts`), où chaque objet porte `source`,
+  `dataQuality`, `fetchedAt` et `attribution`.
+- **Tous les chiffres sont dans `policy.ts`** (délais, reprises, disjoncteurs,
+  durées de cache, budget de requêtes) et viennent du document : en changer un,
+  c'est mettre le document à jour dans le même commit.
+- **Les appels passent par `httpClient.ts`**, natif dans l'APK pour fixer le
+  `User-Agent` (`MY-OSM/<version> (+https://github.com/Gris-S/my-osm)`, exigé
+  par Transitous) : délai, taille plafonnée, 4 appels simultanés par hôte,
+  demandes identiques partagées, erreurs typées (`ProviderError`).
+- **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et
+  ne déclenche aucun repli (`abort.ts`). Un 429 met la source au repos pour la
+  durée de `Retry-After`, sans reprise.
+
 ### Temps réel des transports (`services/idfm.ts`)
 
 Alimenté par PRIM (Île-de-France Mobilités), format SIRI Lite `stop-monitoring`,

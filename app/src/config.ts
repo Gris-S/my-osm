@@ -260,6 +260,17 @@ export const CONFIG = {
   // à une personne. Ouverte dans le navigateur intégré de l'APK.
   WEB_SEARCH_URL: "https://duckduckgo.com/",
 
+  // Plateforme transport (`src/transport/`, `docs/ARCHITECTURE-API.md`).
+  // Transitous : service communautaire MOTIS 2, sans clé, réservé aux projets
+  // libres et non commerciaux. Sa politique d'usage (https://transitous.org/api/)
+  // impose un `User-Agent` avec contact, du cache, et un lien visible vers ses
+  // sources — d'où `TRANSITOUS_SOURCES_URL`.
+  TRANSITOUS_API_URL: "https://api.transitous.org/api/",
+  TRANSITOUS_SOURCES_URL: "https://transitous.org/sources/",
+  // Adresse publique du projet : le contact placé dans les `User-Agent`
+  // envoyés aux services. Jamais une adresse personnelle.
+  PROJECT_URL: "https://github.com/Gris-S/my-osm",
+
   // Contours des pays, régions et départements, pour choisir d'un toucher une
   // zone à télécharger (`services/offline/boundaries.ts`). Nominatim est le
   // géocodeur d'OpenStreetMap ; son service public n'accepte **qu'une requête
