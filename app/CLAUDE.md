@@ -126,6 +126,15 @@ Points à connaître avant d'y toucher :
   invisible (`poi-tiles-anchor`) — MapLibre ne télécharge que les tuiles d'une
   source qu'au moins une couche utilise. `hideBasemapPois` doit continuer de
   l'épargner, sinon la vue satellite perd ses commerces.
+- **Cette couche-ancre est posée dans tous les fonds**, pas seulement le
+  satellite (`installMapLayers`). Au-delà du zoom 14, MapLibre étire les tuiles
+  et **ne garde que les couches de données qu'une couche du style lit** : les
+  pictogrammes du fond étant masqués, `poi` disparaissait, et arriver directement
+  au zoom 16 (recherche, recentrage) donnait une carte **sans aucun arrêt ni
+  commerce** — mesuré : 0 lieu à Vincennes et à Boulogne, alors que la tuile z14
+  porte 553 arrêts de bus. C'était la vraie cause du « la relecture peut ne rien
+  rendre » ci-dessous, que le souvenir des POI ne compensait que si l'on était
+  passé par le zoom 14. Ne pas retirer l'ancre.
 - **L'imagerie satellite est empilée, pas choisie** : le fond mondial Esri, et
   par-dessus l'orthophotographie de l'IGN (BD ORTHO 20 cm, Géoplateforme, sans
   clé). Ne pas écrire de test « suis-je en France ? » : les sources IGN portent

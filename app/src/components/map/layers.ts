@@ -596,6 +596,22 @@ export function installMapLayers(
   }
 
   hideBasemapPois(map);
+  // Couche-ancre sur la couche `poi` des tuiles, invisible, dans **tous** les
+  // fonds (le satellite la déclare déjà dans son style). Mesuré : les
+  // pictogrammes du fond étant masqués, plus aucune couche visible ne lisait
+  // `poi`, et MapLibre ne gardait rien de cette couche dans les tuiles étirées
+  // au-delà du zoom 14 — arriver directement au zoom 16 (recherche, recentrage)
+  // montrait une carte sans aucun arrêt ni commerce (0 lieu à Vincennes, 7 avec
+  // l'ancre). `querySourceFeatures` ne lit que ce qu'une couche retient.
+  if (!map.getLayer(POI_TILES_ANCHOR_ID) && map.getSource(VECTOR_SOURCE_ID)) {
+    map.addLayer({
+      id: POI_TILES_ANCHOR_ID,
+      type: "circle",
+      source: VECTOR_SOURCE_ID,
+      "source-layer": POI_SOURCE_LAYER,
+      paint: { "circle-radius": 0, "circle-opacity": 0 },
+    });
+  }
   guardShieldFilters(map);
   applyBuildingRelief(map, is3D);
   applyRelief(map, relief, is3D);
