@@ -474,3 +474,50 @@
 .homework-result:hover {
   background: var(--hover);
 }
+
+/* Sources et licences : des liens groupés par usage, chacun avec son rôle. */
+.sources-intro {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sources-group {
+  margin: 0 0 14px;
+}
+
+.sources-group h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.sources-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sources-list a,
+.sources-app a {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sources-list p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sources-app {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

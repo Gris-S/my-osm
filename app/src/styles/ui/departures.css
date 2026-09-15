@@ -190,3 +190,41 @@
   opacity: 0.45;
   transition: opacity 0.15s;
 }
+
+/* Temps réel ou horaire théorique : un point plein pour ce que la source
+   mesure, un cercle pour ce qu'elle prévoit. */
+.departure-quality {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.departure-quality.is-live {
+  background: #34c759;
+}
+
+.departure-quality.is-scheduled {
+  border: 1.5px solid var(--text-secondary);
+}
+
+.departures-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 10px 2px 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.departures-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.departures-source-name {
+  margin-left: auto;
+}

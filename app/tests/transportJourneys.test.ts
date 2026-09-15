@@ -57,7 +57,7 @@ describe("trajets : du modèle canonique à l'interface", () => {
     expect(canonical.dataQuality).toBe("realtime");
     expect(canonical.legs[1].line).toMatchObject({ id: "paris:line:IDFM:C01742", mode: "regional-rail", modeLabel: "RER" });
     expect(canonical.legs[1].boarding).toEqual({ lineId: "line:IDFM:C01742", stopId: "stop_point:IDFM:monomodalStopPlace:47889" });
-    expect(toTransitJourney(canonical, 0)).toEqual(navitia);
+    expect(toTransitJourney(canonical, 0)).toEqual({ ...navitia, source: "idfm" });
   });
 
   it("une source sans couleurs ni durées retombe sur le mode et sur les heures", () => {

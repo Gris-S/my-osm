@@ -63,6 +63,8 @@ export interface TransitLeg {
 
 export interface TransitJourney {
   id: string;
+  /** Fournisseur qui a calculé le trajet, pour le dire sous la liste. */
+  source?: string;
   departure: Date;
   arrival: Date;
   durationSeconds: number;
@@ -136,6 +138,7 @@ export function toTransitJourney(journey: Journey, index: number): TransitJourne
   const legs = journey.legs.map(toTransitLeg);
   return {
     id: journey.id ?? `${journey.departAt}-${index}`,
+    source: journey.source,
     departure: new Date(journey.departAt),
     arrival: new Date(journey.arriveAt),
     durationSeconds: journey.durationSeconds ?? seconds(journey.departAt, journey.arriveAt),
@@ -168,6 +171,7 @@ export function stitchJourneys(parts: TransitJourney[]): TransitJourney {
   const arrival = parts[parts.length - 1].arrival;
   return {
     id: parts.map((part) => part.id).join("+"),
+    source: parts[0].source,
     departure,
     arrival,
     durationSeconds: Math.round((arrival.getTime() - departure.getTime()) / 1000),

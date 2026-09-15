@@ -54,6 +54,8 @@ describe("Transitous : départs", () => {
     { mode: "TRAM", displayName: "12", agencyName: "TPG", headsign: "Genève, Cornavin", realTime: false, place: { departure: utc("16:07"), scheduledDeparture: utc("16:07") } },
     // Arrivée seule.
     { mode: "TRAM", displayName: "15", agencyName: "TPG", headsign: "Nations", place: { arrival: utc("16:03"), scheduledArrival: utc("16:03") } },
+    // La même course publiée par un second flux : écartée.
+    { mode: "TRAM", displayName: "12", agencyName: "Autre flux", headsign: "Carouge", realTime: false, tripId: "t1-bis", place: { departure: utc("16:04"), scheduledDeparture: utc("16:04") } },
     // Au-delà de l'horizon.
     { mode: "RAIL", displayName: "L2", agencyName: "CFF", headsign: "Annemasse", place: { departure: utc("19:30"), scheduledDeparture: utc("19:30") } },
   ];

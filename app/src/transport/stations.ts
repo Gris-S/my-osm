@@ -28,16 +28,21 @@ function orchestratorAt(place: Place) {
   return orchestrator;
 }
 
-export async function loadDepartures(place: Place, signal?: AbortSignal, options: { fresh?: boolean } = {}): Promise<LineDepartures[]> {
+/** Les départs d'une station, et la source qui les a donnés (pour le dire sous les horaires). */
+export async function loadDepartures(
+  place: Place,
+  signal?: AbortSignal,
+  options: { fresh?: boolean } = {}
+): Promise<{ lines: LineDepartures[]; source: string }> {
   const station = stationRefFromPlace(place);
-  const { value } = await orchestratorAt(place).run(
+  const { value, providerId } = await orchestratorAt(place).run(
     "departures",
     (provider, attemptSignal) => provider.getDepartures?.(station, { fresh: options.fresh }, attemptSignal),
     signal,
     // Une source officielle qui ne connaît pas l'arrêt laisse la main à la suivante.
     { accept: (groups) => groups.length > 0 }
   );
-  return toLineDepartures(value, Date.now());
+  return { lines: toLineDepartures(value, Date.now()), source: providerId };
 }
 
 /** Les lignes déclarées à la station, pour signaler celles qui ne répondent pas. */

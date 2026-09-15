@@ -258,6 +258,10 @@ export const createTransitousProvider: ProviderFactory = (context) => {
       const perGroup = options.perGroup ?? TRANSITOUS_DEPARTURES.perGroup;
       const stationName = normalizeName(station.name);
       const groups = new Map<string, DepartureGroup & { first: number }>();
+      // Une même course publiée deux fois — constaté à Amsterdam Centraal, où
+      // « EST 9382 » et « NJ 421 » s'affichaient en double : même ligne, même
+      // destination, même heure prévue. On n'en garde qu'une.
+      const seenTrips = new Set<string>();
 
       for (const stopTime of data.stopTimes ?? []) {
         const place = stopTime.place;
@@ -273,6 +277,9 @@ export const createTransitousProvider: ProviderFactory = (context) => {
         if (destination && normalizeName(destination) === stationName) continue;
 
         const line = lineRef(stopTime);
+        const trip = `${line.mode}|${normalizeName(line.shortName)}|${normalizeName(destination)}|${scheduledAt}`;
+        if (seenTrips.has(trip)) continue;
+        seenTrips.add(trip);
         const key = `${line.id}|${destination}`;
         let group = groups.get(key);
         if (!group) {

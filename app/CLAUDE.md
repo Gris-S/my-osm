@@ -201,6 +201,25 @@ qui tourne à Paris.
   que le guidage lit pour reconnaître un mode fermé. Les extrémités d'un
   itinéraire MOTIS s'appellent littéralement `START` et `END` : elles sont
   rendues sans nom.
+- **Étape 5, en place : dire ce que vaut un horaire.** Chaque départ porte sa
+  qualité — point plein « temps réel », cercle « horaire théorique » — et « à
+  quai » n'est dit que d'un départ mesuré (« départ prévu » sinon) : São Paulo ne
+  publie aucun temps réel, un « dans 3 min » ne doit pas y passer pour une
+  mesure. La source est écrite sous les horaires et sous les trajets
+  (`transport/sources.ts`). **« Sources et licences »** (menu principal,
+  `SourcesList.tsx`) porte le lien vers `transitous.org/sources` qu'exige
+  Transitous et la licence ODbL d'OpenStreetMap ; ses adresses sont dans
+  `CONFIG.ATTRIBUTION_LINKS`.
+- **Le référentiel d'IDFM n'est interrogé que pour les arrêts de sa région**
+  (`capabilityAt(…, "stationDetails")` dans `MapView`). Mesuré avant la
+  correction : chaque arrêt touché à Sydney, Tokyo ou Genève envoyait sa position
+  à IDFM, jusqu'à 376 ko par déplacement. Ailleurs, les pastilles d'un arrêt
+  apparaissent **après l'ouverture de sa fiche**, avec les lignes que ses départs
+  ont montrées (`stopLinesStore.ts`) — aucune requête de plus.
+- **Les appels des adaptateurs passent par le natif**, que l'inspecteur de la
+  WebView ne voit pas. Dans l'APK de travail, `window.__myosm.transportRequests`
+  note les 300 derniers (hôte, chemin, durée, issue) : c'est là que se vérifie le
+  budget de requêtes.
 - **Un fournisseur déclaré au registre sans adaptateur** est « non pris en
   charge » et sauté, sans toucher au disjoncteur.
 - **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et

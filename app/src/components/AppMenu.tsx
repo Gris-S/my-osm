@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, memo } from "react";
-import { Download, History, KeyRound, Menu, Moon, Settings, Sun, SunMoon, ToggleRight, X } from "lucide-react";
+import { Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, X } from "lucide-react";
 import type { AutoSource, Theme } from "../hooks/useTheme";
 import { useI18n, useLangSetting, type Lang, type TranslationKey } from "../i18n";
 import type { LonLat } from "../types";
@@ -8,6 +8,7 @@ import type { LonLat } from "../types";
 import { ApiKeysSettings } from "./ApiKeysSettings";
 import { HistoryPanel, ModesSettings, navText, NavigationSettings } from "../navigation";
 import { HomeWorkSettings } from "./HomeWorkSettings";
+import { SourcesList } from "./SourcesList";
 import { useBackClose } from "../hooks/useBackClose";
 
 // Les fenêtres du menu ne servent qu'à leur ouverture : chargées à la demande,
@@ -22,7 +23,7 @@ const DownloadPanel = lazy(() => import("./DownloadPanel").then((m) => ({ defaul
 // qui règle ce qu'elle montre.
 //
 // Deux temps : le burger découvre une courte liste d'entrées — « Paramètres »,
-// « Téléchargement », « Historique », « Modes », « API » — et l'entrée choisie ouvre une **fenêtre au centre de
+// « Téléchargement », « Historique », « Modes », « API », « Sources et licences » — et l'entrée choisie ouvre une **fenêtre au centre de
 // l'écran**, posée sur un voile. Le menu reste ainsi une table des matières,
 // que d'autres entrées pourront rejoindre, et les réglages eux-mêmes ne
 // s'ajustent pas du coin de l'œil en regardant la carte.
@@ -112,6 +113,8 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   const [modesOpen, setModesOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // D'où viennent les données, et sous quelle licence (Transitous exige ce lien).
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -137,7 +140,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   // à l'extérieur, lui, est porté par le voile — il couvre tout, il n'y a rien
   // à écouter sur le document. Une seule est ouverte à la fois, d'où un seul
   // bouton de fermeture à viser.
-  const dialogOpen = settingsOpen || apiOpen || modesOpen;
+  const dialogOpen = settingsOpen || apiOpen || modesOpen || sourcesOpen;
   // Le geste retour ferme le menu déroulé, et les fenêtres des paramètres, des
   // modes et des clés d'API comme leur croix (`hooks/useBackClose.ts`).
   useBackClose(menuOpen, () => setMenuOpen(false));
@@ -145,6 +148,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
     setSettingsOpen(false);
     setApiOpen(false);
     setModesOpen(false);
+    setSourcesOpen(false);
   });
   useEffect(() => {
     if (!dialogOpen) return;
@@ -153,6 +157,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
         setSettingsOpen(false);
         setApiOpen(false);
         setModesOpen(false);
+        setSourcesOpen(false);
       }
     }
     document.addEventListener("keydown", onKeyDown);
@@ -236,6 +241,17 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
               <KeyRound size={17} />
               {t("menu.api")}
             </button>
+            <button
+              className="app-menu-item"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                setSourcesOpen(true);
+              }}
+            >
+              <Scale size={17} />
+              {t("menu.sources")}
+            </button>
 
             {/* Les crédits des sources, au bas du menu.
                 Ils étaient un bandeau pleine largeur posé sur la carte, qui
@@ -260,6 +276,28 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
         {historyOpen && <HistoryPanel onClose={() => setHistoryOpen(false)} />}
       </Suspense>
 
+
+      {sourcesOpen && (
+        <div className="modal-backdrop" onClick={() => setSourcesOpen(false)}>
+          <div
+            className="settings-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sources-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="settings-head">
+              <h2 className="settings-title" id="sources-title">
+                {t("sources.title")}
+              </h2>
+              <button ref={closeRef} className="settings-close" onClick={() => setSourcesOpen(false)} aria-label={t("sources.close")}>
+                <X size={18} />
+              </button>
+            </div>
+            <SourcesList />
+          </div>
+        </div>
+      )}
 
       {settingsOpen && (
         // Le voile ferme au clic ; l'arrêt de propagation sur la fenêtre évite

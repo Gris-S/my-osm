@@ -4,6 +4,7 @@ import { CONFIG, type TravelMode } from "../config";
 import type { LonLat, Place, RouteResult, RouteStop, StopEdit } from "../types";
 import { getNextDepartures, type NextDeparture } from "../services/transit";
 import type { TransitJourney, TransitLeg } from "../transport/journeyView";
+import { sourceName } from "../transport/sources";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
 import { HOME_WORK_ROLES, type HomeWork, type HomeWorkRole } from "../hooks/useHomeWork";
 // Navigation guidée — voir `src/navigation/README.md`. Le bouton est fourni
@@ -685,7 +686,7 @@ export function ItineraryPanel({
           {/* Le calcul part de l'heure d'appel : les horaires ne se
               rafraîchissent pas tout seuls (quota Île-de-France Mobilités). */}
           <p className="itinerary-note">
-            {t("itinerary.transitNote")}
+            {t("itinerary.transitNote", { source: sourceName(journeys?.[0]?.source) })}
             {/* Avec des étapes, chaque tronçon est calculé séparément et le
                 meilleur retenu : il n'y a donc qu'un parcours à montrer, et
                 mieux vaut le dire que laisser croire à un choix absent. */}

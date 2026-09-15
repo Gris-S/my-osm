@@ -9,6 +9,8 @@ import { collectTilePois, VECTOR_SOURCE_ID } from "../services/tilePois";
 import { isTransitStop } from "../services/idfm";
 import { getTrafficEvents, type TrafficEvent } from "../services/traffic";
 import { getLinesForStops, type StopLines } from "../services/idfmNetwork";
+import { capabilityAt } from "../transport/registry";
+import { rememberedStopLines, subscribeStopLines } from "../transport/stopLinesStore";
 import { loadLineShape } from "../transport/stations";
 import type { PoiStatus } from "./MapStatus";
 import type { LonLat, Place, RouteResult, RouteStopMarker } from "../types";
@@ -237,7 +239,32 @@ export function MapView({
   // pastilles se substituent aux pictogrammes dès qu'elles arrivent.
   const refreshStopLines = useCallback(async (map: MLMap, places: Place[]) => {
     if (map.getZoom() < CONFIG.MIN_ZOOM_FOR_LINE_ICONS) return;
-    const stops = places.filter((place) => isTransitStop(place) && !stopLinesRef.current.has(place.id));
+    const pending = places.filter((place) => isTransitStop(place) && !stopLinesRef.current.has(place.id));
+    if (pending.length === 0) return;
+
+    // Le référentiel d'IDFM ne couvre que l'Île-de-France : ailleurs, ne pas lui
+    // envoyer la position des arrêts de Sydney pour une réponse vide (mesuré :
+    // jusqu'à 376 ko par déplacement). Là, les pastilles viennent des lignes lues
+    // dans la fiche d'un arrêt, sans aucune requête (`stopLinesStore.ts`).
+    const remembered = new Map<string, StopLines>();
+    const stops: Place[] = [];
+    for (const place of pending) {
+      if (capabilityAt(place.lon, place.lat, "stationDetails")) {
+        stops.push(place);
+        continue;
+      }
+      const all = rememberedStopLines(place.id);
+      if (all) {
+        remembered.set(place.id, { lon: place.lon, lat: place.lat, name: place.name, chips: all.slice(0, 3), extra: Math.max(0, all.length - 3), all });
+      }
+    }
+    if (remembered.size > 0) {
+      for (const [id, lines] of remembered) stopLinesRef.current.set(id, lines);
+      installLineImages(map, remembered.values());
+      (map.getSource(POI_SOURCE_ID) as maplibregl.GeoJSONSource | undefined)?.setData(
+        placesToGeoJSON(placesRef.current, stopLinesRef.current)
+      );
+    }
     if (stops.length === 0) return;
 
     stopLinesAbort.current?.abort();
@@ -334,6 +361,17 @@ export function MapView({
     const tilesPending = zoom >= CONFIG.MIN_ZOOM_FOR_POIS && !!map.getSource(VECTOR_SOURCE_ID) && !map.isSourceLoaded(VECTOR_SOURCE_ID);
     onPoiStatusRef.current(tilesPending ? "loading" : "idle");
   }, [refreshStopLines]);
+
+  // Les lignes d'un arrêt viennent d'être lues dans sa fiche : ses pastilles
+  // remplacent le pictogramme, sans attendre le prochain déplacement.
+  useEffect(
+    () =>
+      subscribeStopLines(() => {
+        const map = mapRef.current;
+        if (map) void refreshStopLines(map, placesRef.current);
+      }),
+    [refreshStopLines]
+  );
 
   // Les tuiles arrivent par paquets : on regroupe les relectures pour ne pas
   // reconstruire la couche à chaque événement.

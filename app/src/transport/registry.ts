@@ -72,3 +72,12 @@ export function resolveRegion(lon: number, lat: number, previous: RegionId | nul
 export function providersFor(region: Region, capability: Capability): RegionProvider[] {
   return region.providers.filter((provider) => provider.capabilities.includes(capability));
 }
+
+/**
+ * Vrai si la région d'un point a une source pour la capacité. C'est la question
+ * à poser avant tout appel propre à une source : la position d'un arrêt de
+ * Sydney n'a rien à faire chez Île-de-France Mobilités.
+ */
+export function capabilityAt(lon: number, lat: number, capability: Capability, regions: Region[] = REGIONS): boolean {
+  return providersFor(resolveRegion(lon, lat, null, regions), capability).length > 0;
+}

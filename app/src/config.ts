@@ -270,6 +270,22 @@ export const CONFIG = {
   // Adresse publique du projet : le contact placé dans les `User-Agent`
   // envoyés aux services. Jamais une adresse personnelle.
   PROJECT_URL: "https://github.com/Gris-S/my-osm",
+  // Pages des sources citées dans « Sources et licences » (menu principal).
+  ATTRIBUTION_LINKS: {
+    osm: "https://www.openstreetmap.org/copyright",
+    openfreemap: "https://openfreemap.org/",
+    idfm: "https://prim.iledefrance-mobilites.fr/",
+    photon: "https://photon.komoot.io/",
+    ban: "https://adresse.data.gouv.fr/",
+    osrm: "https://routing.openstreetmap.de/",
+    openmeteo: "https://open-meteo.com/",
+    meteofrance: "https://meteofrance.com/",
+    tomtom: "https://www.tomtom.com/",
+    bisonfute: "https://www.bison-fute.gouv.fr/",
+    ign: "https://geoservices.ign.fr/",
+    esri: "https://www.esri.com/",
+    mapillary: "https://www.mapillary.com/",
+  },
 
   // Contours des pays, régions et départements, pour choisir d'un toucher une
   // zone à télécharger (`services/offline/boundaries.ts`). Nominatim est le

@@ -3,6 +3,8 @@ import { ChevronDown, TrainFront } from "lucide-react";
 import { CONFIG } from "../config";
 import type { Departure, DepartureGroup, LineDepartures } from "../transport/departuresView";
 import { NoProviderError } from "../transport/orchestrator";
+import { sourceName } from "../transport/sources";
+import { rememberStopLines } from "../transport/stopLinesStore";
 import { loadDepartures, loadStationLines } from "../transport/stations";
 import type { LineChip } from "../utils/markerImage";
 import type { Place } from "../types";
@@ -38,13 +40,32 @@ function silentLines(declared: LineChip[], withDepartures: LineDepartures[]): Li
 /** « à quai », « dans 4 min », ou l'heure quand l'attente dépasse une heure. */
 function formatWait(departure: Departure): string {
   if (departure.cancelled) return t("departures.cancelled");
-  if (departure.minutes <= 0) return t("departures.atPlatform");
+  // « À quai » est un constat : un horaire théorique ne peut que le prévoir.
+  if (departure.minutes <= 0) return t(departure.realtime ? "departures.atPlatform" : "departures.dueNow");
   if (departure.minutes < 60) return t("departures.inMinutes", { minutes: departure.minutes });
   return formatTime(departure);
 }
 
 function formatTime(departure: Departure): string {
   return departure.at.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Temps réel ou horaire théorique. Un point plein pour ce que la source mesure,
+ * un cercle pour ce qu'elle prévoit : São Paulo ne publie que des horaires
+ * théoriques, et un « dans 3 min » ne doit pas y passer pour une mesure.
+ */
+function QualityMark({ departure }: { departure: Departure }) {
+  const { t } = useI18n();
+  const label = t(departure.realtime ? "departures.realtime" : "departures.scheduled");
+  return (
+    <span
+      className={`departure-quality ${departure.realtime ? "is-live" : "is-scheduled"}`}
+      role="img"
+      aria-label={label}
+      title={label}
+    />
+  );
 }
 
 function LineBadge({ line }: { line: LineDepartures }) {
@@ -71,6 +92,7 @@ function GroupCard({ group }: { group: DepartureGroup }) {
         <span className={`departure-next ${next ? "" : "is-ended"}`}>
           {next ? formatWait(next) : t("departures.ended")}
         </span>
+        {next && !next.cancelled && <QualityMark departure={next} />}
         <ChevronDown size={16} className={`departure-chevron ${open ? "is-open" : ""}`} />
       </button>
 
@@ -81,6 +103,7 @@ function GroupCard({ group }: { group: DepartureGroup }) {
           {rest.map((departure, index) => (
             <li key={`${departure.at.toISOString()}-${index}`} className={departure.cancelled ? "is-cancelled" : ""}>
               <span className="departure-wait">{formatWait(departure)}</span>
+              {!departure.cancelled && <QualityMark departure={departure} />}
               <span className="departure-time">{formatTime(departure)}</span>
               {departure.platform && (
                 <span className="departure-platform">{t("departures.platform", { platform: departure.platform })}</span>
@@ -115,6 +138,7 @@ function LineCard({ line, open, onToggle }: { line: LineDepartures; open: boolea
         <span className={`departure-next ${next ? "" : "is-ended"}`}>
           {next ? formatWait(next) : t("departures.ended")}
         </span>
+        {next && !next.cancelled && <QualityMark departure={next} />}
         <ChevronDown size={16} className={`departure-chevron ${open ? "is-open" : ""}`} />
       </button>
 
@@ -131,7 +155,7 @@ function LineCard({ line, open, onToggle }: { line: LineDepartures; open: boolea
 
 type State =
   | { status: "loading" }
-  | { status: "done"; lines: LineDepartures[] }
+  | { status: "done"; lines: LineDepartures[]; source: string }
   | { status: "noKey" }
   | { status: "error" };
 
@@ -204,9 +228,10 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
       });
 
     loadDepartures(placeRef.current, controller.signal)
-      .then((lines) => {
+      .then(({ lines, source }) => {
         if (cancelled) return;
-        setState({ status: "done", lines });
+        setState({ status: "done", lines, source });
+        rememberStopLines(placeRef.current.id, lines);
         // Un arrêt qui ne voit passer qu'une ligne s'ouvre directement dessus.
         setOpenLine(lines.length === 1 ? lines[0].lineId : null);
       })
@@ -234,9 +259,10 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
     let cancelled = false;
     setRefresh("running");
     loadDepartures(placeRef.current, controller.signal, { fresh: true })
-      .then((lines) => {
+      .then(({ lines, source }) => {
         if (cancelled) return;
-        setState({ status: "done", lines });
+        setState({ status: "done", lines, source });
+        rememberStopLines(placeRef.current.id, lines);
         setOpenLine((current) => {
           if (current && lines.some((line) => line.lineId === current)) return current;
           return lines.length === 1 ? lines[0].lineId : null;
@@ -315,6 +341,21 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
             onToggle={() => setOpenLine((current) => (current === line.lineId ? null : line.lineId))}
           />
         ))}
+
+      {/* D'où viennent ces horaires, et comment lire les deux marques. */}
+      {state.status === "done" && state.lines.length > 0 && (
+        <p className="departures-source">
+          <span className="departures-legend">
+            <span className="departure-quality is-live" aria-hidden="true" />
+            {t("departures.realtime")}
+          </span>
+          <span className="departures-legend">
+            <span className="departure-quality is-scheduled" aria-hidden="true" />
+            {t("departures.scheduled")}
+          </span>
+          <span className="departures-source-name">{t("departures.source", { source: sourceName(state.source) })}</span>
+        </p>
+      )}
     </div>
   );
 }
