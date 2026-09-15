@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, TrainFront } from "lucide-react";
 import { CONFIG } from "../config";
-import { hasIdfmKey } from "../services/idfm";
 import type { Departure, DepartureGroup, LineDepartures } from "../transport/departuresView";
+import { NoProviderError } from "../transport/orchestrator";
 import { loadDepartures, loadStationLines } from "../transport/stations";
 import type { LineChip } from "../utils/markerImage";
 import type { Place } from "../types";
@@ -16,6 +16,18 @@ import { currentLocale, t, useI18n } from "../i18n";
 // `services/idfm.ts`). Chaque encart annonce le prochain passage, et se déplie
 // à son tour sur ceux d'après.
 // ---------------------------------------------------------------------------
+
+/**
+ * Vrai quand aucune source n'a été interrogée faute de clé : c'est une clé qui
+ * manque, pas une panne, et la fiche le dit autrement.
+ */
+function missingKeyOnly(error: unknown): boolean {
+  return (
+    error instanceof NoProviderError &&
+    error.attempts.some((attempt) => attempt.outcome === "skipped-key") &&
+    error.attempts.every((attempt) => attempt.outcome === "skipped-key" || attempt.outcome === "unsupported")
+  );
+}
 
 /** Lignes déclarées à l'arrêt dont aucune n'a rendu de passage. */
 function silentLines(declared: LineChip[], withDepartures: LineDepartures[]): LineChip[] {
@@ -120,6 +132,7 @@ function LineCard({ line, open, onToggle }: { line: LineDepartures; open: boolea
 type State =
   | { status: "loading" }
   | { status: "done"; lines: LineDepartures[] }
+  | { status: "noKey" }
   | { status: "error" };
 
 /**
@@ -177,7 +190,6 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
   }, [place]);
 
   useEffect(() => {
-    if (!hasIdfmKey()) return;
     const controller = new AbortController();
     let cancelled = false;
     // Le référentiel des lignes est interrogé en parallèle : il dit ce qui
@@ -198,8 +210,8 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
         // Un arrêt qui ne voit passer qu'une ligne s'ouvre directement dessus.
         setOpenLine(lines.length === 1 ? lines[0].lineId : null);
       })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" });
+      .catch((error) => {
+        if (!cancelled) setState({ status: missingKeyOnly(error) ? "noKey" : "error" });
       });
     return () => {
       cancelled = true;
@@ -217,7 +229,7 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
   const [refresh, setRefresh] = useState<"idle" | "running" | "failed">("idle");
   const mountTokenRef = useRef(refreshToken);
   useEffect(() => {
-    if (refreshToken === mountTokenRef.current || !hasIdfmKey()) return;
+    if (refreshToken === mountTokenRef.current) return;
     const controller = new AbortController();
     let cancelled = false;
     setRefresh("running");
@@ -248,9 +260,11 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
     return () => onLineFocus(null);
   }, [openLine, state, onLineFocus]);
 
-  // Sans clé PRIM, autant le dire clairement plutôt que de laisser un vide :
-  // la fonctionnalité existe, il lui manque une clé personnelle et gratuite.
-  if (!hasIdfmKey()) {
+  // Seule source de la région et sans clé : autant le dire clairement plutôt
+  // que de laisser un vide — la fonctionnalité existe, il lui manque une clé
+  // personnelle et gratuite. Là où une autre source répond (Transitous), la
+  // clé manquante ne se voit pas.
+  if (state.status === "noKey") {
     return (
       <div className="departures">
         <div className="departures-title">

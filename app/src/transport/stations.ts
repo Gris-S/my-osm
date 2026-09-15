@@ -33,7 +33,9 @@ export async function loadDepartures(place: Place, signal?: AbortSignal, options
   const { value } = await orchestratorAt(place).run(
     "departures",
     (provider, attemptSignal) => provider.getDepartures?.(station, { fresh: options.fresh }, attemptSignal),
-    signal
+    signal,
+    // Une source officielle qui ne connaît pas l'arrêt laisse la main à la suivante.
+    { accept: (groups) => groups.length > 0 }
   );
   return toLineDepartures(value, Date.now());
 }

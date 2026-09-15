@@ -1,3 +1,4 @@
+import { providersFor, resolveRegion } from "../transport/registry";
 import type { LonLat } from "../types";
 import { distance } from "./geo";
 
@@ -106,6 +107,10 @@ export async function bestExit(
   towards: LonLat | undefined,
   signal?: AbortSignal
 ): Promise<StationExit | null> {
+  // Le jeu ne couvre que l'Île-de-France : ailleurs, ne pas envoyer à IDFM la
+  // position d'une station de Tokyo pour une réponse vide. C'est le registre
+  // des régions qui dit où une source de sorties existe.
+  if (!providersFor(resolveRegion(stop.lon, stop.lat, null), "exits").length) return null;
   const exits = await exitsNear(stop, signal).catch(() => []);
   if (!exits.length) return null;
   // Sans suite connue — la station est l'arrivée — la sortie la plus proche de

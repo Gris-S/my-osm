@@ -77,3 +77,19 @@ export const MEMORY_CACHE_MAX_ENTRIES = 400;
 export function transportUserAgent(): string {
   return `MY-OSM/${__APP_VERSION__} (+${CONFIG.PROJECT_URL})`;
 }
+
+/**
+ * Départs demandés à Transitous autour d'une station (`/v5/stoptimes`).
+ *
+ * Le rayon suit la nature de l'arrêt touché : un poteau de bus ne doit pas
+ * ramasser les lignes du poteau d'en face — le regroupement par destination
+ * sépare les sens, pas les arrêts —, une gare s'étale sur plusieurs quais. Au
+ * delà de l'horizon, un départ n'aide pas à décider ; c'est celui d'IDFM.
+ */
+export const TRANSITOUS_DEPARTURES = {
+  stopRadiusMeters: 60,
+  stationRadiusMeters: 250,
+  perRequest: 60,
+  perGroup: 4,
+  horizonMinutes: 120,
+} as const;

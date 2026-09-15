@@ -181,6 +181,26 @@ qui tourne à Paris.
   demandés hors d'Île-de-France coupaient Navitia cinq minutes — le disjoncteur
   des itinéraires s'ouvre à deux échecs. Même règle pour les départs : une source
   qui ne connaît pas l'arrêt laisse la main.
+- **Étape 3, en place : Transitous** (`providers/transitous.ts`) répond partout
+  où aucune source officielle ne le fait, et à Paris quand la clé IDFM manque :
+  départs (`/v5/stoptimes`, rayon de 60 m pour un poteau et de 250 m pour une
+  gare, chiffres dans `policy.ts`), tracé d'une ligne (`/v5/trip` — MOTIS n'a
+  pas de tracé par ligne, seulement par course : c'est une course lue dans la
+  fiche qui sert), itinéraires (`/v5/plan`, paramètre `time` vérifié par un
+  appel réel). Les tracés sont des polylignes de **précision 6**
+  (`polyline.ts`) ; en 5, ils tomberaient dix fois trop loin.
+- **La fiche ne teste plus la clé IDFM.** Elle ne dit « clé manquante » que si
+  toutes les sources ont été sautées faute de clé (`missingKeyOnly`) ; là où
+  Transitous répond, la clé absente ne se voit pas.
+- **Les sorties de station sont réservées aux régions qui en déclarent une
+  source** (capacité `exits` du registre, lue par `navigation/exits.ts`) : sans
+  cela, le guidage enverrait à IDFM la position d'une station de Tokyo pour une
+  réponse vide.
+- **Ce qu'une source ne donne pas retombe sur le mode** : couleur absente (Genève)
+  → `MODE_COLORS`, libellé de mode absent → `MODE_LABELS` (`journeyView.ts`),
+  que le guidage lit pour reconnaître un mode fermé. Les extrémités d'un
+  itinéraire MOTIS s'appellent littéralement `START` et `END` : elles sont
+  rendues sans nom.
 - **Un fournisseur déclaré au registre sans adaptateur** est « non pris en
   charge » et sauté, sans toucher au disjoncteur.
 - **Une annulation n'est pas un échec** : elle ne touche pas au disjoncteur et

@@ -13,6 +13,7 @@ import { TransportOrchestrator, type ProviderLoader } from "./orchestrator";
 
 const LOADERS: Record<string, ProviderLoader> = {
   idfm: () => import("./providers/idfm").then((module) => module.createIdfmProvider),
+  transitous: () => import("./providers/transitous").then((module) => module.createTransitousProvider),
 };
 
 let instance: TransportOrchestrator | null = null;
