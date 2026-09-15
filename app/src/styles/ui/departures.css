@@ -3,6 +3,12 @@
    ------------------------------------------------------------------------- */
 .departures {
   margin-top: 12px;
+  /* Dans la fiche (colonne flexible), c'est la liste qui cède la place et
+     défile ; poignée, titre et boutons restent visibles. */
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
 
 .departures-title {
@@ -209,24 +215,38 @@
   border: 1.5px solid var(--text-secondary);
 }
 
+/* **Toujours une seule ligne** (demande explicite, deux fois : la source passait
+   seule à la ligne, décalée). La légende ne rétrécit pas ; c'est le nom de la
+   source qui se coupe d'un « … » si l'écran est trop étroit — il reste entier
+   en infobulle. */
 .departures-source {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: 10px;
   margin: 10px 2px 0;
   font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
   color: var(--text-secondary);
 }
 
 .departures-legend {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 5px;
 }
 
 .departures-source-name {
-  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.departures-source-name::before {
+  content: "·";
+  margin-right: 10px;
 }
 
 /* « Voir les N autres lignes » : discret, sous les lignes montrées d'emblée. */

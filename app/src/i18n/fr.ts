@@ -392,6 +392,7 @@ export const fr = {
   "departures.towards": "Vers {destination}",
   "departures.realtime": "temps réel",
   "departures.scheduled": "horaire théorique",
+  "departures.scheduledShort": "théorique",
   "departures.dueNow": "départ prévu",
   "departures.source": "Source : {source}",
   "departures.moreLines_one": "Voir l'autre ligne",

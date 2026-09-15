@@ -358,6 +358,7 @@ export const en: Dict = {
   "departures.towards": "To {destination}",
   "departures.realtime": "live",
   "departures.scheduled": "scheduled",
+  "departures.scheduledShort": "scheduled",
   "departures.dueNow": "due now",
   "departures.source": "Source: {source}",
   "departures.moreLines_one": "Show 1 more line",

@@ -375,9 +375,11 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
           </span>
           <span className="departures-legend">
             <span className="departure-quality is-scheduled" aria-hidden="true" />
-            {t("departures.scheduled")}
+            {t("departures.scheduledShort")}
           </span>
-          <span className="departures-source-name">{t("departures.source", { source: sourceName(state.source) })}</span>
+          <span className="departures-source-name" title={t("departures.source", { source: sourceName(state.source) })}>
+            {sourceName(state.source)}
+          </span>
         </p>
       )}
     </div>

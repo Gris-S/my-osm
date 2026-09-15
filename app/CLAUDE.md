@@ -220,8 +220,14 @@ telles quelles.
   les boutons). La fiche montre **5 lignes d'emblée**
   (`CONFIG.DEPARTURES_VISIBLE_LINES`, déjà classées le lourd d'abord), puis « Voir
   les N autres lignes » ; et `.sheet` ne dépasse jamais la hauteur de l'écran
-  moins la colonne de boutons de droite — au-delà, elle défile sur place. Les
-  marques temps réel / théorique restent sur chaque ligne (choix explicite).
+  moins la colonne de boutons de droite. **Seule la liste des passages défile**
+  (`.departures`, la fiche étant une colonne flexible) : quand toute la fiche
+  défilait, son bord supérieur et son titre sortaient du cadre (demande
+  explicite), et un défilement posé sur `.sheet` rognerait le menu de partage,
+  qui déborde au-dessus. Les marques temps réel / théorique restent sur chaque
+  ligne (choix explicite) ; légende et source tiennent sur **une ligne alignée à
+  gauche** (demande explicite : la source calée à droite passait seule à la
+  ligne).
 - **Le référentiel d'IDFM n'est interrogé que pour les arrêts de sa région**
   (`capabilityAt(…, "stationDetails")` dans `MapView`). Mesuré avant la
   correction : chaque arrêt touché à Sydney, Tokyo ou Genève envoyait sa position

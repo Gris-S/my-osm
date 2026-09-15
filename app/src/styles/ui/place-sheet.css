@@ -16,11 +16,13 @@
   /* Jamais plus haute que l'écran moins la colonne de boutons de droite (météo,
      boussole, signets, catégories) : la fiche d'une grande gare débordait par le
      haut, titre compris, sous ces boutons (mesuré : 1 030 px sur un écran de
-     914). Au-delà, le contenu défile sur place, barre masquée. */
+     914). C'est une colonne flexible : **seule la liste des passages rétrécit et
+     défile** (`.departures`). Quand toute la fiche défilait, son bord supérieur
+     et son titre sortaient du cadre ; et un défilement posé ici rognerait le
+     menu de partage, qui déborde au-dessus de la fiche. */
   max-height: calc(100% - max(16px, env(safe-area-inset-top)) - 240px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Zone de prise de la poignée : on glisse vers le bas pour fermer la fiche.
