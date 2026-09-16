@@ -425,6 +425,48 @@ const SCENARIOS = [
       await dodo(2000);
     },
   },
+  {
+    id: "sans-cles",
+    titre: "Sans clé d'API, l'application dit ce qui lui manque",
+    /**
+     * À faire tourner sur `npm run apk:nokeys` — la configuration que
+     * recevront les utilisateurs de F-Droid.
+     *
+     * Montrer que l'application **marche** sans clés ne suffit pas : ce qui
+     * compte est qu'une fonction indisponible se **dise**, au lieu de
+     * ressembler à une panne. Une option morte et muette est un défaut ; une
+     * option morte qui explique ce qui lui manque est un choix.
+     */
+    async executer() {
+      await scene();
+      await cliquer(".map-options-button");
+      if (!(await attendre(".map-options-panel"))) return verifier("le menu des calques s'ouvre", false);
+
+      const photos = await js(`(()=>{const b=[...document.querySelectorAll('.map-options-panel button')]
+        .find(x=>/Street photos|Photos de rue/i.test(x.innerText||''));
+        return b?{desactive:!!b.disabled,titre:b.title||''}:null})()`);
+      if (photos === null) {
+        verifier("l'option des photos de rue est présente", false);
+      } else {
+        // Sans jeton Mapillary, l'option reste visible mais inerte, et son
+        // infobulle dit ce qu'il lui faut.
+        verifier("les photos de rue sont désactivées", photos.desactive, photos.titre);
+        verifier(
+          "l'infobulle renvoie là où saisir la clé",
+          /Menu|API/i.test(photos.titre),
+          photos.titre
+        );
+      }
+      verifier(
+        "une explication accompagne l'option",
+        await js("!!document.querySelector('.map-options-note')"),
+        (await texte(".map-options-note")) ?? ""
+      );
+      capture("09-sans-cles");
+      adb("shell", "input", "keyevent", "4");
+      await dodo(1500);
+    },
+  },
 ];
 
 // --- L'exécution ------------------------------------------------------------
