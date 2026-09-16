@@ -508,6 +508,12 @@ const SCENARIOS = [
       // glisser la manœuvre sous le bandeau. Une hauteur minimale sur la
       // pastille avait failli le faire, à deux pixels près, et rien ne l'aurait
       // dit.
+      // Le bandeau paraît **d'abord dans son état d'attente** (« calcul en
+      // cours »), sans manœuvre ni pastille : le mesurer aussitôt ne trouve
+      // rien, et la vérification ci-dessus l'accepte puisqu'elle se contente
+      // de `.nav-banner`. On attend donc la pastille elle-même.
+      verifier("la pastille de manœuvre paraît", await attendre(".nav-maneuver-icon", 30_000));
+
       const geometrie = await js(`(()=>{
         const b=document.querySelector('.nav-banner');
         const p=document.querySelector('.nav-maneuver-icon');
@@ -1154,6 +1160,71 @@ const SCENARIOS = [
         !(await attendre(".first-run", 6000)),
         (await lire("osm-local:first-run-seen")) ?? "aucune trace enregistrée"
       );
+    },
+  },
+
+  {
+    id: "musique",
+    titre: "La pochette ouvre le lecteur",
+    /**
+     * Ce scénario **demande qu'une musique soit en cours** sur le téléphone :
+     * l'encart n'existe pas autrement, et c'est voulu. Sans lecteur, il ne
+     * conclut rien plutôt que d'accuser à tort — mais il le dit, pour qu'on
+     * sache que cette vérification n'a pas eu lieu.
+     *
+     * Il quitte l'application pour de bon : c'est justement ce qu'on vérifie.
+     * D'où la remise au premier plan à la fin, sans quoi les scénarios suivants
+     * s'attacheraient à la WebView d'un lecteur.
+     */
+    async executer() {
+      await scene();
+      await positionSimulee(48.86, 2.3376, 95, 1.4);
+      await carteVers(2.3376, 48.86, 16);
+      await saisir("Bastille");
+      await attendre(".search-result");
+      if ((await cliquerPremierLieu()) === null) return;
+      await attendre(".sheet");
+      await cliquer(".sheet-action-primary");
+      await attendre(".itinerary-panel");
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[1])m[1].click();return true})()");
+      if (!(await attendre(".itinerary-result", 25_000))) return verifier("un itinéraire à pied est calculé", false);
+      await cliquer(".nav-start");
+
+      if (!(await attendre(".music-card", 20_000))) {
+        return verifier("pas de musique en cours : rien à vérifier ici", true, "lancer un lecteur pour éprouver ce scénario");
+      }
+
+      const pochette = await js(`(()=>{const b=document.querySelector('.music-art');
+        if(!b)return null;
+        return {balise:b.tagName,libelle:b.getAttribute('aria-label')||'',titre:b.getAttribute('title')||''}})()`);
+      if (!verifier("la pochette est présente", pochette !== null)) return;
+      verifier("c'est un bouton, pas une image inerte", pochette.balise === "BUTTON", pochette.balise);
+      verifier(
+        "elle s'annonce comme ouvrant le lecteur",
+        /Open the player|Ouvrir le lecteur/i.test(pochette.libelle),
+        pochette.libelle
+      );
+      capture("24-musique");
+
+      const auPremierPlan = () => {
+        const sortie = adb("shell", "dumpsys", "activity", "activities");
+        const ligne = /topResumedActivity[^\n]*\{[^}]*\s(\S+)\/(\S+)\}/.exec(sortie);
+        return ligne ? ligne[1] : "?";
+      };
+      const avant = auPremierPlan();
+      await cliquer(".music-art");
+      await dodo(4000);
+      const apres = auPremierPlan();
+      verifier(
+        "toucher la pochette ouvre une autre application",
+        apres !== avant && apres !== PAQUET,
+        `${avant} → ${apres}`
+      );
+
+      // On revient, sinon tout ce qui suit se croirait dans MY OSM.
+      reveiller();
+      await dodo(3000);
+      await connecter(30_000);
     },
   },
 ];
