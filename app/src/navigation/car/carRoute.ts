@@ -211,6 +211,10 @@ export async function getCarRoutes(
   options: CarRouteOptions = {}
 ): Promise<CarRoute[]> {
   if (points.length < 2) throw new Error(navText("car.errorNoRoute"));
+  // Les deux moteurs sont distants — TomTom comme OSRM. Hors ligne, le dire
+  // dans la langue de l'application plutôt que de laisser remonter le
+  // « Failed to fetch » du navigateur jusqu'à l'écran de choix.
+  if (!navigator.onLine) throw new Error(navText("nav.errorOffline"));
   return hasLiveEngine() ? fetchTomTom(points, options) : [await fetchOsrm(points, options)];
 }
 
@@ -505,7 +509,14 @@ async function fetchOsrm(points: LonLat[], options: CarRouteOptions): Promise<Ca
     `${CONFIG.OSRM_ROUTING.driving}/route/v1/driving/${coords}` +
     `?overview=full&geometries=geojson&steps=true${bearings}`;
 
-  const res = await fetch(url, { signal: options.signal });
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: options.signal });
+  } catch (error) {
+    // Une annulation n'est pas une panne de réseau : elle remonte telle quelle.
+    if (options.signal?.aborted) throw error;
+    throw new Error(navText("nav.errorOffline"));
+  }
   if (!res.ok) throw new Error(navText("car.errorService", { status: String(res.status) }));
   const data: OsrmResponse = await res.json();
   if (data.code !== "Ok" || !data.routes.length) throw new Error(navText("car.errorNoRoute"));

@@ -28,14 +28,44 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Clé de signature de la version à partager.
+    //
+    // **La clé de débogage d'Android est publique et identique sur toutes les
+    // machines** : un APK signé avec elle peut être remplacé par une mise à jour
+    // que n'importe qui aura forgée. C'est éliminatoire pour une publication
+    // (F-Droid, une release GitHub), et ça l'était pour `livrables/MY-OSM.apk`.
+    //
+    // La vraie clé ne vit pas dans le dépôt : elle vient de l'environnement, ou
+    // de `~/.gradle/gradle.properties`. Sans elle, on retombe sur la clé de
+    // débogage — pour qu'un build de travail continue de passer — mais en le
+    // disant à voix haute (voir l'avertissement plus bas).
+    //
+    //   export MYOSM_KEYSTORE=~/.clefs/my-osm.jks
+    //   export MYOSM_KEYSTORE_PASSWORD=…  MYOSM_KEY_ALIAS=…  MYOSM_KEY_PASSWORD=…
+    signingConfigs {
+        release {
+            def keystorePath = System.getenv("MYOSM_KEYSTORE") ?: project.findProperty("myosmKeystore")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("MYOSM_KEYSTORE_PASSWORD") ?: project.findProperty("myosmKeystorePassword")
+                keyAlias System.getenv("MYOSM_KEY_ALIAS") ?: project.findProperty("myosmKeyAlias")
+                keyPassword System.getenv("MYOSM_KEY_PASSWORD") ?: project.findProperty("myosmKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             // Version à partager : non débogable (ni `run-as`, ni débogage de la
-            // WebView, que Capacitor suit sur ce drapeau). Signée pour l'instant
-            // avec la clé de débogage de la machine — même signature que la
-            // version debug, les deux s'installent l'une sur l'autre. La vraie
-            // clé viendra avec la sortie officielle.
-            signingConfig signingConfigs.debug
+            // WebView, que Capacitor suit sur ce drapeau).
+            def signedForRelease = signingConfigs.release.storeFile != null
+            signingConfig signedForRelease ? signingConfigs.release : signingConfigs.debug
+            if (!signedForRelease) {
+                logger.warn(
+                    "MY OSM : aucune clé de release (MYOSM_KEYSTORE). L'APK est signé avec la clé de " +
+                    "débogage, publique : bon pour essayer sur son propre téléphone, à ne pas publier."
+                )
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

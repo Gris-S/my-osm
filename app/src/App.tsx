@@ -39,6 +39,7 @@ import { useStreetPhoto } from "./hooks/useStreetPhoto";
 import { useBrandSearch } from "./hooks/useBrandSearch";
 import { useItinerary } from "./hooks/useItinerary";
 import { useIncomingLinks } from "./hooks/useIncomingLinks";
+import { useLatest } from "./hooks/useLatest";
 import { openWebSearch } from "./services/webSearch";
 
 /** Ce que la carte reçoit à la place des calques pendant la navigation voiture. */
@@ -154,8 +155,29 @@ export default function App() {
   const startupLocateRef = useRef(true);
   const startupBusyRef = useRef(false);
   const locate = geolocation.locate;
+  // **Ne pas déclencher la demande d'autorisation au lancement.** Appeler
+  // `locate()` d'emblée faisait surgir la boîte de dialogue d'Android avant que
+  // l'utilisateur ait vu la carte ou compris pourquoi on la lui demandait — le
+  // plus mauvais moment pour être refusé. On ne se localise donc tout seul que
+  // si l'autorisation est **déjà** accordée ; sinon c'est le bouton de position
+  // qui la demandera, dans un geste dont le sens est clair.
+  //
+  // L'API des permissions manque sur certains navigateurs : on y retombe alors
+  // sur le comportement d'avant, plutôt que de perdre le recentrage d'ouverture.
   useEffect(() => {
-    locate();
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+        if (status && status.state !== "granted") return;
+      } catch {
+        /* API absente ou permission inconnue : on garde le comportement d'avant */
+      }
+      if (!cancelled) locate();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [locate]);
   useEffect(() => {
     if (!geolocation.position) return;
@@ -166,11 +188,17 @@ export default function App() {
       setFlyTarget({ ...geolocation.position, zoom: CONFIG.DEFAULT_ZOOM, initial: true });
   }, [geolocation.position]);
 
-  /** Le bouton de position : sa réponse recentre toujours, démarrage ou pas. */
-  function handleLocate() {
+  /**
+   * Le bouton de position : sa réponse recentre toujours, démarrage ou pas.
+   * C'est aussi lui qui demande l'autorisation, le cas échéant (voir l'effet
+   * d'ouverture plus haut).
+   *
+   * Mémoïsé : il descend jusqu'à un composant protégé par `memo`.
+   */
+  const handleLocate = useCallback(() => {
     startupLocateRef.current = false;
-    geolocation.locate();
-  }
+    locate();
+  }, [locate]);
 
   // Détails du lieu ouvert. La fiche s'affiche immédiatement avec ce que la
   // tuile portait (nom, catégorie) ; les horaires s'y ajoutent dès qu'Overpass
@@ -227,6 +255,19 @@ export default function App() {
     if (answerStopPicker(place)) return;
     setSelectedPlace(place);
   }
+
+  /**
+   * La même chose, mais **stable d'un rendu à l'autre** : `MapView` est
+   * protégée par `memo`, et une fonction recréée à chaque rendu l'annulerait
+   * sans rien dire. Le corps est relu dans une ref (`useLatest`), si bien que
+   * cette version appelle toujours la dernière — elle ferme sur l'état courant,
+   * pas sur celui du premier rendu.
+   */
+  const backgroundClickRef = useLatest(handleBackgroundClick);
+  const handleMapBackgroundClick = useCallback(
+    (lonlat: LonLat) => void backgroundClickRef.current(lonlat),
+    [backgroundClickRef]
+  );
 
   /** Un signet rouvre son lieu : la carte s'y rend et la fiche s'ouvre. */
   function handleOpenSaved(saved: SavedPlace) {
@@ -494,7 +535,7 @@ export default function App() {
         onPoiStatusChange={setPoiStatus}
         onMapError={setMapError}
         onAttributionChange={setCredits}
-        onBackgroundClick={handleBackgroundClick}
+        onBackgroundClick={handleMapBackgroundClick}
       />
 
       {/* À pied et en transports, l'itinéraire est ouvert mais les menus restent :

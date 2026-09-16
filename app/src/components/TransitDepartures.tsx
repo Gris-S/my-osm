@@ -300,11 +300,12 @@ export function TransitDepartures({ place, onLineFocus, refreshToken }: TransitD
           <TrainFront size={16} />
           {t("departures.title")}
         </div>
-        {/* La phrase entoure un `<code>` : on la coupe sur son propre marqueur
-            plutôt que d'en faire deux clés. */}
+        {/* La phrase entoure un élément mis en avant : on la coupe sur son
+            propre marqueur plutôt que d'en faire deux clés. On y insère le
+            chemin dans le menu — `.env.local` n'existe pas sur un téléphone. */}
         <p className="departures-note">
           {noKeyNote[0]}
-          <code>.env.local</code>
+          <strong>{t("apikeys.where")}</strong>
           {noKeyNote[1]}
         </p>
       </div>

@@ -124,6 +124,14 @@ export function NavigationSettings() {
         )}
       </p>
 
+      {/* Ce que l'application **ne sait pas** faire, dit une fois plutôt que
+          découvert au volant : sans service Android — écarté, il faudrait une
+          notification permanente et une permission de position en arrière-plan
+          — la WebView est bridée puis déchargée dès que l'écran s'éteint, et le
+          suivi s'arrête avec elle. Le verrou d'éveil garde l'écran allumé tant
+          que l'application est devant ; il ne peut rien de plus. */}
+      <p className="settings-hint nav-settings-second">{nav("settings.background.hint")}</p>
+
       <MusicSettings />
     </div>
   );

@@ -633,7 +633,13 @@ export function DownloadPanel({ center, onClose }: Props) {
                           <RefreshCw size={13} /> {t("download.update")}
                         </button>
                       )}
-                      {!p && (region.status === "paused" || region.status === "error") && (
+                      {/* `downloading` sans avancement à l'écran : le
+                          téléchargement a été tué en cours de route et rien ne
+                          tourne. La réconciliation du démarrage
+                          (`interruptedRegions`) repasse ces zones en pause ;
+                          ce test est le filet pour un arrêt survenu pendant la
+                          session, qu'elle n'a pas vu passer. */}
+                      {!p && (region.status === "paused" || region.status === "error" || region.status === "downloading") && (
                         <button className="download-resume" onClick={() => resume(region)}>
                           {region.failure === "moved" ? t("download.redownload") : t("download.resume")}
                         </button>

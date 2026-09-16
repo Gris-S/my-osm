@@ -6,6 +6,8 @@
 // Un délai dépassé, lui, en est un (`TimeoutError`).
 // ---------------------------------------------------------------------------
 
+import { anySignal as combine } from "../utils/signals";
+
 export function abortError(): DOMException {
   return new DOMException("Annulé", "AbortError");
 }
@@ -14,10 +16,13 @@ export function isAbortError(error: unknown): boolean {
   return (error as { name?: string } | null)?.name === "AbortError";
 }
 
-/** Un signal qui s'arrête dès que l'un des signaux donnés s'arrête. */
-export function anySignal(signals: (AbortSignal | undefined)[]): AbortSignal {
-  return AbortSignal.any(signals.filter((signal): signal is AbortSignal => signal !== undefined));
-}
+/**
+ * Un signal qui s'arrête dès que l'un des signaux donnés s'arrête.
+ *
+ * L'implantation vit dans `utils/signals.ts`, avec son repli : `AbortSignal.any`
+ * demande une WebView 116, et l'application s'installe à partir d'Android 7.
+ */
+export const anySignal = combine;
 
 /**
  * Attend une promesse, mais rend la main dès que le signal s'arrête. La promesse

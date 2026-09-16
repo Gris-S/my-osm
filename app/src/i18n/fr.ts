@@ -26,6 +26,17 @@ export const fr = {
   // Bandeau d'état du chargement des commerces
   "mapStatus.empty": "Aucune catégorie affichée — ouvrez le menu en haut à gauche",
   "mapStatus.loading": "Chargement des commerces…",
+  // Hors ligne. Le premier est permanent tant que la connexion manque ; le
+  // second le remplace quand la carte a réellement dû laisser des cases vides,
+  // c'est-à-dire qu'on est sorti des zones téléchargées. Sans eux, une carte
+  // grise ne disait pas si elle était en panne ou simplement hors zone.
+  "mapStatus.offline": "Hors ligne",
+  "mapStatus.offlineGap": "Hors ligne — cette zone n'est pas téléchargée",
+
+  // Géolocalisation du navigateur (`hooks/useGeolocation.ts`)
+  "geo.unsupported": "Géolocalisation non disponible sur cet appareil.",
+  "geo.denied": "Géolocalisation refusée — autorisez-la dans les réglages du téléphone.",
+  "geo.unavailable": "Position indisponible pour le moment.",
 
   // Recherche d'enseigne
   "brand.loading": "recherche…",
@@ -92,6 +103,10 @@ export const fr = {
   // Les clés se saisissent dans l'application parce qu'un `.env.local` n'existe
   // plus une fois l'application empaquetée. Voir `services/apiKeys.ts`.
   "apikeys.title": "Clés d'API",
+  /* Le chemin vers la fenêtre des clés, cité par les messages qui en manquent
+     une. Une seule clé de traduction, pour qu'il ne se contredise jamais d'un
+     écran à l'autre. */
+  "apikeys.where": "Menu › API",
   "apikeys.intro":
     "Ces services sont facultatifs : sans clé, l'application fonctionne, certaines fonctions en moins. Une clé saisie ici remplace celle du fichier .env.local.",
   "apikeys.placeholder": "Aucune clé",
@@ -264,8 +279,11 @@ export const fr = {
   "layers.3dTitle": "Incliner la carte et afficher les bâtiments en volume",
   "layers.streetPhotos": "Photos de rue",
   "layers.streetPhotosTitle": "Afficher les rues photographiées, et ouvrir une photo au clic",
-  "layers.streetPhotosNoToken": "Demande un jeton Mapillary (gratuit) dans .env.local",
-  "layers.streetPhotosNote": "Ajoutez un jeton Mapillary (gratuit) dans {file} — voir le README.",
+  // Où saisir une clé : dans l'application, et non dans un fichier. `.env.local`
+  // n'existe plus une fois l'application empaquetée — y renvoyer quelqu'un sur
+  // un téléphone ne lui donnait aucun moyen d'agir.
+  "layers.streetPhotosNoToken": "Demande un jeton Mapillary (gratuit) — Menu › API",
+  "layers.streetPhotosNote": "Ajoutez un jeton Mapillary (gratuit) dans {file}. Il est gratuit et sans carte bancaire.",
 
   // Lieux enregistrés
   "bookmarks.aria": "Lieux enregistrés",
@@ -376,7 +394,7 @@ export const fr = {
 
   // Prochains passages
   "departures.title": "Prochains passages",
-  "departures.noKey": "Ajoutez une clé Île-de-France Mobilités (gratuite) dans {file} pour voir les horaires en temps réel — voir le README.",
+  "departures.noKey": "Ajoutez une clé Île-de-France Mobilités (gratuite) dans {file} pour voir les horaires en temps réel.",
   "departures.loading": "Recherche des prochains passages…",
   "departures.error": "Passages indisponibles pour le moment.",
   "departures.refreshError": "Mise à jour impossible — ce sont les passages précédents.",
@@ -465,10 +483,14 @@ export const fr = {
   "error.unknown": "Erreur inconnue",
   "error.noRoute": "Aucun itinéraire trouvé",
   "error.routeFailed": "Calcul d'itinéraire échoué ({status})",
+  // Le calcul est **distant** (OSRM, TomTom) : il n'y a pas de moteur embarqué,
+  // et hors ligne il n'y a donc rien à rendre. Sans cette phrase, c'est le
+  // « Failed to fetch » du navigateur qui s'affichait, en anglais.
+  "error.routeOffline": "Le calcul d'itinéraire demande une connexion. Les cartes téléchargées restent consultables.",
   "error.transitOutside": "Départ ou arrivée hors de la zone couverte par les transports franciliens.",
   "error.transitNoSolution": "Aucun itinéraire en transports à cette heure — service terminé ?",
   "error.transitUnavailable": "Calcul d'itinéraire en transports indisponible.",
-  "error.transitNoKey": "Ajoutez une clé Île-de-France Mobilités (gratuite) dans .env.local pour les itinéraires en transports.",
+  "error.transitNoKey": "Ajoutez une clé Île-de-France Mobilités (gratuite) dans Menu › API pour les itinéraires en transports.",
   "error.transitRefused": "Clé Île-de-France Mobilités refusée pour le calcul d'itinéraires.",
   "error.transitQuota": "Quota Île-de-France Mobilités atteint pour aujourd'hui.",
   "error.transitFailed": "Calcul d'itinéraire en transports échoué ({status})",

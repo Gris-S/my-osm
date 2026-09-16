@@ -15,6 +15,12 @@ export const en: Dict = {
 
   "mapStatus.empty": "No category shown — open the menu in the top left",
   "mapStatus.loading": "Loading places…",
+  "mapStatus.offline": "Offline",
+  "mapStatus.offlineGap": "Offline — this area has not been downloaded",
+
+  "geo.unsupported": "Location is not available on this device.",
+  "geo.denied": "Location denied — allow it in your phone's settings.",
+  "geo.unavailable": "Position unavailable right now.",
 
   "brand.loading": "searching…",
   "brand.failed": "search failed",
@@ -77,6 +83,7 @@ export const en: Dict = {
 
   // --- Settings, "API" section ----------------------------------------------
   "apikeys.title": "API keys",
+  "apikeys.where": "Menu › API",
   "apikeys.intro":
     "These services are optional: without a key the app still works, with fewer features. A key entered here overrides the one from .env.local.",
   "apikeys.placeholder": "No key",
@@ -239,8 +246,8 @@ export const en: Dict = {
   "layers.3dTitle": "Tilt the map and show buildings in relief",
   "layers.streetPhotos": "Street photos",
   "layers.streetPhotosTitle": "Show the photographed streets, and open a photo on click",
-  "layers.streetPhotosNoToken": "Needs a (free) Mapillary token in .env.local",
-  "layers.streetPhotosNote": "Add a (free) Mapillary token to {file} — see the README.",
+  "layers.streetPhotosNoToken": "Needs a (free) Mapillary token — Menu › API",
+  "layers.streetPhotosNote": "Add a (free) Mapillary token in {file}. It is free and needs no bank card.",
 
   "bookmarks.aria": "Saved places",
   "bookmarks.empty": "No place saved here.",
@@ -342,7 +349,7 @@ export const en: Dict = {
   "vigilanceIn.red": "Red",
 
   "departures.title": "Next departures",
-  "departures.noKey": "Add a (free) Île-de-France Mobilités key to {file} to see live times — see the README.",
+  "departures.noKey": "Add a (free) Île-de-France Mobilités key in {file} to see live times.",
   "departures.loading": "Looking up the next departures…",
   "departures.error": "Departures unavailable right now.",
   "departures.refreshError": "Couldn't refresh — these are the previous departures.",
@@ -425,10 +432,11 @@ export const en: Dict = {
   "error.unknown": "Unknown error",
   "error.noRoute": "No route found",
   "error.routeFailed": "Route calculation failed ({status})",
+  "error.routeOffline": "Route calculation needs a connection. Downloaded maps stay available.",
   "error.transitOutside": "Start or destination outside the area covered by Paris-region transport.",
   "error.transitNoSolution": "No public transport route at this time — has service ended?",
   "error.transitUnavailable": "Public transport routing unavailable.",
-  "error.transitNoKey": "Add a (free) Île-de-France Mobilités key to .env.local for public transport routes.",
+  "error.transitNoKey": "Add a (free) Île-de-France Mobilités key in Menu › API for public transport routes.",
   "error.transitRefused": "Île-de-France Mobilités key refused for route calculation.",
   "error.transitQuota": "Île-de-France Mobilités quota reached for today.",
   "error.transitFailed": "Public transport route calculation failed ({status})",

@@ -1,4 +1,5 @@
 import { raceSignal } from "./abort";
+import { timeoutSignal } from "../utils/signals";
 import { MAX_CONCURRENT_PER_HOST, RESPONSE_MAX_CHARS, transportUserAgent } from "./policy";
 import { ProviderError } from "./provider";
 
@@ -112,7 +113,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     try {
       // Le navigateur refuse qu'on fixe `User-Agent` : il est retiré hors du natif.
       const { "User-Agent": _userAgent, ...browserHeaders } = headers;
-      const response = await fetchImpl(request.url, { headers: browserHeaders, signal: AbortSignal.timeout(request.timeoutMs) });
+      const response = await fetchImpl(request.url, { headers: browserHeaders, signal: timeoutSignal(request.timeoutMs) });
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => (responseHeaders[key] = value));
       return { status: response.status, text: await response.text(), headers: responseHeaders };

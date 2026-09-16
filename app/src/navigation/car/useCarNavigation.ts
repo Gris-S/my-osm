@@ -8,7 +8,7 @@ import { useWakeLock } from "../useWakeLock";
 import type { NavChoice, NavMapState } from "../useNavigation";
 import { getCarRoutes, hasLiveEngine, type CarRoute } from "./carRoute";
 import { CAR_OFF_ROUTE_FIXES, bearingAround, computeCarProgress, isOffRoute, pointAtMeters, type CarProgress } from "./carProgress";
-import { rerouteRetryDelayMs } from "../progress";
+import { rerouteRetryDelayMs, REROUTE_MIN_GAP_MS } from "../progress";
 import { bubbleAnchors, getCarProposals, type CarProposal, type ProposalId } from "./proposals";
 import { useSimulatedDriver } from "./carSimulate";
 import { trafficOverlay, trafficSegments, type CarTraffic } from "./carTraffic";
@@ -233,6 +233,10 @@ export function useCarNavigation(): CarNavSession {
   // recalcul repartait sinon tous les deux relevés.
   const rerouteFailuresRef = useRef(0);
   const rerouteRetryAtRef = useRef(0);
+  // Plancher entre deux recalculs **réussis** (`REROUTE_MIN_GAP_MS`). Il ne vaut
+  // que pour l'écart au parcours : le contresens, lui, doit répondre tout de
+  // suite — c'est précisément ce pour quoi il existe.
+  const rerouteGapUntilRef = useRef(0);
   // Le rang du radar à partir duquel chercher, et le dernier annoncé : le son
   // ne doit retentir qu'une fois par radar, même si le relevé recule d'un mètre.
   const radarFromRef = useRef(0);
@@ -403,6 +407,7 @@ export function useCarNavigation(): CarNavSession {
         indexRef.current = 0;
         offRouteRef.current = 0;
         rerouteFailuresRef.current = rerouteRetryAtRef.current = 0;
+        rerouteGapUntilRef.current = request.reroute ? Date.now() + REROUTE_MIN_GAP_MS : 0;
         wrongWayRef.current = NO_STREAK;
         radarFromRef.current = 0;
         announcedRef.current = -1;
@@ -547,7 +552,13 @@ export function useCarNavigation(): CarNavSession {
 
     if (isOffRoute(next)) {
       offRouteRef.current += 1;
-      if (offRouteRef.current >= CAR_OFF_ROUTE_FIXES && !reroutingRef.current && retryAllowed) reroute("offRoute");
+      // Le plancher entre deux recalculs réussis ne s'applique qu'ici : un
+      // conducteur qui s'écarte peut attendre trente secondes, le trajet
+      // précédent restant affiché — celui qui roule à contresens, non.
+      const gapPassed = Date.now() >= rerouteGapUntilRef.current;
+      if (offRouteRef.current >= CAR_OFF_ROUTE_FIXES && !reroutingRef.current && retryAllowed && gapPassed) {
+        reroute("offRoute");
+      }
     } else {
       offRouteRef.current = 0;
     }

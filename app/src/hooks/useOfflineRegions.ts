@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { OfflinePrefs } from "./useOfflinePrefs";
 import { runFreshnessCheck, useFreshness } from "./useFreshness";
 import { isMetered, watchConnection } from "../services/offline/network";
-import { putRegion } from "../services/offline/store";
+import { interruptedRegions, putRegion } from "../services/offline/store";
 import {
   downloadRegion,
   listRegions,
@@ -53,10 +53,28 @@ export function useOfflineRegions({ onStarted, prefs }: Options = {}) {
   const [store, setStore] = useState<"opfs" | "cache" | "device" | null>(null);
   const running = useRef(new Map<string, () => void>());
 
+  // La réconciliation n'a lieu qu'une fois par session : à la première lecture,
+  // rien ne tourne encore, donc une zone « en cours » ne peut venir que d'un
+  // lancement précédent. Plus tard, elle tuerait un téléchargement bien vivant.
+  const reconciled = useRef(false);
+
   /** Ce que le stockage dit des zones, lu d'un bloc. */
   const readStored = useCallback(async () => {
     try {
-      return { regions: await listRegions(), storage: await storageEstimate(), store: await storeName() };
+      let regions = await listRegions();
+      // Une fermeture brutale — plantage, balayage dans les récentes, mémoire
+      // reprise par le système — laissait la zone à « téléchargement » pour
+      // toujours : aucune barre, aucun bouton « Reprendre », et la corbeille
+      // pour seule issue. Voir `interruptedRegions`.
+      if (!reconciled.current) {
+        reconciled.current = true;
+        const stuck = interruptedRegions(regions);
+        if (stuck.length > 0) {
+          for (const region of stuck) await putRegion(region);
+          regions = await listRegions();
+        }
+      }
+      return { regions, storage: await storageEstimate(), store: await storeName() };
     } catch {
       // IndexedDB indisponible (navigation privée sur certains navigateurs) :
       // l'application marche, simplement sans zones.

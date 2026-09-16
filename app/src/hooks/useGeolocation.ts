@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { LonLat } from "../types";
+import { t } from "../i18n";
 
 interface GeolocationState {
   position: LonLat | null;
@@ -17,7 +18,7 @@ export function useGeolocation() {
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) {
-      setState((s) => ({ ...s, error: "Géolocalisation non disponible sur cet appareil." }));
+      setState((s) => ({ ...s, error: t("geo.unsupported") }));
       return;
     }
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -30,7 +31,14 @@ export function useGeolocation() {
         });
       },
       (err) => {
-        setState((s) => ({ ...s, loading: false, error: err.message || "Position indisponible." }));
+        // `err.message` est celui du navigateur : il n'est pas traduit, et il
+        // varie d'une WebView à l'autre. On s'en tient au **code**, qui est
+        // normalisé, et on écrit la phrase nous-mêmes.
+        setState((s) => ({
+          ...s,
+          loading: false,
+          error: t(err.code === err.PERMISSION_DENIED ? "geo.denied" : "geo.unavailable"),
+        }));
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );

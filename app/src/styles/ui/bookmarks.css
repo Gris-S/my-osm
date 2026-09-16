@@ -125,6 +125,7 @@
 }
 
 .bookmark-icon-button {
+  position: relative;
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -133,6 +134,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Zone de toucher agrandie, sans rien changer au dessin ni à la mise en page —
+   même procédé que les croix de fermeture.
+
+   **Le débord horizontal est de 2 px, pas de 8.** Mesuré sur le Pixel 8 par
+   `elementFromPoint` : les boutons d'un dossier (couleur, renommer, supprimer)
+   ne sont séparés que de **4 px**, et la règle du projet interdit de déborder
+   de plus de la moitié de cet écart. À 8 px, le sondage montrait que le voisin
+   répondait à droite du bouton visé — autrement dit « renommer » volait des
+   appuis destinés à « couleur », et « supprimer » à « renommer ». Une zone
+   agrandie qui déclenche la mauvaise action est pire que pas de zone du tout.
+
+   Reste 28 → 44 px en hauteur (rien au-dessus ni au-dessous à moins de 16 px)
+   et 28 → 32 px en largeur. Aller plus loin demanderait d'écarter les boutons,
+   donc un changement visible, à décider. */
+.bookmark-icon-button::after {
+  content: "";
+  position: absolute;
+  inset: -8px -2px;
 }
 
 .bookmark-icon-button:hover {
@@ -153,9 +174,20 @@
 }
 
 .bookmark-color {
+  position: relative;
   width: 20px;
   height: 20px;
   border-radius: 50%;
+}
+
+/* Les pastilles de couleur sont serrées (6 px d'écart) : le débord ne peut pas
+   dépasser 3 px sans mordre sur la voisine. On gagne 20 → 26 px, ce qui n'est
+   pas 44 mais reste borné par la règle du projet ; aller plus loin demanderait
+   d'écarter les pastilles, c'est-à-dire un changement visible à décider. */
+.bookmark-color::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
 }
 
 .bookmark-color.is-active {

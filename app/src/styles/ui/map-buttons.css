@@ -17,10 +17,14 @@
 
 /* Le menu d'affichage est positionné par son enveloppe, pas par son bouton :
    le panneau qui s'ouvre au-dessus fait partie du même bloc flottant. */
+/* Le bord droit suit la zone sûre, comme le haut et le bas ailleurs : en
+   paysage sur un téléphone à encoche, `right: 16px` seul glissait la colonne
+   sous le poinçon de la caméra. Sur un écran sans encoche, `env()` vaut zéro
+   et le 16 px l'emporte — rien ne change. */
 .locate-button,
 .map-options {
   position: absolute;
-  right: 16px;
+  right: max(16px, env(safe-area-inset-right));
   z-index: 10;
   transition: bottom 0.25s ease;
 }

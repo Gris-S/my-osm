@@ -122,8 +122,18 @@ function tidy(data?: Record<string, unknown>): Record<string, unknown> | undefin
   return out;
 }
 
-/** Note un événement. Ne lève jamais : le journal ne doit rien pouvoir casser. */
+/**
+ * Note un événement. Ne lève jamais : le journal ne doit rien pouvoir casser.
+ *
+ * **Inerte dans la version à partager.** Le journal ne se relit que par le
+ * câble, à travers `window.__myosm.journal`, qui n'existe pas en release
+ * (`__DIAGNOSTICS__`) : il y écrivait donc des relevés GPS — une trace des
+ * déplacements, résumée toutes les cinq secondes — que personne ne pouvait ni
+ * consulter ni effacer. Un journal illisible n'est pas un journal, c'est une
+ * donnée oubliée.
+ */
 export function note(kind: string, data?: Record<string, unknown>): void {
+  if (!__DIAGNOSTICS__) return;
   try {
     listen();
     pending.push({ t: Date.now(), k: kind, d: tidy(data) });
@@ -136,9 +146,17 @@ export function note(kind: string, data?: Record<string, unknown>): void {
 // L'écoute démarre dès le chargement : un passage en arrière-plan entre deux
 // trajets explique parfois le suivant, et le journal se relit par le câble sans
 // attendre qu'une navigation ait eu lieu.
+//
+// En release, rien ne démarre — et ce qu'une version de travail aurait laissé
+// derrière elle est effacé au premier lancement : une trace de déplacements
+// qu'aucun écran ne montre n'a pas à survivre à la mise à jour.
 if (typeof window !== "undefined") {
-  listen();
-  note("app.start");
+  if (__DIAGNOSTICS__) {
+    listen();
+    note("app.start");
+  } else {
+    clearJournal();
+  }
 }
 
 /** Tout le journal, lot en attente compris. */

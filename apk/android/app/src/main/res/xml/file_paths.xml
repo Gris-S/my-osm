@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chemins que le FileProvider accepte de partager. Les valeurs par défaut de
+  Capacitor ouvraient toute la racine du stockage externe et tout le cache
+  (`external-path` et `cache-path` sur « . ») ; l'application ne partage aucun
+  fichier par ce provider — `utils/share.ts` ne se sert que de `navigator.share`
+  avec du texte — et cette surface n'avait donc aucune raison d'être ouverte.
+  Il ne reste que le stockage interne, privé à l'application, où vivent les
+  cartes hors ligne.
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <files-path name="app_files" path="." />
 </paths>

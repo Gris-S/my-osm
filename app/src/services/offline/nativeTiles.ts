@@ -59,6 +59,36 @@ function miss(url: string, type: string | undefined, outcome: string) {
   if (offlineMisses.length > 40) offlineMisses.shift();
 }
 
+// --- Prévenir l'interface qu'une case est restée vide -----------------------
+//
+// Une tuile qu'on ne peut servir ni de la zone ni du réseau laisse un blanc sur
+// la carte, sans un mot : c'est le pire symptôme possible, puisqu'il ressemble
+// à une panne. Le compte existait déjà (`offlineTileStats.empty`) mais n'était
+// lisible que par le câble, donc absent de la version à partager. Il est
+// désormais annoncé, et `hooks/useOfflineState.ts` en fait une phrase.
+//
+// L'annonce est **espacée** : une vue hors zone produit des dizaines de cases
+// vides par seconde, et redessiner l'application à chaque fois coûterait plus
+// cher que ce qu'on cherche à signaler.
+const EMPTY_NOTICE_MS = 2000;
+const emptyListeners = new Set<() => void>();
+let lastEmptyNotice = 0;
+
+/** S'abonne aux tuiles laissées vides faute de zone et de réseau. */
+export function subscribeEmptyTiles(listener: () => void): () => void {
+  emptyListeners.add(listener);
+  return () => {
+    emptyListeners.delete(listener);
+  };
+}
+
+function noticeEmpty() {
+  const now = Date.now();
+  if (now - lastEmptyNotice < EMPTY_NOTICE_MS) return;
+  lastEmptyNotice = now;
+  for (const listener of emptyListeners) listener();
+}
+
 let installed = false;
 
 /** Le chemin d'une adresse dans le magasin des zones, ou `null` si aucune zone ne la range. */
@@ -194,6 +224,7 @@ export function installOfflineTiles(): boolean {
       if (!navigator.onLine && params.type !== "json" && params.type !== "string") {
         offlineTileStats.empty += 1;
         miss(url, params.type, "vide");
+        noticeEmpty();
         return { data: new ArrayBuffer(0) };
       }
       miss(url, params.type, String(error));

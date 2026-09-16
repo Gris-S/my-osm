@@ -54,8 +54,13 @@ Trois choses ont été réglées pour qu'il soit utilisable :
   il ne servirait donc pas les cartes hors ligne, ce pour quoi il existe — et il
   est connu pour empêcher l'injection du pont natif de Capacitor, ce qui aurait
   coûté la géolocalisation.
-- **`@capacitor/geolocation`** remplace `navigator.geolocation`, avec les
-  permissions de position et de reconnaissance d'activité au manifeste.
+- **La géolocalisation passe par `navigator.geolocation`**, pas par un greffon.
+  Capacitor intercepte la demande de la page (`BridgeWebChromeClient`,
+  `onGeolocationPermissionsShowPrompt`) et réclame lui-même `ACCESS_FINE_LOCATION`
+  et `ACCESS_COARSE_LOCATION` à l'exécution : l'API web suffit, et
+  `@capacitor/geolocation` a été retiré des dépendances, où il était installé et
+  compilé sans jamais être appelé. (Ce paragraphe affirmait le contraire — il
+  décrivait une intention, pas le code.)
 - **Un verrou d'éveil** (`src/navigation/useWakeLock.ts`) garde l'écran allumé
   pendant les trois guidages, et le reprend au retour d'arrière-plan — le
   système le retire sans jamais le rendre.

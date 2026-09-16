@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as MLMap, MapMouseEvent, PropertyValueSpecification } from "maplibre-gl";
 import { CONFIG } from "../config";
@@ -119,7 +119,16 @@ interface MapViewProps {
   onNavigationPan: () => void;
 }
 
-export function MapView({
+// Protégée contre les rendus inutiles (`memo`), comme les autres composants qui
+// restent à l'écran pendant une navigation. `App` se redessine à chaque relevé
+// GPS **et** à chaque état sans rapport — une frappe dans la recherche, un menu
+// qu'on ouvre — et rien n'obligeait la carte à réexécuter son corps pour autant.
+// La comparaison de ses props coûte quelques microsecondes ; le corps, lui,
+// enchaîne une trentaine d'effets.
+//
+// Une prop recréée à chaque rendu annule `memo` sans rien dire : voir
+// `onBackgroundClick` dans `App`, rendue stable par `useLatest` exprès pour ça.
+export const MapView = memo(function MapView({
   groups,
   focusedLine,
   brandPlaces,
@@ -1417,4 +1426,4 @@ export function MapView({
   }, [northRequest]);
 
   return <div ref={containerRef} className="map-container" />;
-}
+});

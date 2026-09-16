@@ -59,9 +59,13 @@ export function MapOptionsMenu({
   const { t } = useI18n();
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // La phrase entoure un `<code>` : plutôt que de la couper en deux clés — ce
-  // qui interdirait au traducteur de déplacer le nom de fichier dans sa
+  // La phrase entoure un élément mis en avant : plutôt que de la couper en deux
+  // clés — ce qui interdirait au traducteur de déplacer l'emplacement dans sa
   // phrase — on lit le modèle sans variable et on coupe sur `{file}`.
+  //
+  // Ce qu'on y insère est le **chemin dans le menu**, et non plus `.env.local` :
+  // ce fichier n'existe pas dans une application empaquetée, et y renvoyer
+  // quelqu'un sur un téléphone ne lui donnait aucun moyen d'agir.
   const noteAround = t("layers.streetPhotosNote").split("{file}");
 
   useBackClose(open, () => onOpenChange(false));
@@ -183,7 +187,7 @@ export function MapOptionsMenu({
           </button>
 
           {!hasMapillaryToken() && (
-            <p className="map-options-note">{noteAround[0]}<code>.env.local</code>{noteAround[1]}</p>
+            <p className="map-options-note">{noteAround[0]}<strong>{t("apikeys.where")}</strong>{noteAround[1]}</p>
           )}
         </div>
       )}

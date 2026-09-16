@@ -1,14 +1,20 @@
-import { LoaderCircle, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { LoaderCircle, SlidersHorizontal, TriangleAlert, WifiOff } from "lucide-react";
 import { useI18n } from "../i18n";
+import { useOfflineState } from "../hooks/useOfflineState";
 
 // ---------------------------------------------------------------------------
-// Bandeau discret sur l'état du chargement des commerces.
+// Bandeau discret sur l'état de la carte.
 //
 // Les POI sont lus dans les tuiles vectorielles déjà téléchargées : ils
 // s'affichent sans attente. Reste le cas où les tuiles de la zone, elles, ne
 // sont pas encore arrivées — première ouverture, réseau lent. Le bandeau ne
 // devient visible qu'au bout d'une demi-seconde (animation retardée dans
 // `App.css`) : sur une connexion normale, personne ne le voit passer.
+//
+// Il porte aussi **l'état hors ligne**, qui n'était dit nulle part : une
+// application dont les cartes hors ligne sont la fonction centrale doit
+// distinguer « pas de réseau » de « en panne », et surtout dire quand on sort
+// des zones téléchargées — sans quoi la carte se vide sans un mot.
 // ---------------------------------------------------------------------------
 
 /** `empty` : aucune catégorie cochée — la carte est vide, et le dit. */
@@ -29,6 +35,7 @@ interface MapStatusProps {
 
 export function MapStatus({ status, mapError }: MapStatusProps) {
   const { t } = useI18n();
+  const { offline, missingZone } = useOfflineState();
 
   // Une panne de carte prime sur tout le reste : tant qu'elle dure, l'état du
   // chargement des commerces n'intéresse personne.
@@ -37,6 +44,19 @@ export function MapStatus({ status, mapError }: MapStatusProps) {
       <div className="map-status is-error" role="alert">
         <TriangleAlert size={15} />
         {mapError}
+      </div>
+    );
+  }
+
+  // Hors ligne, et c'est permanent tant que ça dure : le chargement des
+  // commerces ne veut plus rien dire dans cet état. Le message se précise quand
+  // la carte a réellement laissé des cases vides — c'est la seule façon de
+  // savoir, sans console, qu'on est sorti des zones téléchargées.
+  if (offline) {
+    return (
+      <div className="map-status" role="status">
+        <WifiOff size={15} />
+        {t(missingZone ? "mapStatus.offlineGap" : "mapStatus.offline")}
       </div>
     );
   }

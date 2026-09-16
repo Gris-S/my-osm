@@ -185,6 +185,29 @@ export async function listRegions(): Promise<OfflineRegion[]> {
   return all.sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/**
+ * Les zones qu'une fermeture brutale a laissées « en cours ».
+ *
+ * L'avancement d'un téléchargement est écrit au fil de l'eau, mais son **état**
+ * ne l'est qu'aux transitions : tuée par le système, par un plantage ou par un
+ * balayage dans les récentes, l'application laissait la zone à `downloading`
+ * pour toujours. Au lancement suivant, plus rien ne tournait, aucune barre ne
+ * s'affichait, et la fenêtre ne proposait que la corbeille — 250 Mo déjà
+ * téléchargés qu'il fallait jeter pour repartir de zéro.
+ *
+ * Elles repassent donc en pause, `pausedBy: "user"` : la reprise redevient
+ * possible d'un bouton, mais elle ne part pas toute seule au retour du wifi —
+ * relancer un gros téléchargement sans qu'on l'ait demandé serait pire que le
+ * défaut qu'on corrige.
+ *
+ * Fonction pure, testée dans `tests/resume.test.ts`.
+ */
+export function interruptedRegions(regions: OfflineRegion[]): OfflineRegion[] {
+  return regions
+    .filter((region) => region.status === "downloading")
+    .map((region) => ({ ...region, status: "paused" as const, pausedBy: "user" as const }));
+}
+
 export async function putRegion(region: OfflineRegion): Promise<void> {
   const t = await tx(["regions"], "readwrite");
   const s = t.objectStore("regions");

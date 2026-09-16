@@ -41,7 +41,21 @@ export async function getRoute(mode: RoadMode, points: LonLat[]): Promise<RouteR
   const coords = points.map((p) => `${p.lon},${p.lat}`).join(";");
   const url = `${base}/route/v1/${path}/${coords}?overview=full&geometries=geojson`;
 
-  const res = await fetch(url);
+  // Le calcul d'itinéraire est **distant** : OSRM, pas de moteur embarqué. Hors
+  // ligne il n'y a donc rien à rendre, et il faut le dire avec les mots de
+  // l'application — sans ce test, le `TypeError` de `fetch` remontait tel quel
+  // jusqu'au panneau, qui affichait « Failed to fetch » en anglais à quelqu'un
+  // qui a précisément ses cartes téléchargées sous les yeux.
+  if (!navigator.onLine) throw new Error(t("error.routeOffline"));
+
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    // `fetch` ne distingue pas le réseau coupé d'un serveur injoignable : dans
+    // les deux cas, ce qui manque à l'utilisateur est une connexion.
+    throw new Error(t("error.routeOffline"));
+  }
   if (!res.ok) throw new Error(t("error.routeFailed", { status: res.status }));
   const data: OsrmResponse = await res.json();
   if (data.code !== "Ok" || !data.routes.length) {

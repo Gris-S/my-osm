@@ -166,13 +166,47 @@ export const SATELLITE_STYLE: StyleSpecification = {
   ],
 };
 
-/** Clé identifiant le style courant, pour n'appeler setStyle que si besoin. */
+/**
+ * La vue satellite en mode sombre.
+ *
+ * L'imagerie aérienne est du raster : elle n'a pas de palette à recolorer, et
+ * elle restait donc en plein jour quand tout le reste de l'interface passait au
+ * sombre — de nuit, en voiture, c'est un écran blanc au milieu d'un tableau de
+ * bord noir. On ne la retouche pas dans le détail (une photo assombrie devient
+ * illisible) : on abaisse son blanc et on désature un peu, ce que MapLibre sait
+ * faire sans coût sur des couches raster.
+ *
+ * Les libellés d'Esri suivent le même traitement : ils sont blancs sur fond
+ * clair, et les laisser intacts sur une imagerie assombrie les ferait ressortir
+ * plus que la carte elle-même.
+ */
+const SATELLITE_DARK_PAINT = {
+  "raster-brightness-max": 0.72,
+  "raster-saturation": -0.2,
+} as const;
+
+export function satelliteStyle(theme: Theme): StyleSpecification {
+  if (theme !== "dark") return SATELLITE_STYLE;
+  return {
+    ...SATELLITE_STYLE,
+    layers: SATELLITE_STYLE.layers.map((layer) =>
+      layer.type === "raster" ? { ...layer, paint: { ...layer.paint, ...SATELLITE_DARK_PAINT } } : layer,
+    ),
+  };
+}
+
+/**
+ * Clé identifiant le style courant, pour n'appeler setStyle que si besoin.
+ *
+ * Le thème en fait partie **même en satellite** : sans cela, passer au sombre
+ * sur l'imagerie ne rechargeait rien et la vue restait claire.
+ */
 export function styleKey(theme: Theme, basemap: Basemap): string {
-  return basemap === "satellite" ? "satellite" : theme;
+  return basemap === "satellite" ? `satellite-${theme}` : theme;
 }
 
 export function resolveStyle(theme: Theme, basemap: Basemap): string | StyleSpecification {
-  if (basemap === "satellite") return SATELLITE_STYLE;
+  if (basemap === "satellite") return satelliteStyle(theme);
   return theme === "dark" ? APPLE_DARK_STYLE : CONFIG.MAP_STYLE_URL;
 }
 

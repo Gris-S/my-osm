@@ -29,6 +29,7 @@ import {
 } from "./store";
 import { footprintChunks, footprintTiles, type Bbox, type Tile } from "./tiles";
 import { downloadAddresses } from "./addresses";
+import { anySignal } from "../../utils/signals";
 import { currentLocale, t } from "../../i18n";
 
 export interface Progress {
@@ -327,7 +328,10 @@ export function downloadRegion(
       // Une écriture refusée arrête tous les travaux en cours, sans passer pour
       // une interruption demandée : la zone finit en erreur, avec sa raison.
       const stop = new AbortController();
-      const working = AbortSignal.any([signal, stop.signal]);
+      // `anySignal` et non `AbortSignal.any` : celle-ci demande une WebView 116,
+      // et l'application s'installe à partir d'Android 7. Sur une WebView plus
+      // ancienne, le téléchargement levait ici même, dès la première tuile.
+      const working = anySignal([signal, stop.signal]);
       let writeFailure = null as StorageWriteError | null;
       await pool(
         refs,

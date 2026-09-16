@@ -231,3 +231,19 @@ export function rerouteRetryDelayMs(failures: number): number {
   if (failures <= 0) return 0;
   return Math.min(60_000, 5_000 * 2 ** (failures - 1));
 }
+
+/**
+ * Délai minimal entre deux recalculs **réussis**.
+ *
+ * `rerouteRetryDelayMs` ne protège que de l'acharnement après un échec. Rien
+ * n'empêchait en revanche d'enchaîner les recalculs qui aboutissent : un
+ * parcours urbain agité — une rue barrée, un dédale de sens uniques — pouvait
+ * appeler le moteur toutes les dix secondes, sur une instance publique offerte
+ * (`routing.openstreetmap.de`, « usage raisonnable ») ou sur un quota mensuel.
+ *
+ * Trente secondes ne se sentent pas au volant : le trajet précédent reste
+ * affiché et suivable pendant ce temps, exactement comme après un recalcul
+ * raté. **Le contresens n'y est pas soumis** — il doit répondre tout de suite,
+ * c'est sa raison d'être.
+ */
+export const REROUTE_MIN_GAP_MS = 30_000;

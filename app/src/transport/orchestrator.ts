@@ -1,4 +1,5 @@
 import { abortError, anySignal, isAbortError } from "./abort";
+import { timeoutSignal } from "../utils/signals";
 import { CircuitBreakers } from "./circuitBreaker";
 import { createSwr, TtlCache, type SwrRequest, type SwrResult } from "./cache";
 import type { HttpClient } from "./httpClient";
@@ -189,7 +190,7 @@ export class TransportOrchestrator {
         let supported = true;
         const value = await withRetry(
           async () => {
-            const attemptSignal = anySignal([signal, regionSignal, AbortSignal.timeout(policy.timeoutMs)]);
+            const attemptSignal = anySignal([signal, regionSignal, timeoutSignal(policy.timeoutMs)]);
             const pending = invoke(provider, attemptSignal);
             if (!pending) {
               supported = false;

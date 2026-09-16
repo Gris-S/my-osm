@@ -90,7 +90,18 @@ describe("Transitous : départs", () => {
     await provider.getDepartures!({ ...cornavin, origin: { placeId: "transitous/ch:1:sloid:87057" } }, {}, signal);
     expect(urls[0].searchParams.get("radius")).toBe("60");
     expect(urls[1].searchParams.get("stopId")).toBe("ch:1:sloid:87057");
-    expect(urls[1].searchParams.has("center")).toBe(false);
+  });
+
+  it("joint toujours center/radius au stopId, pour survivre à un identifiant périmé", async () => {
+    // Recommandation de Transitous, vérifiée par un appel réel : un `stopId`
+    // devenu obsolète rend 404 tout seul, et rend les départs dès qu'un
+    // `center` l'accompagne. Nos identifiants sont gardés sept jours sur
+    // l'appareil : ils vieillissent forcément.
+    const { provider, urls } = fakeContext({ stoptimes: { stopTimes: [] } });
+    await provider.getDepartures!({ ...cornavin, origin: { placeId: "transitous/ch:1:sloid:87057" } }, {}, signal);
+    expect(urls[0].searchParams.get("stopId")).toBe("ch:1:sloid:87057");
+    expect(urls[0].searchParams.get("center")).toBe("46.21,6.14");
+    expect(urls[0].searchParams.get("radius")).toBe("250");
   });
 
   it("trace une ligne par une course qu'on vient d'y lire", async () => {

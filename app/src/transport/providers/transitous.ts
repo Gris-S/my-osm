@@ -289,13 +289,28 @@ export const createTransitousProvider: ProviderFactory = (context) => {
       const placeId = station.origin?.placeId ?? "";
       if (placeId.startsWith(TRANSITOUS_PLACE_PREFIX)) {
         url.searchParams.set("stopId", placeId.slice(TRANSITOUS_PLACE_PREFIX.length));
-      } else {
-        url.searchParams.set("center", `${station.lat},${station.lon}`);
-        const radius = isSingleStop(station.origin?.rawType)
-          ? TRANSITOUS_DEPARTURES.stopRadiusMeters
-          : TRANSITOUS_DEPARTURES.stationRadiusMeters;
-        url.searchParams.set("radius", String(radius));
       }
+      // **`center` et `radius` sont toujours envoyés, `stopId` ou non** —
+      // recommandation de l'équipe Transitous (septembre 2026) : sur les
+      // 60 requêtes/seconde qu'ils reçoivent sur `/stoptimes`, environ une par
+      // seconde échoue en 404 sur un identifiant d'arrêt devenu obsolète. Un
+      // identifiant change quand le réseau republie son GTFS ; nous gardons les
+      // nôtres **sept jours** sur l'appareil (`CACHE_POLICY.stopsTile`), donc
+      // nous sommes exactement dans le cas qu'ils décrivent.
+      //
+      // Mesuré sur l'API le 16 septembre 2026, avec un identifiant réaliste
+      // (préfixe de flux valide, identifiant interne mort) :
+      //   stopId seul                 → 404
+      //   stopId + center/radius      → 200, départs rendus
+      //   stopId valide + center      → 200, le stopId l'emporte
+      // Le serveur n'emploie donc `center` que si le `stopId` ne se résout pas :
+      // rien à perdre, une fiche vide à gagner. (Vérifié aussi sur `/v6`, qui
+      // rend exactement les mêmes champs — rien n'oblige à changer de version.)
+      url.searchParams.set("center", `${station.lat},${station.lon}`);
+      const radius = isSingleStop(station.origin?.rawType)
+        ? TRANSITOUS_DEPARTURES.stopRadiusMeters
+        : TRANSITOUS_DEPARTURES.stationRadiusMeters;
+      url.searchParams.set("radius", String(radius));
       url.searchParams.set("n", String(TRANSITOUS_DEPARTURES.perRequest));
 
       const load = () =>

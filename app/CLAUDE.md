@@ -1179,6 +1179,15 @@ rien — constaté en voulant analyser une navigation voiture « bizarre ».
 - **Il se relit par le câble** : `outils/journal.sh` (ou `outils/journal.sh
   vider`), qui interroge `window.__myosm.journal` par le débogage de la WebView.
   L'application doit être ouverte.
+- **Il est inerte dans la version à partager** (audit du 16 septembre 2026).
+  `window.__myosm` n'existe pas en release (`__DIAGNOSTICS__`) : le journal y
+  écrivait donc des relevés GPS — une trace des déplacements, résumée toutes les
+  cinq secondes — que **personne ne pouvait ni consulter ni effacer**, et qui
+  échappait au réglage de conservation de l'historique. `note()` rend la main
+  tout de suite quand `__DIAGNOSTICS__` est faux, et le premier lancement d'une
+  release efface ce qu'une version de travail aurait laissé. Ne pas le
+  rallumer en release sans lui donner d'abord un écran pour le lire et un bouton
+  pour l'effacer.
 
 ##### Le trafic sur le parcours (`car/carTraffic.ts`)
 
@@ -2461,11 +2470,32 @@ Pixel 8. Ce qui en est sorti, et les règles à tenir.
   échappées ; crédits de carte réduits à du texte et des liens `http(s)` ;
   seul `MainActivity` est exporté sans permission ; navigateur intégré sans
   pont Capacitor, sans accès aux fichiers ni contenu mixte.
+- **Les clés d'API ne partent plus dans la version à partager** (corrigé le
+  16 septembre 2026 ; c'était auparavant un risque accepté). Tout ce qui
+  s'appelle `VITE_*` est **compilé dans le programme** : un `unzip` de
+  `livrables/MY-OSM.apk` rendait en clair le jeton Mapillary, la clé TomTom et
+  la clé IDFM personnelles — dans la version précisément destinée au partage.
+  Deux protections, et il faut les deux :
+  - `apk/package.json` passe ces six variables **à vide** sur la ligne de
+    commande pour `apk:release` (une valeur du shell l'emporte sur `.env.local`,
+    vérifié) ;
+  - `vite.config.ts` **casse le build** si l'une d'elles arrive tout de même
+    renseignée, en la lisant par `loadEnv` — c'est-à-dire exactement comme Vite
+    la compilerait, là où `process.env` ne verrait pas `.env.local`.
+
+  L'APK de travail (`npm run apk`), lui, garde les clés : il ne se partage pas,
+  et les saisir à la main à chaque essai n'aurait aucun intérêt. **Ajouter une
+  septième clé, c'est l'ajouter à `API_KEY_VARS` et au script de release.**
+- **La version à partager se signe avec une vraie clé.** La clé de débogage
+  d'Android est publique et identique sur toutes les machines : un APK signé
+  avec elle peut être remplacé par une mise à jour que n'importe qui aura
+  forgée. `apk/android/app/build.gradle` lit donc `MYOSM_KEYSTORE` (et ses trois
+  mots de passe) dans l'environnement ou dans `~/.gradle/gradle.properties` ;
+  sans elle, il retombe sur la clé de débogage **en l'écrivant dans les
+  journaux de build**. Ne pas publier un APK construit sans `MYOSM_KEYSTORE`.
 - **Risques acceptés, en connaissance de cause** :
-  - **les clés d'API compilées dans l'APK** (`VITE_…`), release comprise —
-    demande explicite, à régler à la sortie officielle ; qui a l'APK a les clés ;
   - données en clair dans le stockage de l'application (clés saisies, Maison et
-    Travail, trajets, journal) : protégées par le cloisonnement d'Android et
+    Travail, trajets) : protégées par le cloisonnement d'Android et
     `allowBackup=false`, plus par le débogage désormais coupé en release ;
   - une page ouverte dans le navigateur intégré peut appeler `MyOsmWeb` et
     proposer un faux lieu — montré, nom et adresse, avant tout appui ;
@@ -2806,9 +2836,27 @@ soin au voile — il couvre tout, il n'y a pas de gestionnaire à poser sur le
 document, seulement l'écoute d'Échap de part et d'autre.
 
 `useGeolocation` est délibérément isolé derrière l'interface
-`{ position, loading, error, locate() }` pour être remplacé tel quel par
-`@capacitor/geolocation` lors du packaging APK (Phase 3) — préserver cette
-interface.
+`{ position, loading, error, locate() }` — **préserver cette interface**, c'est
+elle qui permettrait d'en changer l'implantation sans toucher au reste.
+
+**Il n'y a pas de greffon derrière, et c'est suffisant.** `@capacitor/geolocation`
+était installé, lié par Gradle et enregistré au manifeste des greffons **sans
+jamais être appelé** : les deux hooks (`useGeolocation`, `useNavPosition`)
+utilisent `navigator.geolocation`, et Capacitor intercepte la demande de la page
+(`BridgeWebChromeClient.onGeolocationPermissionsShowPrompt`, lu dans sa source)
+pour réclamer lui-même `ACCESS_FINE_LOCATION` et `ACCESS_COARSE_LOCATION` à
+l'exécution. La dépendance a donc été retirée le 16 septembre 2026, et
+`apk/README.md` corrigé — il affirmait le contraire depuis le début.
+
+Ce qui manque encore, et qu'un greffon apporterait : distinguer un refus
+ponctuel d'un « ne plus demander », et ouvrir les réglages d'Android pour le
+corriger. Le jour où l'on en aura besoin, c'est ici que le greffon se rebranche.
+
+**Rien ne se localise au lancement tant que l'autorisation n'est pas déjà
+accordée** (`App`) : appeler `locate()` d'emblée faisait surgir la boîte de
+dialogue d'Android avant que l'utilisateur ait vu la carte — le plus mauvais
+moment pour être refusé. L'état est lu par `navigator.permissions.query`, et un
+navigateur qui ne connaît pas cette API garde le comportement d'avant.
 
 ### Feuilles de style de l'interface (`src/styles/ui/`)
 
@@ -2884,6 +2932,20 @@ au-dessus et garde ses appuis.
   des boutons de la ligne voisine — un appui sur le bas d'un « ↑ » aurait
   déplacé l'étape d'en dessous (mesuré). Les agrandir vraiment demande des
   lignes plus hautes, donc un changement visible, à décider.
+- **Les boutons des dossiers de signets ont rejoint la règle** (audit du
+  16 septembre 2026), et leur cas montre pourquoi la règle du voisin n'est pas
+  une précaution théorique. Un premier correctif leur avait donné `inset: -8px`,
+  soit 44 × 44. Sondé sur le Pixel 8 (`elementFromPoint`, même méthode que les
+  croix), le résultat était **faux à droite** : c'est le bouton voisin qui
+  répondait. Mesure : les boutons d'un dossier — couleur, renommer, supprimer —
+  sont espacés de **4 px**, ce qui plafonne le débord à 2. À 8, « renommer »
+  volait les appuis destinés à « couleur ». D'où `inset: -8px -2px` : 44 px en
+  hauteur, 32 en largeur. **Une zone agrandie qui déclenche la mauvaise action
+  est pire que pas de zone du tout** — sonder après avoir élargi, toujours.
+- Les **pastilles de couleur** (`.bookmark-color`) ne gagnent que 20 → 26 px :
+  espacées de 6 px, elles plafonnent à 3 px de débord. Les agrandir vraiment
+  demanderait de les écarter, donc un changement visible, à décider — comme pour
+  les flèches d'étape.
 - La photo de rue et les transports ne se sondent pas par le câble : leurs
   débords sont calculés sur l'écart entre leurs boutons (8 et 4 px), sans avoir
   été mesurés.
@@ -2913,8 +2975,25 @@ au-dessus et garde ses appuis.
   nécessaire ; ne pas le retirer.
 - maplibre-gl v6 : `setLngLat()` doit précéder `addTo()` sur un `Marker`, sinon
   `_update()` lit une position indéfinie et lève.
-- TypeScript est strict côté hygiène (`noUnusedLocals`, `noUnusedParameters`,
-  `erasableSyntaxOnly`, `verbatimModuleSyntax`) : importer les types avec
+- **TypeScript est en mode `strict`** depuis le 16 septembre 2026, et il l'est
+  dans les deux projets (`tsconfig.app.json` et `tsconfig.node.json`). Il ne
+  l'était pas : le zéro `any` du projet donnait le change, mais `strictNullChecks`
+  étant éteint, `null` et `undefined` passaient partout sans un mot — dans un
+  code qui manipule en permanence des valeurs optionnelles (`region.area`,
+  `fix.heading`, `source?.url`). L'activer n'a **rien cassé** : zéro erreur sur
+  tout `src/`, ce qui en dit long sur le soin déjà apporté aux types. Ne pas le
+  désactiver pour faire passer un fichier.
+- S'y ajoute l'hygiène : `noUnusedLocals`, `noUnusedParameters`,
+  `erasableSyntaxOnly`, `verbatimModuleSyntax` — importer les types avec
   `import type`.
+- **Les méthodes récentes ne sont pas transpilées, seulement la syntaxe.**
+  `AbortSignal.any` demande une WebView 116 et `AbortSignal.timeout` une 103,
+  alors que l'application s'installe à partir d'Android 7 (`minSdkVersion 24`),
+  où la WebView peut être bien plus ancienne. Sur un tel appareil, le
+  téléchargement d'une zone levait un `TypeError` **dès la première tuile** — la
+  fonction centrale de l'application ne démarrait pas — et la couche transport
+  tombait de même. Les deux passent donc par `utils/signals.ts`, qui préfère
+  l'implantation native et retombe sur la sienne ; le repli est testé
+  (`tests/resume.test.ts`). Même prudence pour toute méthode d'après 2022.
 - L'attribution OpenStreetMap / OpenFreeMap affichée par MapLibre doit être
   conservée (licence ODbL), y compris dans une future version hors-ligne.

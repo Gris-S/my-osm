@@ -49,6 +49,17 @@ const fr = {
   "nav.errorService": "Service d'itinéraire indisponible ({status}).",
   "nav.errorPosition": "Position indisponible : la navigation a besoin de la géolocalisation.",
   "nav.errorDenied": "Géolocalisation refusée — autorisez-la pour être guidé.",
+  // Le calcul d'itinéraire est distant, y compris pour la voiture : hors ligne
+  // il n'y a rien à rendre, et le dire vaut mieux que de laisser remonter le
+  // « Failed to fetch » du navigateur.
+  "nav.errorOffline": "Le calcul d'itinéraire demande une connexion. Les cartes téléchargées restent consultables.",
+
+  // Ce que la navigation ne sait pas faire, dit dans les paramètres plutôt que
+  // découvert au volant. Sans service Android — écarté : il faudrait une
+  // notification permanente et la permission de position en arrière-plan — la
+  // WebView est bridée puis déchargée dès que l'écran s'éteint.
+  "settings.background.hint":
+    "La navigation s'arrête si l'écran s'éteint ou si vous passez à une autre application : gardez MY OSM au premier plan. L'écran est maintenu allumé pendant tout le trajet.",
 
   // Manœuvres. `{name}` est la voie où l'on arrive ; les variantes « …Named »
   // ne servent que lorsqu'elle en porte une.
@@ -357,6 +368,9 @@ const en: NavDict = {
   "nav.errorService": "Routing service unavailable ({status}).",
   "nav.errorPosition": "Position unavailable: navigation needs location services.",
   "nav.errorDenied": "Location denied — allow it to be guided.",
+  "nav.errorOffline": "Route calculation needs a connection. Downloaded maps stay available.",
+  "settings.background.hint":
+    "Navigation stops if the screen turns off or you switch to another app: keep MY OSM in the foreground. The screen is kept awake for the whole trip.",
 
   "step.depart": "Head in the indicated direction",
   "step.departNamed": "Head onto {name}",

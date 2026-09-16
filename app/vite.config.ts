@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // Relais vers le point d'authentification de Météo-France.
@@ -66,6 +66,48 @@ const PROXY = { ...METEOFRANCE_TOKEN_PROXY, ...TRAFFIC_PROXY }
  * (`transformRequest`) et les sert depuis le même OPFS, zone d'abord.
  */
 const FOR_APK = process.env.OSM_TARGET === 'apk'
+
+/**
+ * Les clés d'API, et le garde-fou qui les tient hors de la version à partager.
+ *
+ * Tout ce qui s'appelle `VITE_*` est **compilé dans le programme** : qui a
+ * l'APK a les clés, en clair, un `unzip` suffit. C'était le cas de
+ * `livrables/MY-OSM.apk` — jeton Mapillary, clé TomTom et clé IDFM
+ * personnelles, dans la version précisément destinée à être partagée.
+ *
+ * Deux protections, et il faut les deux : `apk/package.json` passe ces
+ * variables **à vide** sur la ligne de commande pour la release (une valeur du
+ * shell l'emporte sur `.env.local`, vérifié), et ce test **casse le build** si
+ * l'une d'elles arrive tout de même renseignée. La première est ce qui marche
+ * au quotidien ; la seconde est ce qui rattrapera l'oubli du jour où une
+ * sixième clé sera ajoutée.
+ *
+ * Les valeurs sont lues par `loadEnv`, c'est-à-dire exactement comme Vite les
+ * compilera — lire `process.env` ne verrait pas `.env.local`, et le garde-fou
+ * serait aveugle au seul cas qu'il doit attraper.
+ */
+const API_KEY_VARS = [
+  'VITE_TOMTOM_KEY',
+  'VITE_IDFM_API_KEY',
+  'VITE_MAPILLARY_TOKEN',
+  'VITE_METEOFRANCE_API_KEY',
+  'VITE_METEOFRANCE_CLIENT_ID',
+  'VITE_METEOFRANCE_CLIENT_SECRET',
+]
+
+const IS_RELEASE = process.env.MYOSM_DIAGNOSTICS === '0'
+
+if (IS_RELEASE) {
+  const env = loadEnv('production', fileURLToPath(new URL('.', import.meta.url)), 'VITE_')
+  const leaked = API_KEY_VARS.filter((name) => (env[name] ?? '').trim() !== '')
+  if (leaked.length > 0) {
+    throw new Error(
+      `Version à partager : ${leaked.join(', ')} serait compilée dans l'APK.\n` +
+        `Les clés d'API se saisissent dans l'application (Menu › API), jamais dans un livrable.\n` +
+        `Construire par « npm run apk:release », qui les passe à vide.`
+    )
+  }
+}
 
 /**
  * Version de l'application, affichée au bas du menu principal. **Une seule
@@ -160,6 +202,15 @@ export default defineConfig({
   // commun, que le worker importe : il n'y a pas de duplication, et le worker
   // reste un module — c'est ainsi que MapLibre l'instancie.
   build: {
+    // Le plus gros fragment est le **style sombre** (`styles/appleDark.ts`,
+    // 6 000 lignes engendrées) : un demi-mégaoctet brut, 149 ko compressés. Il
+    // est chargé au démarrage **volontairement** — le thème automatique le
+    // demande souvent dès l'ouverture, et le différer ferait passer la carte du
+    // clair au sombre sous les yeux. Le seuil d'avertissement est donc relevé à
+    // sa mesure : à 500 ko il se déclenchait à chaque build sans rien apprendre,
+    // et un avertissement qu'on ignore ne sert plus à rien le jour où un vrai
+    // fragment enfle.
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),

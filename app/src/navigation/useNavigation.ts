@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat, RouteResult } from "../types";
 import { getNavRoute, type NavRoute } from "./route";
-import { computeProgress, pathUpTo, rerouteRetryDelayMs, OFF_ROUTE_FIXES, OFF_ROUTE_METERS, type NavProgress } from "./progress";
+import { computeProgress, pathUpTo, rerouteRetryDelayMs, OFF_ROUTE_FIXES, OFF_ROUTE_METERS, REROUTE_MIN_GAP_MS, type NavProgress } from "./progress";
 import type { CarTraffic, TrafficSegment } from "./car/carTraffic";
 import { useNavPosition, type NavFix } from "./useNavPosition";
 import { useSimulatedPosition } from "./simulate";
@@ -303,6 +303,11 @@ export function useNavigation(): NavSession {
   // (`rerouteRetryDelayMs`).
   const rerouteFailuresRef = useRef(0);
   const rerouteRetryAtRef = useRef(0);
+  // Et l'instant avant lequel on ne recalcule pas **même quand tout marche** :
+  // `rerouteRetryAtRef` ne protège que de l'acharnement après un échec, rien
+  // n'empêchait d'enchaîner les recalculs qui aboutissent (voir
+  // `REROUTE_MIN_GAP_MS`).
+  const rerouteGapUntilRef = useRef(0);
 
   // Ce qui a été **réellement parcouru**, accumulé d'un itinéraire à l'autre.
   // Un recalcul remplace le trajet en cours : sans cette accumulation, le
@@ -438,6 +443,10 @@ export function useNavigation(): NavSession {
         indexRef.current = 0;
         offRouteRef.current = 0;
         rerouteFailuresRef.current = rerouteRetryAtRef.current = 0;
+        // Un recalcul qui aboutit ouvre un plancher avant le suivant. Le départ,
+        // lui, n'en ouvre aucun : s'écarter dès les premiers mètres doit se
+        // corriger tout de suite.
+        rerouteGapUntilRef.current = request.reroute ? Date.now() + REROUTE_MIN_GAP_MS : 0;
       })
       .catch((e) => {
         if (cancelled || controller.signal.aborted) return;
@@ -486,7 +495,11 @@ export function useNavigation(): NavSession {
     // les appels.
     if (next.offsetMeters > OFF_ROUTE_METERS) {
       offRouteRef.current += 1;
-      if (offRouteRef.current >= OFF_ROUTE_FIXES && !reroutingRef.current && Date.now() >= rerouteRetryAtRef.current) {
+      if (
+        offRouteRef.current >= OFF_ROUTE_FIXES &&
+        !reroutingRef.current &&
+        Date.now() >= Math.max(rerouteRetryAtRef.current, rerouteGapUntilRef.current)
+      ) {
         offRouteRef.current = 0;
         const remaining = targetsAhead(route, next, targetsRef.current);
         targetsRef.current = remaining;
