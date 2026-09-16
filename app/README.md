@@ -138,63 +138,54 @@ src/
 
 ## Icône
 
-Le pictogramme superpose les trois choses que fait ce logiciel, chacune
-empruntée au vocabulaire de ce dont elle vient :
+L'icône est **une image fournie**, `scripts/icon-source.png` (1024 px, coins
+transparents) : une maison posée sur une carte, marquée d'un repère de
+position. Elle a remplacé le 16 septembre 2026 un dessin vectoriel décrit dans
+ce même script, qui superposait une maison aux proportions du logo Home
+Assistant, une carte en aplats et le dard de Mapillary.
 
-- **une maison**, aux proportions du logo Home Assistant — l'autohébergement,
-  dit avec le signe que la communauté auto-hébergée emploie déjà ;
-- **une carte façon Plans** — parcs francs, eau soutenue, axe ocre, voies
-  blanches — mais **sans curseur de position** : l'icône montre un territoire,
-  pas un utilisateur ;
-- **le dard de Mapillary**, son tracé officiel repris tel quel, pour la photo
-  de rue.
+> Ce remplacement lève au passage une réserve qui pesait sur la diffusion : le
+> dard est une marque déposée de Mapillary, et l'ancien dessin en reprenait le
+> tracé officiel — acceptable pour un logiciel personnel, mais il aurait fallu
+> en dériver une forme propre avant de publier. La nouvelle image n'en contient
+> aucun.
 
-Deux détails de construction portent tout le sens du dessin. D'abord, la carte
-n'est pas posée derrière la maison, elle est **découpée par elle** : les tracés
-du fond débordent largement du cadre et c'est la silhouette qui les arrête. La
-carte est donc littéralement *dans* la maison — elle est hébergée ici, pas
-ailleurs. Ensuite, la flèche **sort de la maison** par la droite : la photo de
-rue déborde du cadre de la carte, elle emmène dehors. C'est pour lui laisser
-la place que la maison n'est pas centrée.
-
-Le trait ardoise qui cerne la maison n'est pas décoratif non plus : c'est lui
-qui tient la silhouette à 16 pixels, quand le détail intérieur se brouille.
-Même raison pour la réserve blanche de la flèche, obtenue en peignant son
-tracé deux fois — un contour blanc épais, puis le rouge par-dessus : la forme
-est ajourée, et sans cette réserve ses pleins se confondraient avec l'axe ocre
-et le toit qu'elle traverse.
-
-> Le dard est la marque déposée de Mapillary. L'usage est ici celui d'un
-> logiciel personnel ; une diffusion publique demanderait d'en dériver une
-> forme propre.
-
-Le dessin est décrit **une seule fois**, dans `scripts/build-icons.mjs`, et
-décliné en quatre fichiers de `public/` :
-
-| Fichier | Rôle | Découpe |
-| --- | --- | --- |
-| `favicon.svg` | onglet du navigateur, manifeste | carré arrondi |
-| `apple-touch-icon.png` (180 px) | écran d'accueil iOS | pleine bord — iOS applique son propre masque, de même rayon |
-| `icon-512.png` | manifeste, `purpose: any` | carré arrondi |
-| `icon-maskable-512.png` | manifeste, `purpose: maskable` | pleine bord, dessin réduit à 72 % |
-
-Les deux dernières lignes ne sont pas interchangeables. Sans icône *maskable*,
-le lanceur Android pose l'icône carrée dans une pastille blanche au lieu de la
-rogner à la forme du système ; et cette variante ne peut pas être le même
-dessin à la même échelle, parce que le dessin déborde largement de la zone sûre
-des 80 % — d'où la réduction, vérifiée au rendu.
-
-Pour retoucher : modifier la constante `C` (palette), `HOUSE` (silhouette) ou
-les gabarits `map` et `ARROW` du script, puis
+**Une seule commande produit tout**, et le lanceur Android n'est plus tenu à
+part :
 
 ```bash
 npm run build:icons
 ```
 
-Le script rastérise avec ImageMagick (délégué librsvg), seul prérequis, et
-réduit les PNG à une palette de 256 couleurs — le dessin est en aplats, l'écart
-mesuré est de 0,6 % pour un quart du poids. **Ne pas retoucher les PNG ni
-`public/favicon.svg` à la main** : ils sont écrasés à chaque exécution.
+| Fichier | Rôle | Traitement |
+| --- | --- | --- |
+| `public/favicon.png` (256 px) | onglet du navigateur, manifeste | couleurs pleines |
+| `public/apple-touch-icon.png` (180 px) | écran d'accueil iOS | aplati sur blanc — iOS refuse la transparence |
+| `public/icon-512.png` | manifeste `purpose: any`, logo du README | couleurs pleines |
+| `public/icon-maskable-512.png` | manifeste `purpose: maskable` | aplati, pleine bord |
+| `…/res/mipmap-*/ic_launcher*.png` | lanceur Android, 5 densités × 3 fichiers | palette de 255 couleurs |
+| `fastlane/…/images/icon.png` | fiche F-Droid | copie du 512 |
+
+Trois choses à connaître avant d'y revenir :
+
+- **Il n'y a plus de `favicon.svg`.** Une image matricielle n'a pas de forme
+  vectorielle ; `index.html` et le manifeste pointent un PNG. Le script
+  supprime l'ancien SVG s'il le trouve.
+- **La palette ne s'applique qu'aux petites.** Mesuré sur le 512 : elle divise
+  le poids par cinq pour 2,2 % d'écart quadratique, et agrandie trois fois elle
+  se voit — le ciel se marche en paliers, la route rose se mouchette. Le
+  lanceur dessine ses rasters de 48 à 192 px et jamais au-delà, où les deux
+  versions sont indiscernables ; les grandes, qu'on regarde en grand sur la
+  fiche F-Droid et le README, restent en couleurs pleines. Sans ce partage
+  l'ensemble pèserait 1,24 Mo au lieu de 807 ko.
+- **Sans icône *maskable*, le lanceur pose l'icône carrée dans une pastille
+  blanche** au lieu de la rogner à sa forme. Elle est donc pleine bord, comme
+  le premier plan adaptatif : le masque recoupe la bordure de carte, jamais le
+  sujet, qui est centré.
+
+**Ne retoucher aucun de ces fichiers à la main** : ils sont écrasés à chaque
+exécution. Seul prérequis, ImageMagick (« magick »), qui n'est pas une
+dépendance npm.
 
 ## Fonctionnalités V1
 

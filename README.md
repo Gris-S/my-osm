@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="app/public/icon-512.png" alt="" width="128" height="128">
+
 # MY OSM
 
 **A map that keeps your places to itself.**

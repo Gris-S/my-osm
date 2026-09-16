@@ -1,144 +1,80 @@
-// Génère les icônes de l'application depuis une source unique.
+// ---------------------------------------------------------------------------
+// Toutes les icônes de l'application, à partir d'une seule image.
 //
-//   node scripts/build-icons.mjs      (ou : npm run build:icons)
+// `npm run build:icons` réécrit le favicon, les icônes du manifeste web, celles
+// du lanceur Android et celle de la fiche F-Droid. **Ne retoucher aucun de ces
+// fichiers à la main** : la source unique est `scripts/icon-source.png`, et
+// tout le reste en découle.
 //
-// Le dessin est décrit **une seule fois** ci-dessous, puis décliné en quatre
-// fichiers de `public/`. Ne pas retoucher ces fichiers à la main — SVG compris,
-// ils sont écrasés à chaque exécution.
+// Le dessin précédent était décrit en SVG dans ce script — une maison, une
+// carte en aplats, le dard de Mapillary — et rastérisé par ImageMagick. Il a
+// été remplacé (demande explicite) par une image fournie. Deux conséquences
+// tiennent à ce changement de nature :
 //
-// La rastérisation passe par ImageMagick (délégué librsvg). C'est le seul
-// prérequis, et il n'est pas dans les dépendances npm : le script le dit
-// clairement s'il manque.
+// - **Plus de `favicon.svg`.** Une image matricielle n'a pas de forme
+//   vectorielle ; le navigateur reçoit désormais un PNG (`favicon.png`).
+// - **Plus de palette de 256 couleurs.** Elle rendait l'ancien dessin à
+//   l'identique pour un quart du poids, les aplats n'ayant pas de dégradés.
+//   Celle-ci en a : la réduire la ferait baguer.
+//
+// ImageMagick (« magick ») est requis, et n'est pas une dépendance npm.
+// ---------------------------------------------------------------------------
 
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { copyFileSync, existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const SCRIPTS_DIR = fileURLToPath(new URL('./', import.meta.url))
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url))
+const RACINE = fileURLToPath(new URL('../../', import.meta.url))
+const RES_DIR = join(RACINE, 'apk/android/app/src/main/res')
+const FASTLANE_ICON = join(RACINE, 'fastlane/metadata/android/en-US/images/icon.png')
 
-// Palette. Le fond reprend les couleurs de Plans (sable, parcs, eau, axes
-// ocre) plutôt que celles du style sombre : l'icône ne suit pas le thème.
-const C = {
-  land: '#f7f3ea', // terre
-  paper: '#f4f2ed', // fond hors de la maison, et fond du manifeste
-  park: '#7ed267', // espaces verts
-  parkDeep: '#5cbf46', // bosquets, pour que le vert ne soit pas un aplat
-  water: '#35a9ec', // eau
-  building: '#e6dcc9', // pâtés de maisons
-  casing: '#d6ccb8', // liseré des voies
-  road: '#ffffff', // chaussée
-  major: '#ffc93c', // axe majeur
-  majorCasing: '#e0a000',
-  edge: '#33373d', // trait de la maison
-  arrow: '#ff3b30', // flèche, au rouge du marqueur de l'application
-  ink: '#ffffff',
+const SOURCE = join(SCRIPTS_DIR, 'icon-source.png')
+
+/** Le fond des surfaces qui n'acceptent pas la transparence (iOS, lanceurs). */
+const FOND = '#FFFFFF'
+
+const magick = (args) => execFileSync('magick', args)
+
+/**
+ * Une icône carrée, à la taille voulue.
+ *
+ * `fond` aplatit sur du blanc : l'image a des coins transparents, et les écrans
+ * d'accueil d'iOS comme les gabarits du lanceur Android n'acceptent pas la
+ * transparence — ils la rendraient en noir.
+ */
+function carre(sortie, taille, { fond = false, palette = false } = {}) {
+  magick([
+    SOURCE,
+    '-resize', `${taille}x${taille}`,
+    ...(fond ? ['-background', FOND, '-flatten'] : ['-background', 'none']),
+    ...(palette ? ['-colors', '255'] : []),
+    '-strip', '-define', 'png:compression-level=9',
+    `${palette ? 'PNG8' : 'PNG32'}:${sortie}`,
+  ])
 }
 
-
-// La silhouette : proportions du logo Home Assistant — pignon large, corps
-// carré, bas arrondi. Elle **découpe** la carte, elle ne se pose pas dessus :
-// c'est ce qui dit que la carte est hébergée ici et pas ailleurs.
-const HOUSE =
-  'M30 5 L54 26.5 L54 50 A4.5 4.5 0 0 1 49.5 54.5 L10.5 54.5 A4.5 4.5 0 0 1 6 50 L6 26.5 Z'
-
-// Le fond, aux couleurs de Plans. Les tracés débordent largement du cadre :
-// c'est la découpe en maison qui les arrête, et non leurs extrémités.
-const map = (id) => `
-    <g clip-path="url(#h${id})">
-      <rect x="-2" y="-2" width="68" height="68" fill="${C.land}" />
-      <path d="M-2 6 C 14 2, 28 13, 26 29 C 24 45, 2 49, -2 44 Z" fill="${C.park}" />
-      <path d="M1 14 C 10 11, 18 17, 17 26 C 16 35, 5 38, -2 34 Z" fill="${C.parkDeep}" />
-      <path d="M30 -2 C 39 11, 52 15, 66 11 L66 -2 Z" fill="${C.park}" />
-      <path d="M-2 55 C 8 52, 16 57, 17 66 L-2 66 Z" fill="${C.park}" />
-      <path d="M66 20 C 48 27, 40 44, 39 66 L66 66 Z" fill="${C.water}" />
-      <g fill="${C.building}">
-        <rect x="28" y="9" width="10" height="8" rx="1" />
-        <rect x="27" y="43" width="9" height="9" rx="1" />
-      </g>
-      <g fill="none" stroke-linecap="round">
-        <path d="M22 -4 C 24 14, 23 34, 18 66" stroke="${C.casing}" stroke-width="8.5" />
-        <path d="M-4 62 C 12 57, 25 50, 36 38 C 46 27, 53 15, 58 -2"
-              stroke="${C.majorCasing}" stroke-width="9" />
-        <path d="M-4 26 C 12 31, 32 30, 66 19" stroke="${C.casing}" stroke-width="7" />
-        <path d="M22 -4 C 24 14, 23 34, 18 66" stroke="${C.road}" stroke-width="5.6" />
-        <path d="M-4 62 C 12 57, 25 50, 36 38 C 46 27, 53 15, 58 -2"
-              stroke="${C.major}" stroke-width="6.4" />
-        <path d="M-4 26 C 12 31, 32 30, 66 19" stroke="${C.road}" stroke-width="4.6" />
-      </g>
-    </g>`
-
-// La flèche est le **dard du logo Mapillary**, repris tel quel (tracé officiel,
-// repère 24 × 24) et pivoté pour pointer vers la gauche comme sur le croquis.
-// Elle est posée en travers de la maison et **en ressort** franchement à
-// droite : c'est ce débordement qui dit que la photo de rue sort du cadre de la
-// carte. Le tracé est peint deux fois — un contour blanc épais d'abord, le
-// rouge par-dessus — parce que la forme est ajourée : sans cette réserve, ses
-// pleins se confondraient avec l'axe ocre et le toit qu'elle traverse.
-const MAPILLARY = "M.362 11.812c-.564-.305-.46-1.099.25-1.302.602-.17 5.495-1.81 6.975-2.308a.897.897 0 0 0 .565-.558L10.528.671C10.75.02 11.555.017 11.884.65c.117.224 4.546 8.25 4.7 8.591.154.341.055.718-.295.935-.35.218-.918.544-1.117.667-.36.223-.704.068-.869-.277-.163-.346-1.427-2.577-1.942-3.525-.258-.472-1.033-.654-1.295.111-.187.553-.627 1.842-.857 2.514a.93.93 0 0 1-.567.564l-2.582.855c-.509.168-.756.948-.069 1.277.144.07 3.24 1.73 3.56 1.882.32.152.497.59.31.9-.255.425-.582.962-.7 1.138a.728.728 0 0 1-.948.224c-.34-.179-8.651-4.584-8.853-4.692zm22.528 11.91c-.334-.18-10.918-5.78-11.355-6.003-.436-.222-.542-.606-.308-1.021.118-.211.376-.633.586-.972.288-.467.709-.468.946-.33.238.138 3.598 1.906 3.816 2.025.512.284 1.27-.363.93-.93-.163-.27-1.579-2.853-2.03-3.705-.203-.387-.147-.736.31-.968a17.5 17.5 0 0 0 .98-.568c.357-.216.834-.052 1.028.27.193.325 5.926 10.887 6.109 11.215.362.651-.343 1.348-1.011.988"
-
-const ARROW = `
-    <g transform="translate(41 36) rotate(133) scale(1.55) translate(-12 -12)">
-      <path d="${MAPILLARY}" fill="${C.ink}" stroke="${C.ink}" stroke-width="2.4"
-            stroke-linejoin="round" />
-      <path d="${MAPILLARY}" fill="${C.arrow}" />
-    </g>`
-
-// Trois découpes, et une seule raison à chacune :
-//   - `rounded` : le carré arrondi du favicon et de l'icône `any`.
-//   - carré plein : iOS applique son propre masque, dont le rayon est celui
-//     que l'on utilise — le dessin y tient donc tel quel.
-//   - `safe` : Android rogne les icônes `maskable` à la forme du système. Le
-//     dessin déborde très largement de la zone sûre (les angles du corps sont
-//     à 36 unités du centre pour 25,6 permises) et doit donc être réduit.
-function svg({ rounded = false, safe = false } = {}) {
-  const id = rounded ? 'r' : safe ? 'm' : 's'
-  const clip = rounded
-    ? `<clipPath id="c${id}"><rect width="64" height="64" rx="14" /></clipPath>`
-    : ''
-  const open = rounded ? `<g clip-path="url(#c${id})">` : '<g>'
-  const scale = safe ? '<g transform="translate(32 32) scale(0.72) translate(-32 -32)">' : '<g>'
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="MY OSM">
-  <!-- Fichier généré par scripts/build-icons.mjs — ne pas modifier à la main. -->
-  <defs>
-    ${clip}
-    <clipPath id="h${id}"><path d="${HOUSE}" /></clipPath>
-  </defs>
-  ${open}
-    <rect x="-2" y="-2" width="68" height="68" fill="${C.paper}" />
-    ${scale}
-${map(id)}
-      <path d="${HOUSE}" fill="none" stroke="${C.edge}" stroke-width="4" stroke-linejoin="round" />
-${ARROW}
-    </g>
-  </g>
-</svg>
-`
-}
-
-function rasterize(source, output, size) {
-  const dir = mkdtempSync(join(tmpdir(), 'osm-local-icons-'))
-  const tmp = join(dir, 'icon.svg')
-  try {
-    writeFileSync(tmp, source)
-    execFileSync('magick', [
-      '-background', 'none',
-      `svg:${tmp}`,
-      '-resize', `${size}x${size}`,
-      // Les écrans d'accueil d'iOS et d'Android n'acceptent pas la
-      // transparence : on aplatit sur la couleur du fond.
-      '-background', C.paper, '-flatten',
-      // Le dessin est en aplats : une palette de 256 couleurs le rend à
-      // l'identique pour un quart du poids. Pas de tramage, qui ferait
-      // grossir le fichier sans rien apporter ici.
-      '-colors', '255', '-strip', '-define', 'png:compression-level=9',
-      `PNG8:${join(PUBLIC_DIR, output)}`,
-    ])
-    console.log(`  ${output} (${size}×${size})`)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+/**
+ * La variante ronde du lanceur : l'image recadrée dans un disque.
+ *
+ * Elle est **agrandie avant d'être découpée** (`-resize` à 100 % puis masque),
+ * l'image portant déjà ses propres coins arrondis : sans cela, le disque
+ * mordrait dans le vide laissé par ces coins.
+ */
+function rond(sortie, taille, { palette = false } = {}) {
+  magick([
+    SOURCE,
+    '-resize', `${taille}x${taille}`,
+    '-background', FOND, '-flatten',
+    ...(palette ? ['-colors', '255'] : []),
+    '(', '+clone', '-alpha', 'transparent', '-fill', 'white',
+    '-draw', `circle ${taille / 2 - 0.5},${taille / 2 - 0.5} ${taille / 2 - 0.5},0`, ')',
+    '-compose', 'copyopacity', '-composite',
+    '-strip', '-define', 'png:compression-level=9',
+    `PNG32:${sortie}`,
+  ])
 }
 
 try {
@@ -151,8 +87,63 @@ try {
   process.exit(1)
 }
 
-writeFileSync(join(PUBLIC_DIR, 'favicon.svg'), svg({ rounded: true }))
-console.log('  favicon.svg')
-rasterize(svg({ rounded: true }), 'icon-512.png', 512)
-rasterize(svg(), 'apple-touch-icon.png', 180)
-rasterize(svg({ safe: true }), 'icon-maskable-512.png', 512)
+if (!existsSync(SOURCE)) {
+  console.error(`Image source introuvable : ${SOURCE}`)
+  process.exit(1)
+}
+
+console.log('Web :')
+// Le navigateur : un PNG suffit, et de 256 px il reste net sur un onglet comme
+// dans les favoris.
+carre(join(PUBLIC_DIR, 'favicon.png'), 256)
+console.log('  favicon.png (256×256)')
+carre(join(PUBLIC_DIR, 'icon-512.png'), 512)
+console.log('  icon-512.png (512×512)')
+carre(join(PUBLIC_DIR, 'apple-touch-icon.png'), 180, { fond: true })
+console.log('  apple-touch-icon.png (180×180)')
+// « maskable » : le lanceur rogne à sa propre forme. L'image est donc posée
+// pleine bord et aplatie — ses coins arrondis seront recoupés par le masque,
+// et le sujet, centré, reste dans la zone sûre.
+carre(join(PUBLIC_DIR, 'icon-maskable-512.png'), 512, { fond: true })
+console.log('  icon-maskable-512.png (512×512)')
+
+// L'ancien favicon vectoriel n'a plus de source : on ne laisse pas traîner un
+// fichier que plus rien ne régénère.
+const ancienSvg = join(PUBLIC_DIR, 'favicon.svg')
+if (existsSync(ancienSvg)) {
+  rmSync(ancienSvg)
+  console.log('  favicon.svg retiré (plus de source vectorielle)')
+}
+
+console.log('Lanceur Android :')
+// Icône adaptative : le premier plan occupe 108 dp dont 18 de débord, le
+// système ne montrant que les 72 dp centraux. L'image étant elle-même une
+// icône complète, elle est posée pleine bord : le masque recoupe sa bordure de
+// carte, jamais son sujet.
+const DENSITES = [
+  ['mdpi', 48, 108],
+  ['hdpi', 72, 162],
+  ['xhdpi', 96, 216],
+  ['xxhdpi', 144, 324],
+  ['xxxhdpi', 192, 432],
+]
+//
+// Ces quinze fichiers sont **quantifiés** à 255 couleurs, contrairement aux
+// icônes web. Mesuré : sur le 512, la palette coûte 2,2 % d'écart quadratique
+// et divise le poids par cinq. Agrandi trois fois, l'écart se voit — le ciel
+// bleu se marche en paliers, la route rose se mouchette — mais ces rasters-là
+// ne sont **jamais** agrandis : le lanceur les dessine de 48 à 192 px, taille à
+// laquelle les deux versions sont indiscernables. Les grandes, elles, restent
+// en couleurs pleines : `icon-512.png` sert aussi de logo au README et de
+// vignette à la fiche F-Droid, où on la regarde en grand.
+for (const [densite, legacy, premierPlan] of DENSITES) {
+  const dossier = join(RES_DIR, `mipmap-${densite}`)
+  carre(join(dossier, 'ic_launcher_foreground.png'), premierPlan, { fond: true, palette: true })
+  carre(join(dossier, 'ic_launcher.png'), legacy, { palette: true })
+  rond(join(dossier, 'ic_launcher_round.png'), legacy, { palette: true })
+  console.log(`  ${densite} : ${legacy}×${legacy}, premier plan ${premierPlan}×${premierPlan}`)
+}
+
+console.log('F-Droid :')
+copyFileSync(join(PUBLIC_DIR, 'icon-512.png'), FASTLANE_ICON)
+console.log('  fastlane/…/images/icon.png (copie du 512)')

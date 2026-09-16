@@ -147,7 +147,7 @@ export default defineConfig({
         // rogner à la forme du système. Elle est pleine bord et le marqueur y
         // tient dans la zone sûre des 80 %.
         icons: [
-          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/favicon.png', sizes: '256x256', type: 'image/png', purpose: 'any' },
           { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },

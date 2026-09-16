@@ -2241,11 +2241,44 @@ palette : constante `C` dans `scripts/build-apple-dark-style.mjs`, puis
 
 ### Icônes de l'application
 
-`public/favicon.svg` et les trois PNG de `public/` sont **générés**, ne pas les
-éditer à la main : le dessin est décrit une seule fois dans
-`scripts/build-icons.mjs` (palette `C`, silhouette `HOUSE`, gabarits `map` et
-`ARROW`), puis `npm run build:icons` les réécrit tous les quatre. Le script
-rastérise avec ImageMagick (délégué librsvg), qui n'est pas une dépendance npm.
+**La source unique est `scripts/icon-source.png`**, une image fournie (demande
+explicite du 16 septembre 2026), et `npm run build:icons` en tire *tout* :
+le favicon, les icônes du manifeste web, les quinze fichiers du lanceur Android
+et celle de la fiche F-Droid. Ne retoucher aucun de ces fichiers à la main —
+le prochain passage du script les écraserait. ImageMagick (« magick ») est
+requis et n'est pas une dépendance npm.
+
+Le script couvre désormais le lanceur Android, que l'on éditait auparavant à
+part : c'est ce qui garantit qu'une seule image vaut pour l'onglet du
+navigateur comme pour l'écran d'accueil.
+
+Deux choses ont changé de nature avec l'image, et il faut les connaître avant
+d'y revenir :
+
+- **Il n'y a plus de `favicon.svg`.** Le dessin d'avant était décrit en SVG dans
+  ce même script — une maison aux proportions du logo Home Assistant, une carte
+  aux couleurs de Plans, le dard de Mapillary — et une image matricielle n'a pas
+  d'équivalent vectoriel. `index.html` pointe donc un PNG de 256 px, et le
+  manifeste aussi. Le script supprime l'ancien SVG s'il le trouve : un fichier
+  que plus rien ne régénère n'a pas à traîner.
+- **La palette de 256 couleurs ne s'applique plus qu'aux petites.** Elle rendait
+  les aplats d'avant à l'identique ; cette image-ci a des dégradés. Mesuré sur
+  le 512 : la quantification divise le poids par cinq pour 2,2 % d'écart
+  quadratique, et agrandie trois fois elle se voit — le ciel se marche en
+  paliers, la route rose se mouchette, le bord du pont se déchire. D'où un
+  partage : **couleurs pleines** pour ce qu'on regarde en grand (favicon,
+  `icon-512`, `maskable`, et la copie F-Droid qui sert aussi de logo au README),
+  **palette** pour les quinze rasters du lanceur Android, que le système dessine
+  de 48 à 192 px et jamais au-delà — à cette taille, les deux sont
+  indiscernables. Sans ce partage, les icônes pesaient 1,24 Mo à elles seules.
+
+Le reste tient à la transparence : l'image a de **vrais coins transparents**.
+Elle est donc aplatie sur du blanc partout où la transparence n'est pas admise
+— écran d'accueil iOS, gabarits du lanceur — et gardée telle quelle pour
+l'icône héritée d'Android, dont les coins arrondis sont bienvenus. La variante
+`maskable` et le premier plan adaptatif sont posés **pleine bord** : le
+lanceur rogne à sa propre forme, et comme le sujet est centré, il ne recoupe
+que la bordure de carte.
 
 Le dessin superpose une **maison** aux proportions du logo Home Assistant
 (l'autohébergement), une **carte aux couleurs de Plans** et le **dard de
