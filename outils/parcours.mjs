@@ -498,6 +498,33 @@ const SCENARIOS = [
       if (!(await attendre(".itinerary-result", 25_000))) return verifier("un itinéraire à pied est calculé", false);
       await cliquer(".nav-start");
       verifier("le bandeau de manœuvre apparaît", await attendre(".nav-banner, .nav-maneuver, [class*=nav-step]", 30_000));
+
+      // La géométrie du bandeau, et pas seulement sa présence.
+      //
+      // La pastille de manœuvre doit épouser le bord gauche du bandeau et en
+      // toucher le haut — c'est ce qui lui donne sa surface — **sans** que le
+      // bandeau grandisse : le placement de la manœuvre à l'écran est réglé
+      // contre une hauteur d'environ 148 px, et tout ce qui la dépasse fait
+      // glisser la manœuvre sous le bandeau. Une hauteur minimale sur la
+      // pastille avait failli le faire, à deux pixels près, et rien ne l'aurait
+      // dit.
+      const geometrie = await js(`(()=>{
+        const b=document.querySelector('.nav-banner');
+        const p=document.querySelector('.nav-maneuver-icon');
+        if(!b||!p)return null;
+        const rb=b.getBoundingClientRect(), rp=p.getBoundingClientRect();
+        return {hauteur:Math.round(rb.height),
+                ecartGauche:Math.round(rp.left-rb.left),
+                ecartHaut:Math.round(rp.top-rb.top),
+                largeur:Math.round(rp.width)}})()`);
+      if (geometrie === null) {
+        verifier("la pastille de manœuvre est mesurable", false);
+      } else {
+        verifier("la pastille épouse le bord gauche", Math.abs(geometrie.ecartGauche) <= 1, `${geometrie.ecartGauche} px`);
+        verifier("elle touche le haut du bandeau", Math.abs(geometrie.ecartHaut) <= 1, `${geometrie.ecartHaut} px`);
+        verifier("elle est large", geometrie.largeur >= 70, `${geometrie.largeur} px`);
+        verifier("le bandeau n'a pas grandi", geometrie.hauteur <= 170, `${geometrie.hauteur} px, réglage prévu pour ~148`);
+      }
       capture("08-navigation");
       await js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/Terminer|End/i.test(x.innerText||''));if(b)b.click();return true})()");
       await dodo(2000);
