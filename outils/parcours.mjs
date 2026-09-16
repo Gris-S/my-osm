@@ -1208,8 +1208,13 @@ const SCENARIOS = [
 
       const auPremierPlan = () => {
         const sortie = adb("shell", "dumpsys", "activity", "activities");
-        const ligne = /topResumedActivity[^\n]*\{[^}]*\s(\S+)\/(\S+)\}/.exec(sortie);
-        return ligne ? ligne[1] : "?";
+        // La ligne se lit « topResumedActivity=ActivityRecord{… u0
+        // org.osmlocal.plans/.MainActivity t4292} » : l'activité n'est **pas**
+        // collée à l'accolade fermante. Exiger qu'elle le soit ne trouvait rien,
+        // les deux relevés valaient « ? », et la vérification échouait sur une
+        // mesure qui n'avait tout simplement pas eu lieu.
+        const trouve = /topResumedActivity=\S*\{[^}]*?\s([A-Za-z0-9_.]+)\/[^\s}]+/.exec(sortie);
+        return trouve ? trouve[1] : "?";
       };
       const avant = auPremierPlan();
       await cliquer(".music-art");
