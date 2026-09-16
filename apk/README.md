@@ -11,10 +11,27 @@ jour.
 ```bash
 source ~/.local/share/android-env.sh   # JDK + SDK, installés sans droits root
 npm run apk                            # reconstruit le web, puis l'APK
-npm run install                        # pose l'APK sur un appareil branché
+npm run install-apk                    # pose l'APK sur un appareil branché
+
+npm run apk:nokeys                     # APK débogable, mais SANS AUCUNE CLÉ
+npm run install-apk:nokeys             # → livrables/MY-OSM-sans-cles.apk
 ```
 
 L'APK sort dans `android/app/build/outputs/apk/debug/app-debug.apk`, et `npm run apk` le recopie dans `../livrables/MY-OSM-debug.apk` — c'est ce fichier-là qu'on installe.
+
+**`apk:nokeys` existe pour une raison précise.** La version *release* n'est pas
+débogable — c'est voulu — donc rien ne peut la piloter : ni `outils/journal.sh`,
+ni `outils/parcours.sh`. Or c'est justement la configuration que recevront les
+utilisateurs de F-Droid : **aucune clé d'API**. Sans cette troisième variante,
+elle ne serait jamais essayée autrement qu'à la main. `apk:nokeys` construit
+donc un APK **débogable et sans clés** : la configuration de F-Droid, pilotable.
+
+**Attention au nom des scripts npm.** `install` était un nom réservé : npm
+l'exécute tout seul comme étape de `npm install` et de `npm ci`. `npm ci` dans
+ce dossier lançait donc `adb install` et échouait sur toute machine sans
+téléphone — le serveur de build de F-Droid compris. Renommé en `install-apk` le
+16 septembre 2026. Les noms à ne jamais employer : `preinstall`, `install`,
+`postinstall`, `prepare`, `prepublish`, `prepack`, `postpack`.
 
 ## La chaîne d'outils
 

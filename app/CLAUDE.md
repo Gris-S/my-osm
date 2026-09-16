@@ -27,6 +27,32 @@ Node, sans navigateur — `tests/setup.ts` fournit le minimum que la langue et
 les réglages lisent au chargement. Une règle qui mérite un test gagne à être
 sortie d'un hook en fonction pure, comme le contresens.
 
+**Ces tests ne disent rien de ce que l'application fait**, et il faut le garder
+en tête : ils portent sur des calculs, jamais sur un écran. L'écart entre la
+durée annoncée par le panneau d'itinéraire et celle de l'écran de choix a vécu
+des mois sans être vu alors que les 132 tests passaient — les deux nombres
+étaient justes, chacun de son côté. Ce qui manquait était de les regarder
+**ensemble**.
+
+D'où **`outils/parcours.sh`** : un parcours qui pilote l'application sur un
+téléphone branché, par le débogage de la WebView, et qui **affirme** au lieu de
+capturer en espérant qu'on regarde. Un scénario = des gestes (clic sur un
+sélecteur, saisie, position simulée, mode avion) et des vérifications ; en
+sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
+
+- `outils/parcours.sh` tout, `outils/parcours.sh coherence` un scénario,
+  `--liste` pour les connaître.
+- **L'APK doit être débogable** : la release ne l'est pas. Pour essayer la
+  configuration de F-Droid — sans aucune clé — passer par
+  `cd apk && npm run apk:nokeys`.
+- Le parcours **rend l'appareil à son état** en terminant : réglages, mode
+  avion, position simulée effacée par le rechargement. Tout nouveau scénario
+  doit respecter cette règle.
+- Le scénario `coherence` garde précisément le défaut d'origine : il compare la
+  durée du panneau à celle de la bulle et échoue si elles s'écartent de plus
+  d'une minute. **Un défaut trouvé sur l'appareil gagne son scénario**, comme un
+  calcul qui casse gagne son test.
+
 **Git** : le projet est un dépôt git à la racine (`MY OSM/`) depuis le
 14 septembre 2026. Les sauvegardes de `outils/save.sh` restent possibles mais
 ne sont plus l'historique ; `saves/`, `livrables/`, les dépendances, les builds

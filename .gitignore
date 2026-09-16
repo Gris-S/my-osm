@@ -29,3 +29,7 @@ apk/android/capacitor-cordova-android-plugins/
 
 # Captures de référence prises sur l'appareil (position visible) : locales seulement.
 docs/reference-*/
+
+# Rapports et captures du parcours de vérification (outils/parcours.sh) : ils
+# décrivent un appareil et un instant, pas le projet.
+parcours/

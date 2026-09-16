@@ -1,0 +1,60 @@
+A map that keeps your places to itself.
+
+MY OSM shows shops and their opening hours, live public transport departures,
+step-by-step navigation and offline maps — built on OpenStreetMap, with no
+account, no tracking, and nothing sent to Google.
+
+FIND PLACES
+Shops, cafés, pharmacies, transport and more, sorted into 16 categories you can
+switch on and off. Opening hours tell you whether a place is open right now, not
+just what its hours are. When OpenStreetMap does not know a place, a built-in
+browser searches the web and brings the location back to the map — without ever
+querying Google.
+
+GET THERE
+Walking, driving and public transport, plus a running mode with its own pace
+chart. Driving navigation shows live traffic on your route, speed limits, lane
+guidance and speed-camera warnings, and it can control whatever music you are
+playing. Walks and runs are kept on the device, with their track and elevation
+profile, for as long as you choose — or not at all.
+
+RIDE
+Live departures worldwide through Transitous, and in the Paris region through
+Île-de-France Mobilités. Each departure says whether it is measured or merely
+timetabled. Journeys are followed step by step: where to board, which direction,
+where to get off, which station exit to take.
+
+GO OFFLINE
+Download a country, a region or a department: map tiles, place details, the
+search index and street addresses are stored inside the app, where the system
+cannot clear them. Browsing, search and place details then work with no
+connection at all.
+
+One honest limit: route calculation still needs a connection. There is no
+routing engine on the device, and the app says so plainly instead of failing
+silently.
+
+AND THE REST
+Weather, air quality, pollen and official French weather warnings. Street-level
+photos from Mapillary. Saved places in colour-coded folders. Home and work as
+one-tap destinations. Light and dark themes, the dark one following the phone's
+ambient light sensor. French and English.
+
+PRIVACY
+No Firebase, no Analytics, no Play Services, no Google Maps. Android's cloud
+backup and device-to-device transfer are disabled for this app, and the
+WebView's own telemetry and Safe Browsing are turned off. The built-in browser
+blocks every Google host outright. There is no account to create and no server
+to leave to: saved places, home and work addresses, trip history and downloaded
+maps stay on the device.
+
+Some extras can use free API keys (Île-de-France Mobilités, TomTom, Mapillary,
+Météo-France). They are entered in the app, stored on the device, and are never
+compiled into a published build. Without them the app still works — public
+transport falls back to Transitous everywhere, and each extra simply says what
+it is missing.
+
+This is alpha software: it works, it is used daily, and it still changes.
+
+Free software under the GNU General Public License v3.0 or later.
+Map data © OpenStreetMap contributors, ODbL.

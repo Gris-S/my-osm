@@ -1,0 +1,8 @@
+Car navigation announces the same travel time before and at departure: the
+itinerary panel now uses the engine that knows live traffic, and draws its
+route. The choice bubble says what the traffic costs.
+
+Offline: an area interrupted by a crash can be resumed instead of deleted, and
+the map now says when you are offline or outside a downloaded area.
+
+Privacy: API keys are no longer compiled into shared builds.
