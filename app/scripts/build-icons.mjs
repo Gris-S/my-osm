@@ -36,6 +36,19 @@ const SOURCE = join(SCRIPTS_DIR, 'icon-source.png')
 /** Le fond des surfaces qui n'acceptent pas la transparence (iOS, lanceurs). */
 const FOND = '#FFFFFF'
 
+/**
+ * Part du gabarit qu'occupe l'image là où le système découpe lui-même.
+ *
+ * Choix explicite du 16 septembre 2026, entre deux extrêmes regardés côte à
+ * côte. **Pleine bord**, la maison était au plus grand mais le cercle du
+ * lanceur mangeait presque toute la carte — il n'en restait que des éclats, et
+ * la pointe du toit frôlait la coupe. **Repliée dans la zone sûre** (66,7 %),
+ * l'illustration survivait entière mais petite, cernée de blanc. À 85 %, la
+ * maison reste grande et un anneau de carte survit : la découpe mord dans la
+ * carte, pas dans le sujet.
+ */
+const ZONE_SURE = 0.85
+
 const magick = (args) => execFileSync('magick', args)
 
 /**
@@ -45,11 +58,19 @@ const magick = (args) => execFileSync('magick', args)
  * d'accueil d'iOS comme les gabarits du lanceur Android n'acceptent pas la
  * transparence — ils la rendraient en noir.
  */
-function carre(sortie, taille, { fond = false, palette = false } = {}) {
+function carre(sortie, taille, { fond = false, palette = false, echelle = 1 } = {}) {
+  // À échelle réduite, l'image est posée au centre d'un gabarit blanc : c'est
+  // ce qui laisse au découpage du système de quoi mordre sans atteindre le
+  // sujet. À pleine échelle, le comportement d'avant.
+  const interne = Math.round(taille * echelle)
   magick([
     SOURCE,
-    '-resize', `${taille}x${taille}`,
-    ...(fond ? ['-background', FOND, '-flatten'] : ['-background', 'none']),
+    '-resize', `${interne}x${interne}`,
+    ...(echelle < 1
+      ? ['-background', FOND, '-gravity', 'center', '-extent', `${taille}x${taille}`]
+      : fond
+        ? ['-background', FOND, '-flatten']
+        : ['-background', 'none']),
     ...(palette ? ['-colors', '255'] : []),
     '-strip', '-define', 'png:compression-level=9',
     `${palette ? 'PNG8' : 'PNG32'}:${sortie}`,
@@ -104,7 +125,7 @@ console.log('  apple-touch-icon.png (180×180)')
 // « maskable » : le lanceur rogne à sa propre forme. L'image est donc posée
 // pleine bord et aplatie — ses coins arrondis seront recoupés par le masque,
 // et le sujet, centré, reste dans la zone sûre.
-carre(join(PUBLIC_DIR, 'icon-maskable-512.png'), 512, { fond: true })
+carre(join(PUBLIC_DIR, 'icon-maskable-512.png'), 512, { fond: true, echelle: ZONE_SURE })
 console.log('  icon-maskable-512.png (512×512)')
 
 // L'ancien favicon vectoriel n'a plus de source : on ne laisse pas traîner un
@@ -138,7 +159,11 @@ const DENSITES = [
 // vignette à la fiche F-Droid, où on la regarde en grand.
 for (const [densite, legacy, premierPlan] of DENSITES) {
   const dossier = join(RES_DIR, `mipmap-${densite}`)
-  carre(join(dossier, 'ic_launcher_foreground.png'), premierPlan, { fond: true, palette: true })
+  carre(join(dossier, 'ic_launcher_foreground.png'), premierPlan, {
+    fond: true,
+    palette: true,
+    echelle: ZONE_SURE,
+  })
   carre(join(dossier, 'ic_launcher.png'), legacy, { palette: true })
   rond(join(dossier, 'ic_launcher_round.png'), legacy, { palette: true })
   console.log(`  ${densite} : ${legacy}×${legacy}, premier plan ${premierPlan}×${premierPlan}`)

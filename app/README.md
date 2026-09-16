@@ -179,9 +179,11 @@ Trois choses à connaître avant d'y revenir :
   fiche F-Droid et le README, restent en couleurs pleines. Sans ce partage
   l'ensemble pèserait 1,24 Mo au lieu de 807 ko.
 - **Sans icône *maskable*, le lanceur pose l'icône carrée dans une pastille
-  blanche** au lieu de la rogner à sa forme. Elle est donc pleine bord, comme
-  le premier plan adaptatif : le masque recoupe la bordure de carte, jamais le
-  sujet, qui est centré.
+  blanche** au lieu de la rogner à sa forme. Elle occupe donc 85 % du gabarit
+  (`ZONE_SURE`), comme le premier plan adaptatif : à cette échelle la découpe
+  du système mord dans la carte et pas dans le sujet. Pleine bord, il ne
+  restait de la carte que des éclats ; replié à 66,7 %, tout survivait mais
+  petit et cerné de blanc.
 
 **Ne retoucher aucun de ces fichiers à la main** : ils sont écrasés à chaque
 exécution. Seul prérequis, ImageMagick (« magick »), qui n'est pas une

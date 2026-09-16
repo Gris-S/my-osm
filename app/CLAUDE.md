@@ -2276,9 +2276,15 @@ Le reste tient à la transparence : l'image a de **vrais coins transparents**.
 Elle est donc aplatie sur du blanc partout où la transparence n'est pas admise
 — écran d'accueil iOS, gabarits du lanceur — et gardée telle quelle pour
 l'icône héritée d'Android, dont les coins arrondis sont bienvenus. La variante
-`maskable` et le premier plan adaptatif sont posés **pleine bord** : le
-lanceur rogne à sa propre forme, et comme le sujet est centré, il ne recoupe
-que la bordure de carte.
+`maskable` et le premier plan adaptatif occupent **85 % du gabarit**
+(`ZONE_SURE`), centrés sur du blanc. Ce chiffre a été choisi en regardant les
+deux extrêmes côte à côte : pleine bord, le cercle du lanceur ne laissait de la
+carte que des éclats et frôlait la pointe du toit ; replié dans la zone sûre des
+66,7 %, tout survivait mais petit et cerné de blanc. À 85 %, la découpe mord
+dans la carte et pas dans le sujet. **Ne pas remettre ces deux-là pleine bord**
+sans refaire la comparaison. Les deux icônes héritées, elles, ne changent pas :
+le carré garde ses propres coins arrondis, et la ronde taille son cercle dans
+l'image entière — l'y replier ajouterait la marge blanche qu'on a écartée.
 
 Le dessin superpose une **maison** aux proportions du logo Home Assistant
 (l'autohébergement), une **carte aux couleurs de Plans** et le **dard de
