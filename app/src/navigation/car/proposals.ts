@@ -1,4 +1,5 @@
 import type { LonLat } from "../../types";
+import { cachedCarRoutes, ETA_ALTERNATIVES } from "./carEta";
 import { getCarRoutes, hasLiveEngine, type CarRoute } from "./carRoute";
 import { priceRoute, type TollCost } from "./tolls";
 
@@ -54,7 +55,7 @@ export interface CarProposal {
  * meilleur, et chacune coûte son poids dans la réponse pour une chance
  * décroissante d'être moins chère.
  */
-const ALTERNATIVES = 3;
+const ALTERNATIVES = ETA_ALTERNATIVES;
 
 /**
  * Écart minimal, en centimes, pour qu'un itinéraire mérite d'être appelé
@@ -78,7 +79,10 @@ export async function getCarProposals(
   // Les deux appels partent ensemble : ils ne dépendent pas l'un de l'autre, et
   // l'écran de choix n'a rien à montrer tant que les deux ne sont pas là.
   const [tolled, untolled] = await Promise.all([
-    getCarRoutes(points, { alternatives: ALTERNATIVES, signal }),
+    // **Le même appel que le panneau d'itinéraire vient de faire** : il est donc
+    // le plus souvent déjà là, et le départ ne le repaie pas (`carEta.ts`).
+    // Sans signal, à dessein — le travail est partagé entre les deux écrans.
+    cachedCarRoutes(points, { alternatives: ALTERNATIVES }),
     getCarRoutes(points, { avoidTolls: true, signal }).catch(() => {
       // Il n'existe pas toujours de chemin sans péage — une vallée alpine, un
       // tunnel obligatoire. C'est une proposition en moins, pas un échec.

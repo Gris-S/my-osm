@@ -400,6 +400,7 @@ export const en: Dict = {
   "itinerary.stepsFull": "Limit of {count} stops reached",
   "itinerary.needOrigin": "Pick a starting point, or turn on location.",
   "itinerary.computing": "Working out the route…",
+  "itinerary.trafficDelay": "including {minutes} min of traffic",
   "itinerary.noTransit": "No public transport route for this trip.",
   "itinerary.noTransitSteps": "No public transport route serving every stop.",
   "itinerary.transitNote": "{source} timetables, from the time of the request.",

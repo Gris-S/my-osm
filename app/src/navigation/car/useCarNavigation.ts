@@ -17,7 +17,7 @@ import { offlineTileStats } from "../../services/offline/nativeTiles";
 import { NO_STREAK, nextWrongWay } from "./heading";
 import { playRadarChime, radarAhead, radarsAlong, releaseRadarSound, type RouteRadar } from "./radars";
 import { ARROW_BACKTRACK_METERS, CAMERA_DEAD_ZONE, NAV_PITCH, ZOOM_DEFAULT, paddingTop, zoomFor } from "./carCamera";
-import { durationLabel, tollLabel } from "./carLabels";
+import { choiceDetail, durationLabel } from "./carLabels";
 import { HEADING_MAX_AGE_MS, HEADING_MIN_SPEED, useTravelHeading } from "./useTravelHeading";
 import { useSpeedState, type SpeedState } from "./useSpeedState";
 import { useLatest } from "../../hooks/useLatest";
@@ -729,7 +729,7 @@ export function useCarNavigation(): CarNavSession {
       traffic: trafficSegments(proposal.route),
       at: anchors[index],
       title: durationLabel(proposal.route.durationSeconds),
-      detail: tollLabel(proposal.toll),
+      detail: choiceDetail(proposal.toll, proposal.route.trafficDelaySeconds),
       active: proposal.id === front,
       // Le premier contact met la proposition en avant, le second la retient :
       // au doigt, il n'y a pas de survol, et partir sur un itinéraire qu'on

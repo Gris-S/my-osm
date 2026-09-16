@@ -28,7 +28,7 @@ import { reverseGeocode } from "./services/geocode";
 // Navigation guidée pas à pas — voir `src/navigation/README.md`. Tout tient
 // dans ce dossier ; l'application ne fait que l'appeler, lui donner un parcours
 // et passer deux valeurs à la carte.
-import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarNavigation, useNavigation, RunButton, RunPanel, useNavDockClearance, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
+import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarEta, useCarNavigation, useNavigation, RunButton, RunPanel, useNavDockClearance, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
 import { CONFIG } from "./config";
 import type { LonLat, Place, RouteStop } from "./types";
 import "./App.css";
@@ -138,6 +138,18 @@ export default function App() {
     handleRemoveStop,
     handleMoveStop,
   } = useItinerary(geolocation.position, geolocation.locate);
+
+  // La durée annoncée **avant** de partir vient du même moteur que celle
+  // annoncée **au** départ, dès qu'une clé TomTom permet de connaître le
+  // trafic : le panneau promettait 10 min là où l'écran de choix en annonçait
+  // 24, pour le même trajet à la même seconde (mesuré sur un Louvre → Bastille
+  // de 2,8 km — les deux moteurs s'accordent sur la route vide, tout l'écart
+  // était la circulation).
+  //
+  // Le calcul n'est pas ajouté, il est **avancé** : le départ réutilise ce
+  // résultat par le cache de `navigation/car/carEta.ts`, et coûte donc toujours
+  // ses trois appels.
+  const carEta = useCarEta(routePoints, itineraryOpen && routeMode === "driving" && !carNav.active);
 
   const detailsRef = useRef(details);
   detailsRef.current = details;
@@ -517,7 +529,12 @@ export default function App() {
         // retomber sur l'itinéraire du panneau — calculé par OSRM, pas par
         // TomTom — superposait deux parcours différents du même bleu, qui
         // semblaient n'en faire qu'un, fourchu (constaté sur une capture).
-        route={navigation.mapRoute ?? carNav.mapRoute ?? (carNav.active ? null : route)}
+        // Et, en voiture, c'est **le tracé de TomTom** qui est dessiné dès
+        // qu'on l'a : sur le même Louvre → Bastille, OSRM proposait 3,87 km
+        // quand TomTom en prenait 2,76 — deux routes différentes, pas deux
+        // estimations de la même. Montrer l'une en annonçant la durée de
+        // l'autre était l'incohérence la plus gênante des deux.
+        route={navigation.mapRoute ?? carNav.mapRoute ?? (carNav.active ? null : (carEta?.result ?? route))}
         navigation={navigation.map ?? carNav.map ?? transitNav.map ?? run.map}
         onNavigationPan={carNav.active ? carNav.notifyPan : run.active ? run.notifyPan : navigation.notifyPan}
         theme={theme}
@@ -654,6 +671,13 @@ export default function App() {
           onRemoveStop={handleRemoveStop}
           onMoveStop={handleMoveStop}
           route={route}
+          liveEta={
+            carEta && {
+              durationSeconds: carEta.durationSeconds,
+              distanceMeters: carEta.distanceMeters,
+              trafficDelaySeconds: carEta.trafficDelaySeconds,
+            }
+          }
           journeys={journeys}
           journeyIndex={journeyIndex}
           onSelectJourney={setJourneyIndex}

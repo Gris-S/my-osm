@@ -458,6 +458,17 @@ interface ItineraryPanelProps {
   onRemoveStop: (index: number) => void;
   onMoveStop: (index: number, delta: -1 | 1) => void;
   route: RouteResult | null;
+  /**
+   * Le même trajet, vu par le moteur qui connaît la **circulation en cours**,
+   * quand une clé TomTom permet de le savoir (voir `src/navigation/`). Il
+   * remplace alors la durée d'OSRM, qui l'ignore : c'est exactement le chiffre
+   * que l'écran de choix annoncera au départ, et promettre 10 min pour en
+   * annoncer 24 une seconde plus tard n'était pas défendable.
+   *
+   * Des données nues, et non un objet du module de navigation : le panneau ne
+   * doit pas en dépendre pour rester compilable si le dossier disparaît.
+   */
+  liveEta?: { durationSeconds: number; distanceMeters: number; trafficDelaySeconds: number | null } | null;
   /** Trajets en transports proposés ; `null` tant qu'aucun calcul n'a abouti. */
   journeys: TransitJourney[] | null;
   journeyIndex: number;
@@ -491,6 +502,7 @@ export function ItineraryPanel({
   onRemoveStop,
   onMoveStop,
   route,
+  liveEta,
   journeys,
   journeyIndex,
   onSelectJourney,
@@ -697,9 +709,24 @@ export function ItineraryPanel({
 
       {ready && route && !loading && mode !== "transit" && (
         <div className="itinerary-result">
-          <span className="itinerary-duration">{formatDuration(route.durationSeconds)}</span>
-          {route.distanceMeters !== null && (
+          {/* La durée du moteur qui connaît le trafic l'emporte dès qu'on l'a ;
+              OSRM reste l'affichage instantané et le repli sans clé. */}
+          <span className="itinerary-duration">
+            {formatDuration(liveEta?.durationSeconds ?? route.durationSeconds)}
+          </span>
+          {liveEta ? (
+            <span className="itinerary-distance">{formatDistance(liveEta.distanceMeters)}</span>
+          ) : route.distanceMeters !== null ? (
             <span className="itinerary-distance">{formatDistance(route.distanceMeters)}</span>
+          ) : null}
+          {/* Ce que le trafic coûte, dit une fois : sans cette ligne la durée
+              paraît exagérée à qui la compare à une estimation sur route vide.
+              En deçà d'une minute, on se tait — c'est sous la précision d'une
+              prévision de circulation. */}
+          {liveEta && liveEta.trafficDelaySeconds !== null && liveEta.trafficDelaySeconds >= 60 && (
+            <span className="itinerary-note">
+              {t("itinerary.trafficDelay", { minutes: Math.round(liveEta.trafficDelaySeconds / 60) })}
+            </span>
           )}
           {/* Voir `src/navigation/` : la marche et la voiture se guident toutes
               les deux — le bloc entier est déjà réservé aux modes routiers — et

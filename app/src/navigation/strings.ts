@@ -282,6 +282,10 @@ const fr = {
   // ailleurs on dit qu'on ne sait pas plutôt que d'estimer.
   "car.tollUnpriced": "Péage, tarif non publié",
   "car.tollAtLeast": "au moins {price}",
+  // Ce que la circulation ajoute au temps de trajet, sur la bulle d'une
+  // proposition. Sans lui, la durée de TomTom paraissait fausse à côté de celle
+  // d'OSRM, qui ignore le trafic.
+  "car.trafficDelay": "+{minutes} min de trafic",
   "car.noKeyHint":
     "Sans clé TomTom, l'itinéraire est calculé sans la circulation et les péages ne sont ni évités ni chiffrés.",
 
@@ -577,6 +581,7 @@ const en: NavDict = {
   "car.tollFree": "Toll-free",
   "car.tollUnpriced": "Toll, price not published",
   "car.tollAtLeast": "at least {price}",
+  "car.trafficDelay": "+{minutes} min traffic",
   "car.noKeyHint":
     "Without a TomTom key the route ignores live traffic, and tolls are neither avoided nor priced.",
 

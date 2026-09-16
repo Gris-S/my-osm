@@ -843,6 +843,43 @@ y sont déjà.
   le guidage détaillé de celui qu'on retient. Puis **deux toutes les trois
   minutes** pendant le trajet, soit de quoi rouler environ cent vingt-cinq
   heures par mois — large pour un usage personnel.
+- **Le premier de ces trois appels est fait par le panneau d'itinéraire**
+  (`car/carEta.ts`, `useCarEta`), et le départ le **réutilise** : il est avancé,
+  pas ajouté. Un départ coûte donc toujours trois appels.
+
+  Pourquoi l'avancer : le panneau affichait la durée d'OSRM, qui ignore le
+  trafic, et l'écran de choix celle de TomTom, qui le connaît. Mesuré le
+  16 septembre 2026 sur un Louvre → Bastille de 2,8 km, un midi de semaine :
+
+  | | durée |
+  | --- | --- |
+  | OSRM | 10,8 min |
+  | TomTom, route vide (`noTrafficTravelTimeInSeconds`) | 9,8 min |
+  | TomTom, trafic en cours (`travelTimeInSeconds`) | **24,6 min** |
+  | dont retard d'incidents | 8,6 min (deux bouchons, 235 s et 283 s) |
+
+  Les deux moteurs s'accordent sur la route vide : l'écart n'était pas une
+  erreur de lecture, c'était la circulation. Mais promettre 10 min puis en
+  annoncer 24 une seconde plus tard, pour le même trajet, ne se défend pas.
+
+  Trois choses à ne pas défaire :
+  - **`ETA_ALTERNATIVES` et `ALTERNATIVES` de `proposals.ts` sont la même
+    valeur.** Deux valeurs différentes feraient deux clés de cache différentes,
+    donc deux appels : tout le bénéfice disparaîtrait en silence. C'est ce que
+    vérifie `tests/carEta.test.ts`.
+  - **Le signal d'annulation de l'appelant n'est pas transmis** au calcul
+    partagé : fermer le panneau ne doit pas interrompre une requête dont le
+    départ, une seconde plus tard, aura besoin.
+  - **`traffic=false` ne donne pas le temps sans trafic** — mesuré, TomTom rend
+    alors 24,8 min, soit autant qu'avec. Le temps de route vide est
+    `noTrafficTravelTimeInSeconds`, déjà reçu grâce à `computeTravelTimeFor=all`.
+    Ne pas « optimiser » en basculant le drapeau.
+
+  Le panneau dessine aussi **le tracé de TomTom** dès qu'il l'a : sur ce même
+  trajet, OSRM proposait 3,87 km quand TomTom en prenait 2,76 — deux routes
+  différentes, pas deux estimations de la même. Montrer l'une en annonçant la
+  durée de l'autre était l'incohérence la plus gênante des deux. Sans clé, tout
+  retombe sur OSRM et rien ne change.
 - **L'API limite aussi le débit, pas seulement le volume.** Un banc d'essai qui
   enchaînait les appels sans pause a rendu des **429** : ce n'est pas la clé qui
   est en cause, c'est le nombre de requêtes par seconde. Deux appels toutes les
@@ -1089,6 +1126,15 @@ d'avoir quelque chose à mettre dans deux lignes quand une seule a un contenu.
 La bulle n'a donc qu'une ligne de péage, et elle ne nomme pas la proposition :
 le parcours gratuit se reconnaît à ce qu'il annonce, et les payants se
 départagent par leurs chiffres, qui sont côte à côte.
+
+**Cette ligne porte aussi ce que le trafic coûte** (`choiceDetail`,
+`carLabels.ts`) : « Sans péage · +9 min de trafic ». Elle est *étendue*, pas
+doublée — la bulle a deux lignes, la première est la durée, et une troisième
+n'aurait pas sa place. Sans cette mention, la durée paraissait fausse à qui la
+comparait à une estimation sur route vide : le chiffre était juste, mais rien ne
+l'expliquait, et un nombre qu'on ne s'explique pas est un nombre auquel on ne se
+fie pas. En deçà d'une minute on se tait, et avec OSRM aussi — son
+`trafficDelaySeconds` vaut `null`, et annoncer zéro se lirait « route dégagée ».
 
 - **Il faut deux contacts pour partir**, et c'est délibéré : au doigt il n'y a
   pas de survol, et partir sur un itinéraire qu'on voulait seulement regarder

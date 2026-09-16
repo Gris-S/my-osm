@@ -12,6 +12,10 @@ export { useNavigation } from "./useNavigation";
 export type { NavSession, NavMapState, NavCamera, NavChoice } from "./useNavigation";
 export { NavigationPanel } from "./NavigationPanel";
 export { useCarNavigation } from "./car/useCarNavigation";
+// Le temps de trajet avec la circulation, pour le panneau d'itinéraire. Le
+// calcul n'est pas ajouté : il est avancé, et le départ le réutilise.
+export { useCarEta } from "./car/carEta";
+export type { CarRoute } from "./car/carRoute";
 export type { CarNavSession } from "./car/useCarNavigation";
 export type { CarTraffic, TrafficIncident } from "./car/carTraffic";
 export { CarNavigationPanel } from "./car/CarNavigationPanel";
