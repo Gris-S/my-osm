@@ -3,7 +3,14 @@ import { formatDistance } from "../../utils/format";
 import { useNavDockRef } from "../dockClearance";
 import { MusicCard } from "../music/MusicCard";
 import { formatClock, formatGuidanceDistance, splitDuration, useNav } from "../strings";
-import { carManeuverAction, carManeuverIcon, carManeuverRoad, carManeuverSide, roadClass } from "./carManeuver";
+import {
+  carManeuverAction,
+  carManeuverIcon,
+  carManeuverRoad,
+  carManeuverSide,
+  carRoundaboutExit,
+  roadClass,
+} from "./carManeuver";
 import { isOffRoute } from "./carProgress";
 import { lanesAt, type LaneAdvice } from "./carRoute";
 import { RouteChoice } from "./RouteChoice";
@@ -86,6 +93,7 @@ export function CarNavigationPanel({ session }: { session: CarNavSession }) {
             {...carManeuverRoad(next.step.maneuver)}
             Icon={carManeuverIcon(next.step.maneuver)}
             side={carManeuverSide(next.step.maneuver)}
+            exit={carRoundaboutExit(next.step.maneuver)}
             then={
               progress?.then
                 ? {
@@ -203,6 +211,7 @@ function Maneuver({
   street,
   Icon,
   side,
+  exit,
   then,
 }: {
   distanceMeters: number;
@@ -211,13 +220,16 @@ function Maneuver({
   street: string;
   Icon: React.ComponentType<{ size?: number }>;
   side: "left" | "right" | "straight" | "uturn";
+  /** Numéro de sortie d'un rond-point, inscrit dans le pictogramme. */
+  exit: number | null;
   then: { action: string; Icon: React.ComponentType<{ size?: number }> } | null;
 }) {
   const { nav } = useNav();
   return (
     <div className="nav-maneuver car-maneuver">
       <span className={`nav-maneuver-icon is-${side}`}>
-        <Icon size={34} />
+        <Icon size={44} />
+        {exit !== null && <span className="nav-exit">{exit}</span>}
       </span>
       <div className="nav-maneuver-text">
         <span className="car-maneuver-line">

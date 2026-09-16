@@ -28,6 +28,13 @@ export interface NowPlayingTrack {
   album: string;
   /** Le lecteur, tel qu'Android le nomme (« YouTube Music », « Qobuz »). */
   app: string;
+  /**
+   * Le nom de paquet du lecteur (`com.google.android.apps.youtube.music`).
+   *
+   * C'est lui, et non le libellé, qui permet de **l'ouvrir** d'un doigt sur la
+   * pochette : un nom affichable ne désigne rien pour le système.
+   */
+  package: string;
   playing: boolean;
   /** Pochette réduite en `data:` URL, quand le lecteur en publie une. */
   artwork: string | null;
@@ -47,6 +54,7 @@ interface NowPlayingPlugin {
   start: () => unknown;
   stop: () => unknown;
   control: (options: { action: MusicAction }) => unknown;
+  openPlayer: () => unknown;
   addListener: (event: "change", listener: (data: unknown) => void) => unknown;
 }
 
@@ -104,6 +112,10 @@ function sameTrack(a: NowPlayingTrack | null, b: NowPlayingTrack | null): boolea
     a.artist === b.artist &&
     a.album === b.album &&
     a.app === b.app &&
+    // Le paquet, et pas seulement son libellé : deux lecteurs peuvent porter le
+    // même nom affichable, et c'est le paquet qui décide de ce qu'ouvre la
+    // pochette.
+    a.package === b.package &&
     a.playing === b.playing &&
     a.artwork === b.artwork
   );
@@ -126,7 +138,18 @@ function parseTrack(data: unknown): NowPlayingTrack | null {
   // Un lecteur qui charge encore n'a ni titre ni artiste : rien à montrer.
   if (!title && !artist) return null;
   const artwork = typeof fields.artwork === "string" && fields.artwork.startsWith("data:image/") ? fields.artwork : null;
-  return { title, artist, album: text(fields.album), app: text(fields.app), playing: fields.playing === true, artwork };
+  return {
+    title,
+    artist,
+    album: text(fields.album),
+    app: text(fields.app),
+    // Absent des versions du greffon antérieures à l'ouverture du lecteur : la
+    // chaîne vide vaut « on ne sait pas quoi ouvrir », et la pochette reste
+    // alors sans effet.
+    package: text(fields.package),
+    playing: fields.playing === true,
+    artwork,
+  };
 }
 
 function parsePermission(data: unknown): boolean | null {
@@ -209,6 +232,25 @@ export function controlMusic(action: MusicAction): void {
   }
   try {
     void Promise.resolve(nowPlaying.control({ action })).catch(() => {});
+  } catch {
+    /* lecteur disparu entre-temps */
+  }
+}
+
+/**
+ * Ouvre l'application qui joue le morceau montré.
+ *
+ * Le greffon passe par l'intention de lancement qu'Android associe au paquet :
+ * c'est la seule façon d'ouvrir une application tierce sans rien connaître
+ * d'elle. Sans effet si le lecteur n'a pas d'écran à ouvrir — certains services
+ * de fond n'en ont pas — ou hors de l'APK. **Un doigt sans effet vaut mieux
+ * qu'une erreur à l'écran** : la pochette reste alors ce qu'elle était.
+ */
+export function openMusicPlayer(): void {
+  const nowPlaying = plugin();
+  if (!nowPlaying) return;
+  try {
+    void Promise.resolve(nowPlaying.openPlayer()).catch(() => {});
   } catch {
     /* lecteur disparu entre-temps */
   }

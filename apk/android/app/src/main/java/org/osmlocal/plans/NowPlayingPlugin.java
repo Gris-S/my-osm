@@ -114,6 +114,37 @@ public class NowPlayingPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Ouvre le lecteur qui publie la session en cours.
+     *
+     * On passe par l'intention de lancement que le système associe au paquet :
+     * c'est la seule façon d'ouvrir une application tierce sans rien connaître
+     * d'elle. Un lecteur sans intention de lancement — certains services de
+     * fond n'en ont pas — laisse simplement le doigt sans effet, plutôt que de
+     * faire échouer l'appel.
+     */
+    @PluginMethod
+    public void openPlayer(PluginCall call) {
+        MediaController current = controller;
+        if (current == null) {
+            call.reject("Aucune musique en cours.");
+            return;
+        }
+        PackageManager manager = getContext().getPackageManager();
+        Intent launch = manager.getLaunchIntentForPackage(current.getPackageName());
+        if (launch == null) {
+            call.resolve(new JSObject().put("opened", false));
+            return;
+        }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            getContext().startActivity(launch);
+            call.resolve(new JSObject().put("opened", true));
+        } catch (Exception unavailable) {
+            call.resolve(new JSObject().put("opened", false));
+        }
+    }
+
     @PluginMethod
     public void start(PluginCall call) {
         wanted = true;
@@ -267,6 +298,10 @@ public class NowPlayingPlugin extends Plugin {
         track.put("artist", firstText(metadata, MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM_ARTIST, MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE));
         track.put("album", firstText(metadata, MediaMetadata.METADATA_KEY_ALBUM));
         track.put("app", appLabel(current.getPackageName()));
+        // Le nom de paquet, en plus du libellé : c'est lui qui permet d'ouvrir
+        // le lecteur d'un doigt sur la pochette (`openPlayer`). Le libellé, lui,
+        // ne désigne rien pour le système.
+        track.put("package", current.getPackageName());
         track.put("playing", state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING);
         String artwork = artwork(metadata);
         if (artwork != null) track.put("artwork", artwork);

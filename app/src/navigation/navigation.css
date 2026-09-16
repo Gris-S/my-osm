@@ -64,22 +64,62 @@
 
 .nav-maneuver {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 14px;
 }
 
 /* La pastille de manœuvre est teintée du côté vers lequel on tourne : à
-   distance de bras, c'est la couleur qu'on saisit avant la flèche. */
+   distance de bras, c'est la couleur qu'on saisit avant la flèche.
+
+   **Elle épouse le bord gauche du bandeau et en touche le haut et le bas**
+   (demande explicite) : elle gagne ainsi en surface sans que le bandeau
+   lui-même grossisse, ce qui aurait mangé la carte. Les marges négatives valent
+   exactement le rembourrage de `.nav-banner` — 14 px en haut et en bas, 16 px à
+   gauche : **changer l'un oblige à changer l'autre**. Ses coins gauches suivent
+   l'arrondi de la carte, ses coins droits restent libres. */
 .nav-maneuver-icon {
+  position: relative;
   flex: none;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  align-self: stretch;
+  width: 76px;
+  /* **Aucune hauteur minimale ici.** `align-self: stretch` donne déjà à la
+     pastille toute la hauteur de sa ligne ; un `min-height` ne lui ajouterait
+     rien tant que le texte est plus haut, mais pourrait **pousser le bandeau**
+     dès qu'il ne l'est plus — or la hauteur du bandeau est un réglage dont
+     dépend le placement de la manœuvre à l'écran (148 px, voir la section de la
+     navigation à pied). La marge de sécurité était de deux pixels. */
+  margin: -14px 0 -14px -16px;
+  border-radius: var(--radius-card) 18px 18px var(--radius-card);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   background: var(--accent);
+}
+
+/* Quand quelque chose suit la manœuvre dans le bandeau — bande des voies, note
+   de recalcul, hors itinéraire, trafic — la pastille s'arrête au bas de sa
+   ligne : la laisser descendre lui ferait recouvrir le trait de séparation. */
+.nav-maneuver:not(:last-child) .nav-maneuver-icon {
+  margin-bottom: 0;
+  border-bottom-left-radius: 18px;
+}
+
+/* Le numéro de sortie d'un rond-point, **dans** le pictogramme : c'est la seule
+   information qu'on cherche à l'approche, et la lire dans la phrase oblige à
+   quitter la route des yeux plus longtemps que de reconnaître un chiffre. */
+.nav-exit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .nav-maneuver-icon.is-arrival {
@@ -1684,12 +1724,31 @@
   animation: music-in 0.22s ease-out;
 }
 
+/* La pochette est un **bouton** : elle ouvre le lecteur. Rien ne le trahit
+   visuellement — la pochette est sa propre affordance, et un liseré de plus
+   encombrerait un encart déjà dense — mais il lui faut la remise à zéro d'un
+   bouton et un retour au doigt. */
 .music-art {
   flex: none;
   width: 52px;
   height: 52px;
   border-radius: 12px;
   object-fit: cover;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: hidden;
+}
+
+.music-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.music-art:active {
+  opacity: 0.82;
 }
 
 .music-art.is-empty {

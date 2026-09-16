@@ -631,6 +631,23 @@ annulerait l'intérêt du découpage.
   qui en occupe 148. Au-delà de 500 m le plancher de zoom prend le relais et la
   manœuvre sort du champ utile — c'est ce qu'il veut dire. `LOOK_AHEAD_SHARE`
   est le seul réglage à toucher si elle paraît trop haute ou trop basse.
+- **Ces 148 px sont un réglage, pas une observation** : tout ce qui grandit le
+  bandeau déplace la manœuvre sous lui. La pastille de manœuvre a justement été
+  agrandie sans y toucher (demande explicite) — elle **épouse le bord gauche du
+  bandeau et en touche le haut et le bas** par des marges négatives valant
+  exactement son rembourrage (14 px / 16 px), et sa hauteur vient de
+  `align-self: stretch`, donc de la ligne de texte. Deux conséquences à ne pas
+  perdre de vue : changer le rembourrage de `.nav-banner` oblige à changer ces
+  marges, et **ne pas donner de `min-height` à la pastille** — elle pousserait
+  le bandeau dès que le texte serait plus court qu'elle.
+- **Le numéro de sortie d'un rond-point s'inscrit dans le pictogramme**
+  (demande explicite) : c'est la seule information qu'on cherche à l'approche,
+  et la lire dans la phrase oblige à quitter la route des yeux plus longtemps
+  que de reconnaître un chiffre. Il ne sort que pour les ronds-points —
+  `roundaboutExit()` côté piéton, `carRoundaboutExit()` côté voiture, chacune
+  gardant la connaissance des types de son moteur — et la pastille reste nue
+  quand la source ne donne pas de sortie. Ailleurs, un chiffre dans la pastille
+  ne voudrait rien dire.
 - **C'est le zoom qui s'ajuste, jamais le centre.** Glisser le centre vers le
   carrefour déplacerait la flèche à l'écran, et on ne saurait plus où poser les
   yeux — le marcheur reste au même endroit de la vue, c'est l'échelle qui bouge.
@@ -1551,6 +1568,22 @@ titre, artiste, et pause / précédent / suivant.
   pas d'API publique et refuse les clients tiers de sa bibliothèque média
   (réservée à Android Auto) ; l'API de Qobuz est réservée aux partenaires.
   Spotify serait la seule voie propre (App Remote + Web API).
+- **La pochette ouvre le lecteur** (demande explicite) : c'est le geste qu'on
+  fait spontanément, et l'encart ne montre ni liste ni barre de progression —
+  pour tout le reste, il faut l'application d'origine. Rien ne signale que c'est
+  un bouton : la pochette est sa propre affordance, et un liseré de plus
+  encombrerait un encart déjà dense.
+- **Le greffon publie le nom de paquet en plus du libellé**, et c'est lui qui
+  compte : « YouTube Music » ne désigne rien pour le système, seul
+  `com.google.android.apps.youtube.music` permet de demander une intention de
+  lancement (`getLaunchIntentForPackage`). `sameTrack` le compare donc aussi —
+  deux lecteurs peuvent porter le même nom affichable, et c'est le paquet qui
+  décide de ce qu'ouvre la pochette.
+- **Un lecteur sans écran à ouvrir laisse le doigt sans effet**, plutôt que de
+  faire échouer l'appel : certains services de fond n'ont pas d'intention de
+  lancement. `openPlayer` rend alors `{ opened: false }` et la pochette reste ce
+  qu'elle était. Une erreur à l'écran, au volant, coûterait plus que le geste
+  perdu.
 
 ### Pastilles de ligne sur les arrêts (`services/idfmNetwork.ts`)
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Music, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { useNav } from "../strings";
-import { controlMusic, useNowPlaying } from "./nowPlaying";
+import { controlMusic, openMusicPlayer, useNowPlaying } from "./nowPlaying";
 
 // ---------------------------------------------------------------------------
 // L'encart de la musique en cours, au-dessus de la barre du bas des navigations.
@@ -48,13 +48,17 @@ export function MusicCard() {
 
   return (
     <div className="music-card" role="group" aria-label={nav("music.label")}>
-      {track.artwork ? (
-        <img className="music-art" src={track.artwork} alt="" />
-      ) : (
-        <span className="music-art is-empty">
-          <Music size={22} />
-        </span>
-      )}
+      {/* La pochette ouvre le lecteur : c'est le geste qu'on fait
+          spontanément, et l'encart ne montre volontairement ni liste ni barre
+          de progression — pour tout le reste, il faut l'application d'origine. */}
+      <button
+        className={`music-art ${track.artwork ? "" : "is-empty"}`}
+        onClick={openMusicPlayer}
+        aria-label={nav("music.open")}
+        title={track.app || undefined}
+      >
+        {track.artwork ? <img src={track.artwork} alt="" /> : <Music size={22} />}
+      </button>
 
       <div className="music-text">
         <span className="music-title">{track.title || track.artist}</span>

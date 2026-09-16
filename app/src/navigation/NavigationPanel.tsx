@@ -5,7 +5,7 @@ import { ElevationProfile } from "./ElevationProfile";
 import { useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
 import { sampleElevation, type ElevationProfile as Profile } from "./elevation";
-import { maneuverIcon, maneuverSide, maneuverText } from "./maneuver";
+import { maneuverIcon, maneuverSide, maneuverText, roundaboutExit } from "./maneuver";
 import { OFF_ROUTE_METERS } from "./progress";
 import { estimateSteps, METERS_PER_STEP } from "./useStepCounter";
 import type { NavRoute } from "./route";
@@ -53,6 +53,7 @@ export function NavigationPanel({ session }: { session: NavSession }) {
             text={maneuverText(next.step.maneuver)}
             Icon={maneuverIcon(next.step.maneuver)}
             side={maneuverSide(next.step.maneuver)}
+            exit={roundaboutExit(next.step.maneuver)}
           />
         ) : (
           <p className="nav-banner-waiting">
@@ -162,16 +163,20 @@ function ManeuverBanner({
   text,
   Icon,
   side,
+  exit,
 }: {
   distanceMeters: number;
   text: string;
   Icon: React.ComponentType<{ size?: number }>;
   side: "left" | "right" | "straight" | "uturn";
+  /** Numéro de sortie d'un rond-point, inscrit dans le pictogramme. */
+  exit: number | null;
 }) {
   return (
     <div className="nav-maneuver">
       <span className={`nav-maneuver-icon is-${side}`}>
-        <Icon size={30} />
+        <Icon size={40} />
+        {exit !== null && <span className="nav-exit">{exit}</span>}
       </span>
       <div className="nav-maneuver-text">
         <span className="nav-maneuver-distance">{formatGuidanceDistance(distanceMeters)}</span>

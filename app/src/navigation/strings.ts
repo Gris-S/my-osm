@@ -184,6 +184,7 @@ const fr = {
   "music.next": "Titre suivant",
   "music.noAccess": "Pour contrôler votre musique pendant la navigation, activez l'accès dans Paramètres › Navigation.",
   "music.dismiss": "Masquer",
+  "music.open": "Ouvrir le lecteur",
 
   // Mode course (`running/`)
   "run.button": "Démarrer une course",
@@ -491,6 +492,7 @@ const en: NavDict = {
   "music.next": "Next track",
   "music.noAccess": "To control your music during navigation, allow access in Settings › Navigation.",
   "music.dismiss": "Hide",
+  "music.open": "Open the player",
 
   "run.button": "Start a run",
   "run.confirmTitle": "Start a run?",

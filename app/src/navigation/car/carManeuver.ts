@@ -60,6 +60,15 @@ export function carManeuverSide(maneuver: CarManeuver): ManeuverSide {
  * inflexions et les changements de file la flèche oblique : au volant, c'est la
  * forme du dessin qu'on lit du coin de l'œil, jamais son étiquette.
  */
+/**
+ * Le numéro de sortie à inscrire dans le pictogramme, ou `null`. Seuls les
+ * ronds-points en portent un — voir `roundaboutExit` côté piéton.
+ */
+export function carRoundaboutExit(maneuver: CarManeuver): number | null {
+  if (maneuver.kind !== "roundabout") return null;
+  return maneuver.exit && maneuver.exit > 0 ? maneuver.exit : null;
+}
+
 export function carManeuverIcon(maneuver: CarManeuver): LucideIcon {
   switch (maneuver.kind) {
     case "depart":

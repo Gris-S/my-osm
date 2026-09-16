@@ -40,6 +40,19 @@ function sideOf(modifier: string | undefined): Side {
  * droit, les inflexions la flèche oblique : à distance, c'est la forme du
  * dessin qui se lit, pas son étiquette.
  */
+/**
+ * Le numéro de sortie à inscrire dans le pictogramme, ou `null`.
+ *
+ * Seuls les ronds-points en portent un : ailleurs, un chiffre dans la pastille
+ * ne voudrait rien dire. La connaissance des types OSRM reste ici, avec le
+ * reste de la traduction des manœuvres, plutôt que dans le panneau.
+ */
+export function roundaboutExit(maneuver: NavManeuver): number | null {
+  const { type, exit } = maneuver;
+  if (type !== "roundabout" && type !== "rotary" && type !== "roundabout turn") return null;
+  return exit && exit > 0 ? exit : null;
+}
+
 export function maneuverIcon(maneuver: NavManeuver): LucideIcon {
   const { type, modifier } = maneuver;
   if (type === "arrive") return maneuver.waypoint === null ? Flag : MapPin;
