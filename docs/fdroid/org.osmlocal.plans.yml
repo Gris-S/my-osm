@@ -30,7 +30,10 @@ Repo: https://github.com/Gris-S/my-osm.git
 Builds:
   - versionName: 0.1.0-alpha.22
     versionCode: 1000022
-    commit: 0.1.0-alpha.22
+    # Le dépôt préfixe ses tags d'un « v » (v0.1.0-alpha.16 est le premier
+    # publié). `commit:` doit reprendre le **nom exact du tag**, sans quoi le
+    # serveur de F-Droid ne trouve rien à construire.
+    commit: v0.1.0-alpha.22
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. Les chemins des étapes ci-dessous en partent, d'où les
@@ -80,7 +83,7 @@ Builds:
 # Le numéro de version est déduit de `app/package.json` par
 # `apk/android/app/build.gradle` : 0.1.0-alpha.22 -> 1000022. Une version
 # finale passe devant toutes ses alphas (suffixe 9999).
-AutoUpdateMode: Version
+AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags
 CurrentVersion: 0.1.0-alpha.22
 CurrentVersionCode: 1000022

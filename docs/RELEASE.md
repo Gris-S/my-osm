@@ -75,7 +75,9 @@ cd apk && npm run apk:release
 
 ## 5. La release GitHub
 
-- [ ] `git tag 0.1.0-alpha.N && git push --tags` — F-Droid suit les tags
+- [ ] `git tag v0.1.0-alpha.N && git push --tags` — F-Droid suit les tags.
+      **Le « v » compte** : `commit:` dans la recette F-Droid doit reprendre le
+      nom exact du tag, et `AutoUpdateMode: Version v%v` le reconstruit.
 - [ ] Notes de release **en anglais**, avec l'avertissement de désinstallation
 - [ ] `sha256sum livrables/MY-OSM.apk` publiée avec le fichier
 
