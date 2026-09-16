@@ -96,6 +96,36 @@ Deux autres pièges, du même genre :
   tentative de `connecter()`, et le parcours se reconnecte au début de chaque
   scénario — sans quoi un changement de permission fait échouer tout ce qui
   suit, avec un « fetch failed » qui ressemble à une panne de l'application.
+- **Voir une manœuvre exige d'avancer, et l'application ne peut pas aider.** Sa
+  simulation intégrée est réservée au développement (`import.meta.env.DEV` dans
+  `simulate.ts` et `carSimulate.ts`, bouton retiré du build) : dans l'APK il n'y
+  a rien à actionner. Une position **fixe** laisse le guidage croire qu'on ne
+  bouge pas, et il annonce l'arrivée sans qu'un virage soit passé — c'est ce qui
+  a longtemps caché la pastille de virage derrière celle d'arrivée. D'où
+  `positionLeLongDe()`, qui égrène un tracé. Trois pièges s'y rattachent, et
+  chacun a coûté un essai :
+  - **Poser le conducteur avant de lancer la navigation.** Le guidage s'abonne à
+    `watchPosition` en démarrant ; remplacer la fonction après coup ne touche pas
+    un abonnement déjà pris, et la position reste figée. Le conducteur s'installe
+    donc immobile, et `window.__parcoursRouler()` le met en route ensuite.
+  - **Faire adopter le départ par l'application.** Elle calcule l'itinéraire
+    depuis la position qu'elle détient déjà, relevée au démarrage : on obtenait
+    27 km contre 6,4 à la référence. Toucher `.locate-button` la lui fait
+    redemander.
+  - **Coller la destination en coordonnées** (`parseCoordinates`, proposée en
+    `.search-result.is-brand`) : chercher « Corbeil-Essonnes » rend la commune,
+    dont le centre est ailleurs.
+  Et comparer la distance annoncée à celle de la référence : sans ce garde-fou,
+  on conduit un tracé pendant que l'application en suit un autre, et les
+  manœuvres traversées n'ont rien à voir avec les siennes. **Le tracé en cours
+  n'est pas lisible du dehors** — `window.__myosm` n'expose que `journal`,
+  `offlineTiles`, `offlineMisses`, `offlineStore` et `map`, et la note
+  `car.route` ne garde que distance, durée et trafic.
+- **Un rond-point doit être inévitable pour être éprouvé.** Du Louvre à
+  l'Étoile, la référence en croisait un mais l'application passait par le tunnel
+  **sous** la place. Le routage piéton n'en produit aucun de numéroté sur Paris
+  (mesuré). Évry → Corbeil en traverse douze en 6,4 km, sans contournement
+  possible : c'est le trajet du scénario `rond-point`.
 
 **Git** : le projet est un dépôt git à la racine (`MY OSM/`) depuis le
 14 septembre 2026. Les sauvegardes de `outils/save.sh` restent possibles mais

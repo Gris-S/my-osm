@@ -244,6 +244,50 @@ const reglages = (objet) =>
  * Un rechargement l'efface — c'est voulu : aucun essai ne doit laisser une
  * position inventée derrière lui.
  */
+/**
+ * Fait **avancer** une position fictive le long d'une suite de points.
+ *
+ * `positionSimulee` pose un point fixe, ce qui suffit à ouvrir un itinéraire
+ * mais jamais à voir une manœuvre : le guidage croit qu'on ne bouge pas, et
+ * finit par annoncer l'arrivée sans qu'un seul virage soit passé. C'est ce qui
+ * a longtemps caché la pastille de virage derrière celle d'arrivée.
+ *
+ * L'application a bien une simulation intégrée, mais elle est **réservée au
+ * développement** (`import.meta.env.DEV` dans `simulate.ts` et `carSimulate.ts`,
+ * bouton retiré du build) : dans l'APK, il n'y a rien à actionner. Le parcours
+ * conduit donc lui-même, en remplaçant `watchPosition` par un minuteur qui
+ * égrène les points — le cap étant calculé d'un point au suivant, sans quoi la
+ * carte et les manœuvres ne sauraient pas de quel côté l'on regarde.
+ *
+ * `points` : un tableau de `[lon, lat]`. `intervalle` : millisecondes par point.
+ */
+const positionLeLongDe = (points, intervalle = 300) =>
+  js(`(()=>{
+    const pts=${JSON.stringify(points)};
+    if(!pts.length) return false;
+    const cap=(a,b)=>{const y=Math.sin((b[0]-a[0])*Math.PI/180)*Math.cos(b[1]*Math.PI/180);
+      const x=Math.cos(a[1]*Math.PI/180)*Math.sin(b[1]*Math.PI/180)-Math.sin(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.cos((b[0]-a[0])*Math.PI/180);
+      return (Math.atan2(y,x)*180/Math.PI+360)%360};
+    let i=0, roule=false;
+    const fixe=()=>{const p=pts[Math.min(i,pts.length-1)];const q=pts[Math.min(i+1,pts.length-1)];
+      return {coords:{latitude:p[1],longitude:p[0],accuracy:5,heading:cap(p,q),speed:13.9,
+        altitude:null,altitudeAccuracy:null},timestamp:Date.now()}};
+    window.__parcoursPosition=fixe();
+    navigator.geolocation.getCurrentPosition=(ok)=>ok(window.__parcoursPosition);
+    navigator.geolocation.watchPosition=(ok)=>{ok(window.__parcoursPosition);
+      return setInterval(()=>{if(roule)i=Math.min(i+1,pts.length-1);
+        window.__parcoursPosition=fixe();ok(window.__parcoursPosition)},${intervalle})};
+    navigator.geolocation.clearWatch=(id)=>clearInterval(id);
+    // **Le départ est différé, et c'est tout l'intérêt.** Le guidage s'abonne à
+    // « watchPosition » au moment où il démarre : remplacer la fonction après
+    // coup ne touche pas un abonnement déjà pris, et la position resterait
+    // figée là où elle était — le bandeau collé à sa première manœuvre. On pose
+    // donc le conducteur **avant** de lancer la navigation, immobile, et on le
+    // fait rouler une fois le guidage en route.
+    window.__parcoursRouler=()=>{roule=true};
+    window.__parcoursReste=()=>pts.length-i;
+    return true})()`);
+
 const positionSimulee = (lat, lon, cap = 95, vitesse = 13.9) =>
   js(`(()=>{const f={coords:{latitude:${lat},longitude:${lon},accuracy:5,heading:${cap},speed:${vitesse},altitude:null,altitudeAccuracy:null},timestamp:Date.now()};
     navigator.geolocation.getCurrentPosition=(ok)=>ok(f);
@@ -1230,6 +1274,179 @@ const SCENARIOS = [
       reveiller();
       await dodo(3000);
       await connecter(30_000);
+    },
+  },
+
+  {
+    id: "rond-point",
+    titre: "Le numéro de sortie s'inscrit dans le pictogramme",
+    /**
+     * Il faut **avancer** pour voir une manœuvre. Une position fixe laisse le
+     * guidage croire qu'on ne bouge pas, et il finit par annoncer l'arrivée sans
+     * qu'un seul virage soit passé — c'est ce qui a longtemps caché la pastille
+     * de virage derrière celle d'arrivée.
+     *
+     * La simulation intégrée ne peut pas servir : elle est réservée au
+     * développement (`import.meta.env.DEV` dans `simulate.ts` et
+     * `carSimulate.ts`) et son bouton est retiré du build. Le parcours conduit
+     * donc lui-même, le long d'un trajet demandé au **même service de routage
+     * que l'application**.
+     *
+     * Et il passe par la voiture : mesuré, le routage piéton ne produit aucun
+     * rond-point numéroté sur Paris. L'écran de choix se retient en touchant la
+     * bulle du parcours, qui est elle-même un bouton.
+     */
+    async executer() {
+      await scene();
+
+      // **Le rond-point doit être inévitable, et Paris ne s'y prête pas.** Un
+      // premier essai allait du Louvre à l'Étoile : la référence y croisait bien
+      // un rond-point, mais l'application, guidée par TomTom, passait par le
+      // tunnel **sous** la place. On conduisait donc le long d'un tracé pendant
+      // qu'elle en suivait un autre, et les manœuvres traversées — « At the
+      // fork », « Keep right » — n'avaient rien à voir avec les siennes.
+      //
+      // Évry → Corbeil traverse douze ronds-points numérotés en 6,4 km, en
+      // banlieue, sans tunnel ni voie rapide pour les contourner : quel que soit
+      // le moteur, on les prend.
+      const DEPART = [2.43, 48.63]; // Évry
+      const ARRIVEE = [2.48, 48.613]; // Corbeil-Essonnes
+      const url =
+        `https://routing.openstreetmap.de/routed-car/route/v1/driving/` +
+        `${DEPART.join(",")};${ARRIVEE.join(",")}?steps=true&overview=full&geometries=geojson`;
+      let trajet = null;
+      try {
+        trajet = (await (await fetch(url)).json()).routes?.[0] ?? null;
+      } catch (erreur) {
+        return verifier("le service de routage répond", false, String(erreur.message ?? erreur));
+      }
+      if (!verifier("un trajet de référence est obtenu", trajet !== null)) return;
+
+      const sorties = trajet.legs
+        .flatMap((l) => l.steps)
+        .filter((s) => /roundabout|rotary/.test(s.maneuver.type) && s.maneuver.exit);
+      if (sorties.length === 0) {
+        return verifier("ce trajet ne croise plus de rond-point numéroté", true, "rien à éprouver aujourd'hui");
+      }
+      verifier("le trajet de référence croise un rond-point numéroté", true, `sortie ${sorties[0].maneuver.exit}`);
+
+      // Un point tous les ~15 m : assez serré pour que le guidage suive.
+      const points = [];
+      let dernier = null;
+      const ecart = (a, b) => Math.hypot((a[0] - b[0]) * 73000, (a[1] - b[1]) * 111000);
+      for (const p of trajet.geometry.coordinates) {
+        if (!dernier || ecart(dernier, p) > 15) {
+          points.push([Number(p[0].toFixed(5)), Number(p[1].toFixed(5))]);
+          dernier = p;
+        }
+      }
+
+      // Le conducteur est posé **maintenant**, immobile : le guidage s'abonnera
+      // à lui en démarrant, et il suffira alors de le faire rouler.
+      //
+      // 1,2 s par point d'environ 36 m, soit ~110 km/h : vite, mais plausible.
+      // À 250 ms on frôlait les 520 km/h, et le guidage avalait le trajet entier
+      // sans jamais afficher le rond-point — l'arrivée était annoncée avant
+      // qu'on ait pu regarder quoi que ce soit.
+      await positionLeLongDe(points, 1200);
+      await carteVers(DEPART[0], DEPART[1], 15);
+
+      // **L'application doit partir d'ici, pas de là où elle se croit.** Le
+      // conducteur remplace bien `getCurrentPosition`, mais la position déjà
+      // connue — relevée au démarrage, et parfaitement réelle — reste celle d'où
+      // l'itinéraire se calcule. On obtenait 27 km contre 6,4 à la référence,
+      // c'est-à-dire, une fois de plus, un tracé conduit pendant qu'elle en
+      // suivait un autre. Toucher le bouton de position la fait redemander, et
+      // c'est le point injecté qu'elle reçoit.
+      await cliquer(".locate-button");
+      verifier(
+        "l'application adopte la position injectée",
+        await attendreQue(
+          `(()=>{const c=window.__myosm?.map?.getCenter?.();if(!c)return false;
+            return Math.abs(c.lng-${DEPART[0]})<0.05 && Math.abs(c.lat-${DEPART[1]})<0.05})()`,
+          20_000
+        )
+      );
+      // **La destination se colle en coordonnées, elle ne se cherche pas.**
+      // « Corbeil-Essonnes » rendait la commune, dont le centre est à des
+      // kilomètres du point visé : l'application partait sur 27 km quand la
+      // référence en faisait 6,4, et l'on conduisait de nouveau un tracé pendant
+      // qu'elle en suivait un autre. `parseCoordinates` (`services/webPlace.ts`)
+      // accepte « lat, lon » et la propose en tête de liste — une entrée
+      // `.search-result.is-brand`, que `cliquerPremierLieu` écarte justement.
+      await saisir(`${ARRIVEE[1]}, ${ARRIVEE[0]}`);
+      if (!verifier("les coordonnées collées sont reconnues", await attendre(".search-result.is-brand", 12_000))) return;
+      await cliquer(".search-result.is-brand");
+      if (!verifier("la fiche du lieu s'ouvre", await attendre(".sheet"))) return;
+      await cliquer(".sheet-action-primary");
+      if (!verifier("le panneau d'itinéraire s'ouvre", await attendre(".itinerary-panel"))) return;
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[0])m[0].click();return true})()");
+      if (!verifier("un itinéraire voiture est calculé", await attendre(".itinerary-result", 30_000))) return;
+
+      // La destination vient d'une **recherche de texte** : si le géocodeur
+      // rend autre chose que ce qu'on visait, on conduirait de nouveau le long
+      // d'un tracé pendant que l'application en suit un autre. Comparer les deux
+      // distances rend cette divergence visible au lieu de la laisser passer
+      // pour une absence de rond-point.
+      const distanceAffichee = (await texte(".itinerary-distance")) ?? "";
+      const km = Number((/([\d.,]+)\s*km/i.exec(distanceAffichee)?.[1] ?? "").replace(",", "."));
+      const kmReference = trajet.distance / 1000;
+      verifier(
+        "l'application vise bien la même destination que la référence",
+        Number.isFinite(km) && Math.abs(km - kmReference) < kmReference * 0.4,
+        `application ${distanceAffichee || "?"} · référence ${kmReference.toFixed(1)} km`
+      );
+
+      await cliquer(".nav-start");
+      if (!verifier("l'écran de choix paraît", await attendre(".car-choice-bar", 40_000))) return;
+      if (!(await attendre(".route-choice-bubble", 40_000))) {
+        return verifier("un parcours est proposé sur la carte", false, (await texte(".car-choice-bar")) ?? "");
+      }
+      await cliquer(".route-choice-bubble");
+      if (!verifier("toucher la bulle lance le guidage", await attendre(".car-banner", 25_000))) return;
+
+      // **On retient au vol au lieu d'interroger par à-coups.** Un rond-point
+      // ne reste à l'écran que le temps de l'approche ; le chercher toutes les
+      // 400 ms revient à parier qu'on tombera dessus. Un guetteur posé dans la
+      // page note la première apparition et ne la lâche plus.
+      await js(`(()=>{
+        window.__vuSortie=null;window.__vuVirage=null;window.__vuManeuvres=[];
+        clearInterval(window.__guetteur);
+        window.__guetteur=setInterval(()=>{
+          const e=document.querySelector('.nav-exit');
+          if(e&&!window.__vuSortie)window.__vuSortie=(e.textContent||'').trim();
+          const p=document.querySelector('.nav-maneuver-icon:not(.is-arrival)');
+          if(p&&!window.__vuVirage){const r=p.getBoundingClientRect();
+            window.__vuVirage=Math.round(r.width)+'x'+Math.round(r.height)}
+          const t=document.querySelector('.car-maneuver-action');
+          if(t){const s=(t.textContent||'').trim();
+            if(s&&window.__vuManeuvres[window.__vuManeuvres.length-1]!==s)window.__vuManeuvres.push(s)}
+        },120);return true})()`);
+
+      await js("(()=>{window.__parcoursRouler&&window.__parcoursRouler();return true})()");
+
+      // On roule jusqu'à ce que la sortie soit vue, ou qu'on soit arrivé.
+      await attendreQue(
+        "!!window.__vuSortie || !!document.querySelector('.nav-maneuver.is-arrival')",
+        200_000
+      );
+      await js("(()=>{clearInterval(window.__guetteur);return true})()");
+
+      const sortieVue = await js("window.__vuSortie");
+      const virage = await js("window.__vuVirage");
+      const suivies = await js("(window.__vuManeuvres||[]).slice(0,8).join(' · ')");
+
+      if (sortieVue) {
+        verifier("le numéro de sortie s'inscrit dans la pastille", /^\d+$/.test(sortieVue), sortieVue);
+        capture("25-rond-point");
+      } else {
+        verifier("le numéro de sortie paraît pendant le trajet", false, `manœuvres traversées : ${suivies || "aucune"}`);
+        capture("25-rond-point-manque");
+      }
+      verifier("une pastille de virage est mesurée", virage !== null, virage ?? "aucune");
+
+      await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+      await dodo(1500);
     },
   },
 ];
