@@ -880,6 +880,14 @@ y sont déjà.
   différentes, pas deux estimations de la même. Montrer l'une en annonçant la
   durée de l'autre était l'incohérence la plus gênante des deux. Sans clé, tout
   retombe sur OSRM et rien ne change.
+
+  **Le panneau ne montre que deux chiffres — la durée et la distance — et c'est
+  une demande explicite.** Une première version y ajoutait « dont 15 min de
+  trafic » : ce bloc sert à *comparer des modes*, voiture contre marche contre
+  transports, et une troisième valeur y encombrait la comparaison. Ce que le
+  trafic coûte se dit donc au seul endroit où l'on choisit son itinéraire, la
+  bulle. **Ne pas le réintroduire dans le panneau** : ce qui a changé là-bas est
+  la *source* des deux chiffres, pas leur nombre.
 - **L'API limite aussi le débit, pas seulement le volume.** Un banc d'essai qui
   enchaînait les appels sans pause a rendu des **429** : ce n'est pas la clé qui
   est en cause, c'est le nombre de requêtes par seconde. Deux appels toutes les

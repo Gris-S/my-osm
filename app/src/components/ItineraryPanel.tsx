@@ -461,14 +461,18 @@ interface ItineraryPanelProps {
   /**
    * Le même trajet, vu par le moteur qui connaît la **circulation en cours**,
    * quand une clé TomTom permet de le savoir (voir `src/navigation/`). Il
-   * remplace alors la durée d'OSRM, qui l'ignore : c'est exactement le chiffre
-   * que l'écran de choix annoncera au départ, et promettre 10 min pour en
-   * annoncer 24 une seconde plus tard n'était pas défendable.
+   * remplace alors la durée et la distance d'OSRM, qui ignore le trafic :
+   * c'est exactement ce que l'écran de choix annoncera au départ, et promettre
+   * 10 min pour en annoncer 24 une seconde plus tard n'était pas défendable.
+   *
+   * **Deux valeurs, pas trois** : le retard dû au trafic n'est pas repris ici,
+   * il se dit sur la bulle de proposition. Le panneau compare des modes, et un
+   * chiffre de plus y encombrait la comparaison.
    *
    * Des données nues, et non un objet du module de navigation : le panneau ne
    * doit pas en dépendre pour rester compilable si le dossier disparaît.
    */
-  liveEta?: { durationSeconds: number; distanceMeters: number; trafficDelaySeconds: number | null } | null;
+  liveEta?: { durationSeconds: number; distanceMeters: number } | null;
   /** Trajets en transports proposés ; `null` tant qu'aucun calcul n'a abouti. */
   journeys: TransitJourney[] | null;
   journeyIndex: number;
@@ -709,8 +713,13 @@ export function ItineraryPanel({
 
       {ready && route && !loading && mode !== "transit" && (
         <div className="itinerary-result">
-          {/* La durée du moteur qui connaît le trafic l'emporte dès qu'on l'a ;
-              OSRM reste l'affichage instantané et le repli sans clé. */}
+          {/* **Deux chiffres, et rien de plus** (demande explicite) : ce bloc
+              sert à comparer des modes — voiture, marche, transports — et une
+              troisième valeur y encombrait la comparaison. Ce qui a changé n'est
+              pas le dessin mais la **source** : la durée et la distance viennent
+              du moteur qui connaît la circulation dès qu'on l'a. Ce que le
+              trafic coûte se dit à l'endroit où l'on choisit son itinéraire,
+              c'est-à-dire sur la bulle (`carLabels.ts`). */}
           <span className="itinerary-duration">
             {formatDuration(liveEta?.durationSeconds ?? route.durationSeconds)}
           </span>
@@ -719,15 +728,6 @@ export function ItineraryPanel({
           ) : route.distanceMeters !== null ? (
             <span className="itinerary-distance">{formatDistance(route.distanceMeters)}</span>
           ) : null}
-          {/* Ce que le trafic coûte, dit une fois : sans cette ligne la durée
-              paraît exagérée à qui la compare à une estimation sur route vide.
-              En deçà d'une minute, on se tait — c'est sous la précision d'une
-              prévision de circulation. */}
-          {liveEta && liveEta.trafficDelaySeconds !== null && liveEta.trafficDelaySeconds >= 60 && (
-            <span className="itinerary-note">
-              {t("itinerary.trafficDelay", { minutes: Math.round(liveEta.trafficDelaySeconds / 60) })}
-            </span>
-          )}
           {/* Voir `src/navigation/` : la marche et la voiture se guident toutes
               les deux — le bloc entier est déjà réservé aux modes routiers — et
               les transports ont leur propre bouton, dans le trajet retenu. */}

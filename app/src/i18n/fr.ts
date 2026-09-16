@@ -449,10 +449,6 @@ export const fr = {
   "itinerary.stepsFull": "Maximum de {count} étapes atteint",
   "itinerary.needOrigin": "Choisis un point de départ, ou active la géolocalisation.",
   "itinerary.computing": "Calcul de l'itinéraire…",
-  // En voiture, la durée affichée tient compte de la circulation en cours (voir
-  // `navigation/car/carEta.ts`) : on dit ce qu'elle doit au trafic, sans quoi
-  // elle paraîtrait exagérée face à une estimation sur route vide.
-  "itinerary.trafficDelay": "dont {minutes} min de trafic",
   "itinerary.noTransit": "Aucun trajet en transports pour ce parcours.",
   "itinerary.noTransitSteps": "Aucun trajet en transports desservant toutes les étapes.",
   "itinerary.transitNote": "Horaires {source}, au départ de l'heure du calcul.",

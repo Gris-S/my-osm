@@ -671,13 +671,7 @@ export default function App() {
           onRemoveStop={handleRemoveStop}
           onMoveStop={handleMoveStop}
           route={route}
-          liveEta={
-            carEta && {
-              durationSeconds: carEta.durationSeconds,
-              distanceMeters: carEta.distanceMeters,
-              trafficDelaySeconds: carEta.trafficDelaySeconds,
-            }
-          }
+          liveEta={carEta && { durationSeconds: carEta.durationSeconds, distanceMeters: carEta.distanceMeters }}
           journeys={journeys}
           journeyIndex={journeyIndex}
           onSelectJourney={setJourneyIndex}
