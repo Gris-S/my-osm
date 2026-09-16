@@ -53,9 +53,9 @@ encore.
 </tr>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/04-search.png" width="220" alt="Résultats de recherche"><br>
-<b>Une recherche qui comprend</b><br>
-<sub>Adresses, lieux, ou toutes les enseignes d'une marque dans la zone visible.</sub>
+<img src="docs/screenshots/04-navigation.png" width="220" alt="Navigation voiture pas à pas"><br>
+<b>La navigation au volant</b><br>
+<sub>Instruction après instruction, avec la circulation en direct, les vitesses limites et les voies à emprunter.</sub>
 </td>
 <td width="33%" align="center">
 <img src="docs/screenshots/05-offline.png" width="220" alt="Téléchargement d'une zone hors ligne"><br>

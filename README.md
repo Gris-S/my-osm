@@ -52,9 +52,9 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 </tr>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/04-search.png" width="220" alt="Search results"><br>
-<b>Search that understands</b><br>
-<sub>Addresses, places, or every branch of a chain within the visible area.</sub>
+<img src="docs/screenshots/04-navigation.png" width="220" alt="Turn-by-turn driving navigation"><br>
+<b>Drive with confidence</b><br>
+<sub>Turn-by-turn driving, with live traffic, speed limits and lane guidance.</sub>
 </td>
 <td width="33%" align="center">
 <img src="docs/screenshots/05-offline.png" width="220" alt="Offline area download"><br>
