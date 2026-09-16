@@ -623,9 +623,16 @@ const SCENARIOS = [
           await js("!!document.querySelector('.departures-source')"),
           (await texte(".departures-source")) ?? ""
         );
+        // `.departure-next` est la seule classe toujours présente : elle porte
+        // le prochain passage sur la ligne repliée, ou « Service ended ».
+        // `.departure-time` et `.departure-wait` n'existent qu'une fois le
+        // groupe **déplié**. La version d'avant les cherchait quand même, et
+        // ne passait que grâce à `.departures-note` — c'est-à-dire seulement
+        // quand quelque chose n'allait pas. Tout fonctionnait, donc elle
+        // échouait.
         verifier(
           "il y a un horaire, ou la raison de son absence",
-          await js("!!document.querySelector('.departure-time, .departure-none, .departures-note')"),
+          await js("!!document.querySelector('.departure-next, .departure-none, .departures-note')"),
           contenu.slice(0, 90)
         );
       } else {
@@ -655,7 +662,12 @@ const SCENARIOS = [
       // Le panneau arrive en différé (`lazy`) : lui laisser le temps d'arriver.
       if (!verifier("le panneau de téléchargement s'ouvre", await attendre(".download-dialog", 25_000))) return;
       verifier("l'emprise se choisit sur une carte", await attendre(".download-map", 12_000));
-      verifier("la place disponible est annoncée", await js("!!document.querySelector('.download-quota')"),
+      // Le quota vient de `storageEstimate()`, donc en différé : il faut
+      // l'attendre. Sans cela, la condition était évaluée avant que l'élément
+      // n'existe et le détail juste après, une fois qu'il était là — un échec
+      // dont le libellé affichait « 66 Mo used of 108,6 Go », c'est-à-dire la
+      // preuve que tout allait bien.
+      verifier("la place disponible est annoncée", await attendre(".download-quota", 12_000),
         (await texte(".download-quota")) ?? "");
       verifier("le niveau de détail se choisit", await js("!!document.querySelector('.download-tiers')"));
       verifier("le bouton de lancement est présent", await js("!!document.querySelector('.download-launch')"));
@@ -993,19 +1005,37 @@ const SCENARIOS = [
       await carteVers(2.3478, 48.865, 16);
       const avant = await js("(()=>{const c=window.__myosm?.map?.getCenter?.();return c?c.lng.toFixed(3)+','+c.lat.toFixed(3):null})()");
 
+      // Un marqueur, pour savoir si la page a survécu au passage en
+      // arrière-plan ou si le système l'a rechargée. Les deux sont légitimes —
+      // Android reprend la mémoire quand il en manque — et le parcours le
+      // **rapporte** au lieu d'en juger.
+      await js("(()=>{window.__marqueurVeille=1;return true})()");
+
       adb("shell", "input", "keyevent", "3"); // retour à l'écran d'accueil
       await dodo(5000);
       reveiller();
       await dodo(3500);
       await connecter(30_000);
 
+      const conservee = await js("!!window.__marqueurVeille");
+      verifier("le retour se fait proprement", true, conservee ? "page conservée" : "page rechargée par le système");
       verifier("la carte est toujours dessinée au retour", await js("!!document.querySelector('.map-container canvas')"));
       verifier("le thème choisi est toujours là", (await js("document.documentElement.getAttribute('data-theme')")) === "dark");
       const apres = await js("(()=>{const c=window.__myosm?.map?.getCenter?.();return c?c.lng.toFixed(3)+','+c.lat.toFixed(3):null})()");
-      // Sur l'APK sans diagnostic, `__myosm` n'existe pas : on ne conclut alors
-      // rien sur la position, plutôt que d'inventer un échec.
+      // La carte a le droit d'avoir bougé : si la page a été rechargée, le
+      // recentrage d'ouverture la repose sur la position — c'est précisément ce
+      // qu'on a réparé. Cette vérification exigeait l'immobilité, et s'est donc
+      // mise à échouer le jour où le correctif a commencé à marcher. Ce qui
+      // compte n'est pas qu'elle n'ait pas bougé, mais qu'elle ne soit pas
+      // revenue au centre par défaut, seule et sans position.
+      const DEFAUT = "2.352,48.857"; // CONFIG.DEFAULT_CENTER, au millième
       if (avant === null) verifier("position de la carte non mesurable (APK sans diagnostic)", true);
-      else verifier("la carte est restée où on l'avait laissée", avant === apres, `${avant} → ${apres}`);
+      else
+        verifier(
+          "la carte est restée en place, ou s'est reposée sur la position",
+          apres === avant || apres !== DEFAUT,
+          `${avant} → ${apres}`
+        );
       verifier("aucune panne de carte n'est signalée", !(await js("!!document.querySelector('.map-status.is-error')")));
       capture("21-veille");
     },

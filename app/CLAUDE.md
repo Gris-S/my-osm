@@ -66,12 +66,18 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
   part alors que le message existait, traduit, depuis toujours.
 
 **Le parcours se trompe plus souvent que l'application, et il faut s'en
-méfier.** Cinq fois il a accusé à tort, toujours pour la même raison : il
-interrogeait un écran avant que la donnée ne soit arrivée — résultats du
+méfier.** Sept fois il a accusé à tort, presque toujours pour la même raison :
+il interrogeait un écran avant que la donnée ne soit arrivée — résultats du
 géocodeur, page en cours de rechargement, départs encore en « Looking up… »,
-bouton de position dans les dix secondes que l'API s'autorise. **Avant de
-déclarer un défaut, vérifier qu'on a attendu** ; `attendreQue` est là pour ça, et
-un scénario qui conclut après un `dodo` fixe est suspect par construction.
+bouton de position dans les dix secondes que l'API s'autorise, quota de
+stockage calculé en différé. **Avant de déclarer un défaut, vérifier qu'on a
+attendu** ; `attendreQue` et `attendre` sont là pour ça, et un scénario qui
+conclut après un `dodo` fixe est suspect par construction.
+
+Le signe le plus sûr qu'on accuse à tort : **le détail imprimé à côté du `✗`
+contredit le libellé**. « la place disponible est annoncée ✗ — 66 Mo used of
+108,6 Go » dit exactement que tout allait bien, et que la condition avait été
+lue trop tôt.
 
 Deux autres pièges, du même genre :
 
