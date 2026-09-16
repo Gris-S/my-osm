@@ -1,7 +1,7 @@
 {
   "name": "my-osm",
   "private": true,
-  "version": "0.1.0-alpha.22",
+  "version": "0.1.0-alpha.23",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {

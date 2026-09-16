@@ -3,7 +3,14 @@ import { fr, type Dict, type PluralKey, type TranslationKey } from "./fr";
 import { en } from "./en";
 
 // ---------------------------------------------------------------------------
-// Langue de l'interface (français par défaut, anglais au choix).
+// Langue de l'interface (anglais par défaut, français au choix).
+//
+// **L'anglais est servi par défaut, y compris sur un téléphone en français.**
+// L'application est publiée pour un public international — ses descriptions,
+// ses captures et ses notes de version sont en anglais — et c'est dans cette
+// langue qu'elle doit se présenter à qui l'installe sans rien savoir d'elle.
+// Le francophone la repasse en français en deux touches, et « Système » reste
+// offert pour suivre l'appareil.
 //
 // Ce n'est **pas** un hook comme les autres réglages persistés, et c'est
 // délibéré : la langue est lue par une quarantaine de composants, dont
@@ -43,21 +50,34 @@ const DICTS: Record<Lang, Dict> = { fr, en };
  */
 const LOCALES: Record<Lang, string> = { fr: "fr-FR", en: "en-GB" };
 
+/** Ce que l'application sert quand personne n'a rien choisi. */
+const DEFAULT_LANG: Lang = "en";
+
 function systemLang(): Lang {
   const tags = navigator.languages?.length ? navigator.languages : [navigator.language];
   for (const tag of tags) {
     const base = tag.toLowerCase().split("-")[0];
     if (base === "fr" || base === "en") return base;
   }
-  // Ni français ni anglais : le français reste la langue de référence de
-  // l'application, c'est elle qu'on sert plutôt qu'une traduction de secours.
-  return "fr";
+  // Ni français ni anglais : on sert la langue par défaut de l'application
+  // plutôt qu'une traduction que l'appareil ne réclamait pas.
+  return DEFAULT_LANG;
 }
 
-function readStored(): Lang | null {
+/**
+ * Le choix enregistré, `"system"` compris.
+ *
+ * **« Système » s'écrit, il ne se déduit plus d'une absence.** Tant que
+ * l'absence de valeur signifiait « suivre l'appareil », les deux se
+ * confondaient sans dommage. Depuis que l'absence signifie « anglais », les
+ * distinguer est indispensable : sans cela, choisir « Système » puis rouvrir
+ * l'application rendrait l'anglais, et l'option ne marcherait tout simplement
+ * pas.
+ */
+function readStored(): Lang | "system" | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "fr" || stored === "en" ? stored : null;
+    return stored === "fr" || stored === "en" || stored === "system" ? stored : null;
   } catch {
     return null; // localStorage indisponible (mode privé, etc.)
   }
@@ -65,11 +85,17 @@ function readStored(): Lang | null {
 
 interface LangState {
   lang: Lang;
-  /** Vrai tant que l'utilisateur n'a pas choisi de langue lui-même. */
+  /** Vrai quand l'utilisateur a demandé de suivre la langue de l'appareil. */
   followSystem: boolean;
 }
 
-let state: LangState = { lang: readStored() ?? systemLang(), followSystem: readStored() === null };
+function initialState(): LangState {
+  const stored = readStored();
+  if (stored === "system") return { lang: systemLang(), followSystem: true };
+  return { lang: stored ?? DEFAULT_LANG, followSystem: false };
+}
+
+let state: LangState = initialState();
 
 const listeners = new Set<() => void>();
 
@@ -107,15 +133,17 @@ export function setLang(lang: Lang) {
 }
 
 /**
- * Revient à la langue de l'appareil, et **efface** le choix mémorisé — comme
- * « Système » pour le thème : sans cet effacement, l'application cesserait de
- * suivre l'appareil.
+ * Suit la langue de l'appareil, et **l'enregistre comme tel**.
+ *
+ * Ce choix s'écrivait autrefois en effaçant la clé, l'absence valant « suivre
+ * l'appareil ». Ce n'est plus possible : l'absence vaut désormais « anglais »,
+ * et effacer reviendrait à annuler le choix qu'on vient de faire.
  */
 export function followSystemLang() {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, "system");
   } catch {
-    /* ignore : le choix précédent restera simplement mémorisé */
+    /* ignore : le choix restera simplement non persisté */
   }
   setState({ lang: systemLang(), followSystem: true });
 }

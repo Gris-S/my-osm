@@ -69,6 +69,18 @@ interface AppMenuProps {
   autoSource: AutoSource;
   onThemeChange: (theme: Theme) => void;
   onAutoTheme: () => void;
+  /**
+   * Compteur qu'on incrémente pour demander l'ouverture de l'écran des clés.
+   *
+   * Un nombre, et non un booléen : la fenêtre d'accueil doit pouvoir rouvrir
+   * cet écran autant de fois qu'on le lui demande, or un booléen déjà à vrai ne
+   * redéclencherait rien. `0` signifie « personne n'a rien demandé ».
+   *
+   * `apiOpen` reste **local à ce menu**. Le lever jusqu'à `App` pour un seul
+   * appelant ferait traverser tout le rendu à un état qui ne regarde que le
+   * menu, et le projet n'a délibérément pas de contexte pour l'y conduire.
+   */
+  openApiSignal?: number;
 }
 
 /**
@@ -101,7 +113,7 @@ function renderCredit(html: string): React.ReactNode[] {
 
 // Protégé contre les rendus inutiles (`memo`) : `App` se redessine à chaque
 // relevé GPS d'une navigation, et ce composant n'a alors rien de neuf à montrer.
-export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, autoSource, onThemeChange, onAutoTheme }: AppMenuProps) {
+export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, autoSource, onThemeChange, onAutoTheme, openApiSignal }: AppMenuProps) {
   const { t } = useI18n();
   const language = useLangSetting();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -117,6 +129,20 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Ouverture de l'écran des clés demandée du dehors (fenêtre d'accueil).
+  //
+  // L'ajustement se fait **pendant le rendu**, et non dans un effet : c'est le
+  // patron que React prévoit pour réagir au changement d'une prop, et un effet
+  // qui appelle `setState` déclenche un rendu de plus pour rien. Le menu se
+  // referme au passage — la fenêtre des clés se pose par-dessus, et le laisser
+  // ouvert derrière elle n'aurait aucun sens une fois qu'on la fermera.
+  const [handledApiSignal, setHandledApiSignal] = useState(openApiSignal ?? 0);
+  if ((openApiSignal ?? 0) !== handledApiSignal) {
+    setHandledApiSignal(openApiSignal ?? 0);
+    setMenuOpen(false);
+    setApiOpen(true);
+  }
 
   // Menu déroulé : fermeture au clic à l'extérieur et à Échap, comme les
   // autres menus flottants de l'application.

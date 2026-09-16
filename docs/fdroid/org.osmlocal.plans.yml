@@ -11,7 +11,7 @@
 # ⚠ NON VÉRIFIÉ. Le serveur de construction de F-Droid n'est pas reproductible
 # ici : cette recette est écrite d'après leur documentation et d'après la chaîne
 # réelle du projet, mais elle n'a jamais été exécutée. À valider par `fdroid
-# build org.osmlocal.plans:1000022` avant d'ouvrir la merge request.
+# build org.osmlocal.plans:1000023` avant d'ouvrir la merge request.
 # ---------------------------------------------------------------------------
 
 Categories:
@@ -28,12 +28,12 @@ RepoType: git
 Repo: https://github.com/Gris-S/my-osm.git
 
 Builds:
-  - versionName: 0.1.0-alpha.22
-    versionCode: 1000022
+  - versionName: 0.1.0-alpha.23
+    versionCode: 1000023
     # Le dépôt préfixe ses tags d'un « v » (v0.1.0-alpha.16 est le premier
     # publié). `commit:` doit reprendre le **nom exact du tag**, sans quoi le
     # serveur de F-Droid ne trouve rien à construire.
-    commit: v0.1.0-alpha.22
+    commit: v0.1.0-alpha.23
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. Les chemins des étapes ci-dessous en partent, d'où les
@@ -81,9 +81,9 @@ Builds:
       - apk/node_modules
 
 # Le numéro de version est déduit de `app/package.json` par
-# `apk/android/app/build.gradle` : 0.1.0-alpha.22 -> 1000022. Une version
+# `apk/android/app/build.gradle` : 0.1.0-alpha.23 -> 1000023. Une version
 # finale passe devant toutes ses alphas (suffixe 9999).
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags
-CurrentVersion: 0.1.0-alpha.22
-CurrentVersionCode: 1000022
+CurrentVersion: 0.1.0-alpha.23
+CurrentVersionCode: 1000023

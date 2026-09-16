@@ -82,6 +82,21 @@ export const en: Dict = {
   "settings.language.system": "System",
   "settings.language.hint": "The app follows your device's language.",
 
+  // First-run window (`FirstRunNotice`)
+  "firstRun.title": "Welcome to MY OSM",
+  "firstRun.lead": "Two things worth a minute before you start.",
+  "firstRun.tomtom.title": "Add a TomTom key — strongly recommended",
+  "firstRun.tomtom.body":
+    "Without one, car navigation has no live traffic, no tolls avoided, no speed limits and no lane guidance, and offers a single route only.",
+  "firstRun.tomtom.free": "It is free, takes two minutes, and needs no bank card.",
+  "firstRun.github.title": "The project is open source",
+  "firstRun.github.body":
+    "Source code, bug reports and releases are on GitHub. Feedback is welcome there.",
+  "firstRun.addKey": "Add the key",
+  "firstRun.openGithub": "View on GitHub",
+  "firstRun.later": "Later",
+  "firstRun.close": "Close",
+
   // --- Settings, "API" section ----------------------------------------------
   "apikeys.title": "API keys",
   "apikeys.where": "Menu › API",

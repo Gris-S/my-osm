@@ -34,6 +34,9 @@
 @import "./styles/ui/street-photo.css";
 @import "./styles/ui/weather.css";
 @import "./styles/ui/app-menu.css";
+/* Après `app-menu.css` : la fenêtre d'accueil reprend son voile et sa fenêtre
+   (`.modal-backdrop`, `.settings-dialog`) et se borne à les compléter. */
+@import "./styles/ui/first-run.css";
 @import "./styles/ui/bookmarks.css";
 @import "./styles/ui/save-place.css";
 @import "./styles/ui/filter-menu.css";

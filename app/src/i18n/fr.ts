@@ -101,6 +101,21 @@ export const fr = {
   "settings.language.system": "Système",
   "settings.language.hint": "L'application suit la langue de votre appareil.",
 
+  // Fenêtre d'accueil, au tout premier lancement (`FirstRunNotice`)
+  "firstRun.title": "Bienvenue dans MY OSM",
+  "firstRun.lead": "Deux choses valent une minute avant de commencer.",
+  "firstRun.tomtom.title": "Ajoutez une clé TomTom — vivement conseillé",
+  "firstRun.tomtom.body":
+    "Sans elle, la navigation voiture n'a ni circulation en direct, ni péages évités, ni vitesses limites, ni voies à emprunter, et ne propose qu'un seul itinéraire.",
+  "firstRun.tomtom.free": "Elle est gratuite, prend deux minutes, et ne demande aucune carte bancaire.",
+  "firstRun.github.title": "Le projet est libre",
+  "firstRun.github.body":
+    "Code source, signalement de bogues et versions se trouvent sur GitHub. Les retours y sont les bienvenus.",
+  "firstRun.addKey": "Ajouter la clé",
+  "firstRun.openGithub": "Voir sur GitHub",
+  "firstRun.later": "Plus tard",
+  "firstRun.close": "Fermer",
+
   // --- Fenêtre « API » du menu burger ---------------------------------------
   // Les clés se saisissent dans l'application parce qu'un `.env.local` n'existe
   // plus une fois l'application empaquetée. Voir `services/apiKeys.ts`.

@@ -331,6 +331,12 @@ async function scene({ theme = "light", langue = "en", fond = "standard", filtre
     "osm-local:lang": langue,
     "osm-local:basemap": fond,
     "osm-local:filters": filtres,
+    // La fenêtre d'accueil est marquée **vue**. Sans cela, elle se poserait sur
+    // l'interface après chaque rechargement — c'est-à-dire au début de chaque
+    // scénario — et son voile avalerait tous les clics : les vingt-deux
+    // échoueraient d'un coup, pour une fenêtre qui fonctionne parfaitement.
+    // Le scénario `premier-lancement` est le seul à l'effacer, exprès.
+    "osm-local:first-run-seen": "on",
   });
   await recharger();
 }
@@ -1073,6 +1079,54 @@ const SCENARIOS = [
       await recharger();
       verifier("à la réouverture, la carte s'y repose seule", await attendreQue(AILLEURS, 25_000), await js(CENTRE));
       capture("22-recentrage");
+    },
+  },
+
+  {
+    id: "premier-lancement",
+    titre: "La fenêtre d'accueil paraît une fois, et une seule",
+    /**
+     * Ce qu'il faut vraiment vérifier d'une fenêtre d'accueil n'est pas qu'elle
+     * s'ouvre — c'est qu'elle **se taise ensuite**. Une fenêtre qui revient est
+     * une fenêtre qu'on apprend à fermer sans lire, et elle aurait alors pour
+     * seul effet de retarder l'application de deux secondes à chaque
+     * lancement.
+     */
+    async executer() {
+      await scene();
+      // On se remet dans l'état d'une installation neuve. `scene()` vient de
+      // marquer la fenêtre comme vue : il faut donc l'effacer après lui.
+      await reglages({ "osm-local:first-run-seen": null });
+      await recharger();
+
+      if (!verifier("la fenêtre s'ouvre au premier lancement", await attendre(".first-run", 12_000))) return;
+      const contenu = (await texte(".first-run")) ?? "";
+      verifier("elle recommande la clé TomTom", /TomTom/i.test(contenu), contenu.slice(0, 70));
+      verifier("elle mentionne le dépôt public", /GitHub/i.test(contenu));
+      verifier(
+        "elle dit que la clé est gratuite et sans carte bancaire",
+        /free|gratuit/i.test(contenu) && /bank card|carte bancaire/i.test(contenu)
+      );
+      const lien = await js(`(()=>{const a=document.querySelector('.first-run a.first-run-action');
+        return a?a.getAttribute('href'):null})()`);
+      verifier("le lien pointe sur le dépôt", lien === "https://github.com/Gris-S/my-osm", lien ?? "aucun");
+      capture("23-premier-lancement");
+
+      // Le bouton principal doit **mener** à l'écran des clés, pas seulement en
+      // parler : c'est toute la différence entre un conseil et un chemin.
+      await cliquer(".first-run-action.is-primary");
+      verifier("« Ajouter la clé » ouvre l'écran des clés", await attendre(".apikeys", 12_000));
+      verifier("la fenêtre d'accueil s'est effacée", !(await js("!!document.querySelector('.first-run')")));
+      capture("24-premier-lancement-cles");
+      await fermerModale();
+
+      // Et surtout : elle ne revient pas.
+      await recharger();
+      verifier(
+        "elle ne reparaît pas au lancement suivant",
+        !(await attendre(".first-run", 6000)),
+        (await lire("osm-local:first-run-seen")) ?? "aucune trace enregistrée"
+      );
     },
   },
 ];

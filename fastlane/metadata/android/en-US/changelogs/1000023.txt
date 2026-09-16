@@ -1,0 +1,7 @@
+The app now starts in English, whatever the phone's language. French is two
+taps away in Menu › Settings, where "System" still follows the device.
+
+A window on first launch strongly recommends adding a free TomTom key: without
+one, car navigation has no live traffic, no tolls avoided, no speed limits and
+no lane guidance, and offers a single route only. The key is free and needs no
+bank card. The same window points to the project on GitHub. It appears once.

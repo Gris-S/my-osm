@@ -52,7 +52,12 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
   durée du panneau à celle de la bulle et échoue si elles s'écartent de plus
   d'une minute. **Un défaut trouvé sur l'appareil gagne son scénario**, comme un
   calcul qui casse gagne son test.
-- **Vingt-deux scénarios** au 16 septembre 2026 : après le chemin principal
+- **`scene()` marque la fenêtre d'accueil comme vue** (`osm-local:first-run-seen`).
+  Sans cela, elle se poserait sur l'interface après chaque rechargement — donc
+  au début de chaque scénario — et son voile avalerait tous les clics : les
+  vingt-trois échoueraient d'un coup, pour une fenêtre qui fonctionne
+  parfaitement. Seul `premier-lancement` efface ce drapeau, exprès.
+- **Vingt-trois scénarios** au 16 septembre 2026 : après le chemin principal
   (démarrage, recherche, itinéraire, cohérence, hors-ligne, réglages, zones
   tactiles, navigation, sans-clés), tout ce qui se règle ou s'affiche à côté —
   météo, départs de transports, téléchargement hors ligne et sa reprise après
@@ -2472,9 +2477,23 @@ c'est délibéré : la langue est lue par une quarantaine de composants, dont
 certains très loin d'`App`. La descendre en prop traverserait toute
 l'application pour une valeur qui change une fois par an, et `App` n'a pas de
 contexte, par choix d'architecture. Le réglage lui-même suit en revanche le
-patron habituel : clé `osm-local:lang`, lecture tolérante aux pannes, et
-« Système » qui **efface** la clé plutôt que d'y écrire une troisième valeur —
-comme pour le thème, sans quoi l'application cesserait de suivre l'appareil.
+patron habituel : clé `osm-local:lang`, lecture tolérante aux pannes.
+
+**L'anglais est servi par défaut, y compris sur un téléphone en français**
+(demande explicite, 16 septembre 2026). L'application est publiée pour un
+public international — descriptions, captures et notes de version sont en
+anglais — et c'est dans cette langue qu'elle doit se présenter à qui l'installe
+sans rien savoir d'elle. Le francophone la repasse en français en deux touches.
+`systemLang()` retombe donc sur `en`, et non plus sur `fr`, pour toute langue
+qui n'est ni l'un ni l'autre.
+
+**« Système » s'écrit désormais dans la clé (`"system"`), il ne se déduit plus
+d'une absence.** Tant que l'absence signifiait « suivre l'appareil », les deux
+se confondaient sans dommage ; depuis que l'absence signifie « anglais », les
+distinguer est vital. **Ne pas revenir à `removeItem`** pour ce choix : choisir
+« Système » puis rouvrir l'application rendrait l'anglais, et l'option ne
+marcherait tout simplement pas. C'est la seule différence de patron avec le
+thème, dont « Automatique » efface bien sa clé.
 
 Points à connaître avant d'y toucher :
 

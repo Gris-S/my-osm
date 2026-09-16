@@ -3,6 +3,8 @@ import { MapView } from "./components/MapView";
 import { SearchBar } from "./components/SearchBar";
 import { PlaceSheet, type DetailsStatus } from "./components/PlaceSheet";
 import { ItineraryPanel } from "./components/ItineraryPanel";
+import { FirstRunNotice } from "./components/FirstRunNotice";
+import { firstRunSeen } from "./services/firstRun";
 import { LocateButton } from "./components/LocateButton";
 import { AppMenu } from "./components/AppMenu";
 import { MapOptionsMenu } from "./components/MapOptionsMenu";
@@ -424,6 +426,13 @@ export default function App() {
   // seulement journalisée : sur un téléphone il n'y a pas de console, et une
   // carte grise sans explication est indiagnosticable.
   const [mapError, setMapError] = useState<string | null>(null);
+
+  // La fenêtre d'accueil, au tout premier lancement. Le stockage n'est lu
+  // **qu'une fois**, à l'initialisation : la relire à chaque rendu la ferait
+  // disparaître au moment même où elle s'enregistre comme vue.
+  const [firstRunOpen, setFirstRunOpen] = useState(() => !firstRunSeen());
+  // Voir `AppMenuProps.openApiSignal` : un compteur, pas un booléen.
+  const [openApiSignal, setOpenApiSignal] = useState(0);
   // Les crédits des sources de carte. Ils ne barrent plus le bas de l'écran :
   // ils vivent au bas du menu principal, et suivent les calques allumés.
   const [credits, setCredits] = useState<string[]>([]);
@@ -618,6 +627,7 @@ export default function App() {
             autoSource={autoSource}
             onThemeChange={setTheme}
             onAutoTheme={setAutoTheme}
+            openApiSignal={openApiSignal}
           />
 
           {/* Les signets et les catégories **restent pendant une recherche
@@ -788,6 +798,17 @@ export default function App() {
 
       {placeToSave && (
         <SavePlaceDialog place={placeToSave} bookmarks={bookmarks} onClose={() => setPlaceToSave(null)} />
+      )}
+
+      {/* La fenêtre d'accueil vit **hors** des conditions d'affichage de la
+          carte : elle doit se montrer au premier lancement quoi que
+          l'application ait par ailleurs à l'écran, et elle se pose sur le voile
+          commun, comme les autres fenêtres. */}
+      {firstRunOpen && (
+        <FirstRunNotice
+          onClose={() => setFirstRunOpen(false)}
+          onAddKey={() => setOpenApiSignal((count) => count + 1)}
+        />
       )}
     </div>
   );

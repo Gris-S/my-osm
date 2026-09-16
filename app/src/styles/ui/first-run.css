@@ -1,0 +1,84 @@
+/* ---------------------------------------------------------------------------
+   Fenêtre d'accueil du premier lancement (`FirstRunNotice`).
+
+   Elle reprend le voile et la fenêtre communs (`.modal-backdrop`,
+   `.settings-dialog`, définis par `app-menu.css`, importé avant celle-ci) et
+   n'ajoute que ce qui lui est propre. Rien à prévoir pour les zones réservées
+   du téléphone : le voile s'en charge déjà.
+   --------------------------------------------------------------------------- */
+.first-run-lead {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.first-run-block {
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  background: rgba(120, 120, 128, 0.1);
+}
+
+.first-run-block + .first-run-block {
+  margin-top: 10px;
+}
+
+/* La clé passe avant le reste, et doit se voir comme telle : c'est la seule
+   chose de cette fenêtre dont l'absence se paie plus tard, au volant. */
+.first-run-block.is-key {
+  background: rgba(120, 120, 128, 0.16);
+}
+
+.first-run-block-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.first-run-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.first-run-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.first-run-action {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(120, 120, 128, 0.18);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.first-run-action.is-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Sortir sans rien faire reste possible, et discret : on ne retient personne,
+   mais on ne met pas non plus cette sortie sur le même plan que la clé. */
+.first-run-later {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
