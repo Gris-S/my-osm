@@ -39,10 +39,56 @@ let ws = null;
 let prochainId = 1;
 const enAttente = new Map();
 
-async function connecter() {
+/**
+ * S'attache à la page **et attend que l'application y soit construite**.
+ *
+ * Les deux vont ensemble, et le premier passage du parcours l'a appris à ses
+ * dépens : s'attacher juste après un rechargement donne une page vide — ni
+ * `window.__myosm`, ni champ de recherche, ni carte. Le parcours accusait alors
+ * l'application de ne rien afficher, alors qu'il l'avait interrogée trop tôt.
+ *
+ * On réessaie donc jusqu'à ce que la page soit **complète et la carte
+ * dessinée** : c'est le seul état où une vérification veut dire quelque chose.
+ */
+async function connecter(delai = 25_000) {
+  const fin = Date.now() + delai;
+  let dernier = "";
+  while (Date.now() < fin) {
+    try {
+      if (ws) {
+        try {
+          ws.close();
+        } catch {
+          /* déjà fermée */
+        }
+        enAttente.clear();
+      }
+      await attacher();
+      const pret = await js("document.readyState === 'complete' && !!document.querySelector('.map-container canvas')");
+      if (pret) return;
+      dernier = "page incomplète";
+    } catch (erreur) {
+      dernier = String(erreur.message ?? erreur);
+    }
+    await dodo(700);
+  }
+  throw new Error(`L'application n'est pas prête après ${delai / 1000} s (${dernier}).`);
+}
+
+async function attacher() {
   const cibles = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json();
-  const page = cibles.find((c) => c.type === "page");
-  if (!page) throw new Error("Aucune page MY OSM : l'application est-elle ouverte ?");
+  // **La page de l'application, pas n'importe laquelle.** Le navigateur intégré
+  // de la recherche sur le web ouvre sa *propre* WebView, qui se place en tête
+  // de la liste : le parcours s'y est attaché et a conclu que l'application
+  // n'affichait ni carte ni champ de recherche. Elle allait très bien — il
+  // regardait DuckDuckGo.
+  const page = cibles.find((c) => c.type === "page" && String(c.url).startsWith("https://localhost"));
+  if (!page) {
+    const vues = cibles.filter((c) => c.type === "page").map((c) => c.url);
+    throw new Error(
+      `Page de l'application introuvable${vues.length ? ` (cibles vues : ${vues.join(", ")})` : " : l'application est-elle ouverte ?"}`
+    );
+  }
   ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((ok, ko) => {
     ws.addEventListener("open", ok, { once: true });
@@ -104,6 +150,53 @@ const saisir = (valeur) =>
     const set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
     set.call(i,${JSON.stringify(valeur)});i.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
 
+/** Attend qu'une condition soit vraie dans la page. Rend faux au bout du délai. */
+async function attendreQue(expression, delai = 15_000) {
+  const fin = Date.now() + delai;
+  while (Date.now() < fin) {
+    if (await js(expression)) return true;
+    await dodo(400);
+  }
+  return false;
+}
+
+/**
+ * Touche le premier **lieu** de la liste de résultats.
+ *
+ * Et non le premier résultat : les lignes « afficher toutes les enseignes »
+ * s'affichent dès la deuxième lettre, sans rien demander à personne, alors que
+ * les lieux arrivent du géocodeur une seconde plus tard. Attendre
+ * `.search-result` tout court revenait donc à cliquer dans une liste qui ne
+ * contenait encore que des enseignes — le premier passage du parcours a échoué
+ * exactement là, et sans cette distinction il aurait accusé l'application.
+ */
+/**
+ * Un **vrai lieu** dans la liste de résultats : un `.search-result` sans aucun
+ * modificateur.
+ *
+ * La liste en mêle cinq sortes (`SearchBar.tsx`) : `is-shortcut` pour Maison et
+ * Travail, `is-recent` pour l'historique, `is-brand` pour les enseignes et les
+ * coordonnées collées, `is-web` pour « Chercher sur le web », et les lieux, qui
+ * ne portent rien. Écarter les seules enseignes ne suffisait pas : le parcours
+ * touchait « Chercher sur le web », ouvrait le navigateur intégré, et la suite
+ * s'effondrait.
+ */
+const LIEU = ".search-result:not(.is-brand):not(.is-web):not(.is-shortcut):not(.is-recent)";
+
+async function cliquerPremierLieu() {
+  if (!(await attendreQue(`document.querySelectorAll('${LIEU}').length > 0`))) {
+    const offert = await js(
+      "[...document.querySelectorAll('.search-result')].map(e=>e.className).join(' / ') || 'aucun résultat'"
+    );
+    verifier("un lieu apparaît dans les résultats", false, offert);
+    return null;
+  }
+  const nom = await js(`(()=>{const e=document.querySelector('${LIEU}');
+    if(!e)return null;const t=e.innerText.replace(/\\n+/g,' · ');e.click();return t})()`);
+  verifier("un lieu de la liste est touché", nom !== null, (nom ?? "").slice(0, 50));
+  return nom;
+}
+
 const reglages = (objet) =>
   js(
     `(()=>{${Object.entries(objet)
@@ -127,9 +220,12 @@ const positionSimulee = (lat, lon, cap = 95, vitesse = 13.9) =>
     navigator.geolocation.watchPosition=(ok)=>{ok(f);return setInterval(()=>ok({...f,timestamp:Date.now()}),1000)};
     navigator.geolocation.clearWatch=(id)=>clearInterval(id);return true})()`);
 
-async function recharger(attente = 13_000) {
+async function recharger() {
+  // La promesse ne revient jamais : la page part avant de répondre.
   js("location.reload()").catch(() => {});
-  await dodo(attente);
+  // Juste de quoi laisser le rechargement commencer ; c'est `connecter` qui
+  // attend qu'il soit **fini**, et lui seul sait le vérifier.
+  await dodo(2500);
   await connecter();
 }
 
@@ -189,7 +285,7 @@ const SCENARIOS = [
       await carteVers(2.3478, 48.865, 16);
       await saisir("Bastille");
       verifier("des résultats apparaissent", await attendre(".search-result"));
-      await js("(()=>{const e=[...document.querySelectorAll('.search-result')].filter(x=>!x.className.includes('is-brand'));if(e[0])e[0].click();return true})()");
+      await cliquerPremierLieu();
       verifier("la fiche s'ouvre", await attendre(".sheet"));
       const contenu = (await texte(".sheet")) ?? "";
       verifier("la fiche porte un nom", contenu.length > 3, contenu.slice(0, 60));
@@ -206,7 +302,7 @@ const SCENARIOS = [
       await carteVers(2.3376, 48.86, 15);
       await saisir("Bastille");
       await attendre(".search-result");
-      await js("(()=>{const e=[...document.querySelectorAll('.search-result')].filter(x=>!x.className.includes('is-brand'));if(e[0])e[0].click();return true})()");
+      await cliquerPremierLieu();
       await attendre(".sheet");
       await cliquer(".sheet-action-primary");
       verifier("le panneau s'ouvre", await attendre(".itinerary-panel"));
@@ -233,7 +329,7 @@ const SCENARIOS = [
       await carteVers(2.3376, 48.86, 15);
       await saisir("Bastille");
       await attendre(".search-result");
-      await js("(()=>{const e=[...document.querySelectorAll('.search-result')].filter(x=>!x.className.includes('is-brand'));if(e[0])e[0].click();return true})()");
+      await cliquerPremierLieu();
       await attendre(".sheet");
       await cliquer(".sheet-action-primary");
       if (!(await attendre(".itinerary-result", 25_000))) return verifier("un itinéraire est calculé", false);
@@ -315,7 +411,7 @@ const SCENARIOS = [
       await carteVers(2.3376, 48.86, 16);
       await saisir("Bastille");
       await attendre(".search-result");
-      await js("(()=>{const e=[...document.querySelectorAll('.search-result')].filter(x=>!x.className.includes('is-brand'));if(e[0])e[0].click();return true})()");
+      await cliquerPremierLieu();
       await attendre(".sheet");
       await cliquer(".sheet-action-primary");
       await attendre(".itinerary-panel");
@@ -360,6 +456,10 @@ async function main() {
   console.log("\n▸ Remise en état");
   try {
     adb("shell", "cmd", "connectivity", "airplane-mode", "disable");
+    // Un scénario a pu ouvrir le navigateur intégré : il tient sa propre
+    // WebView, qui survivrait au parcours et gênerait le suivant. Le geste
+    // retour le referme, et ne fait rien sur la carte.
+    adb("shell", "input", "keyevent", "4");
     await connecter();
     await reglages({
       "osm-local:theme": null,
