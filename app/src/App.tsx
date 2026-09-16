@@ -14,7 +14,7 @@ import { BookmarksMenu } from "./components/BookmarksMenu";
 import { StreetPhoto } from "./components/StreetPhoto";
 import { SavePlaceDialog } from "./components/SavePlaceDialog";
 import { BrandBanner } from "./components/BrandBanner";
-import { useGeolocation } from "./hooks/useGeolocation";
+import { useGeolocation, positionDejaObtenue } from "./hooks/useGeolocation";
 import { useTheme } from "./hooks/useTheme";
 import { useBasemap } from "./hooks/useBasemap";
 import { useMap3D } from "./hooks/useMap3D";
@@ -174,16 +174,28 @@ export default function App() {
   // si l'autorisation est **déjà** accordée ; sinon c'est le bouton de position
   // qui la demandera, dans un geste dont le sens est clair.
   //
-  // L'API des permissions manque sur certains navigateurs : on y retombe alors
-  // sur le comportement d'avant, plutôt que de perdre le recentrage d'ouverture.
+  // Reste à savoir si l'autorisation est déjà là, et c'est le point délicat :
+  // **l'API des permissions ne le dit pas dans l'APK**. Mesurée sur appareil,
+  // elle répond « prompt » permission accordée comme retirée — elle décrit
+  // l'origine web, pas l'autorisation du paquet. Exiger « granted » revenait
+  // donc à supprimer le recentrage d'ouverture pour tout le monde, en silence :
+  // permission accordée, position obtenue en 1,9 s au bouton, et la carte
+  // restait pourtant au centre par défaut à chaque lancement.
+  //
+  // On ne se fie donc à cette API que lorsqu'elle tranche vraiment — « denied »
+  // interdit, « granted » autorise — et l'on s'en remet sinon au souvenir d'une
+  // position déjà obtenue, qui, lui, ne ment pas : elle n'a pu l'être qu'avec
+  // l'accord de l'utilisateur.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const status = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
-        if (status && status.state !== "granted") return;
+        if (status?.state === "denied") return;
+        if (status?.state !== "granted" && !positionDejaObtenue()) return;
       } catch {
-        /* API absente ou permission inconnue : on garde le comportement d'avant */
+        /* API absente : le souvenir d'une position obtenue décide seul */
+        if (!positionDejaObtenue()) return;
       }
       if (!cancelled) locate();
     })();
@@ -191,6 +203,19 @@ export default function App() {
       cancelled = true;
     };
   }, [locate]);
+
+  // Le refus de la position se dit, puis s'efface. Il se dit parce qu'un bouton
+  // qui tourne dix secondes sans rien répondre a toutes les apparences d'une
+  // panne ; il s'efface parce que la permission peut être accordée dans les
+  // réglages du téléphone sans que l'application en soit prévenue, et qu'un
+  // bandeau définitif mentirait dès cet instant.
+  const clearGeoError = geolocation.clearError;
+  useEffect(() => {
+    if (!geolocation.error) return;
+    const minuteur = setTimeout(clearGeoError, 8000);
+    return () => clearTimeout(minuteur);
+  }, [geolocation.error, clearGeoError]);
+
   useEffect(() => {
     if (!geolocation.position) return;
     const initial = startupLocateRef.current;
@@ -705,7 +730,7 @@ export default function App() {
       )}
 
       {!photoExpanded && !guiding && (
-        <MapStatus status={brand ? "idle" : poiStatus} mapError={mapError} />
+        <MapStatus status={brand ? "idle" : poiStatus} mapError={mapError} locationError={geolocation.error} />
       )}
 
       {/* Pas de bouton de position pendant un guidage voiture : la barre de

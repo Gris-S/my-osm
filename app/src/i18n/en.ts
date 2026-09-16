@@ -21,6 +21,7 @@ export const en: Dict = {
   "geo.unsupported": "Location is not available on this device.",
   "geo.denied": "Location denied — allow it in your phone's settings.",
   "geo.unavailable": "Position unavailable right now.",
+  "geo.timeout": "No position after ten seconds — check that location is on, and allowed for MY OSM in your phone's settings.",
 
   "brand.loading": "searching…",
   "brand.failed": "search failed",

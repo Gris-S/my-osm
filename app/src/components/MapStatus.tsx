@@ -31,9 +31,19 @@ interface MapStatusProps {
    * là où l'on ne peut pas ouvrir une console — dans l'application empaquetée.
    */
   mapError: string | null;
+  /**
+   * Ce que la géolocalisation a répondu, quand elle a refusé.
+   *
+   * Ce message existait, traduit dans les deux langues, et n'était affiché
+   * **nulle part** : `useGeolocation` le posait, personne ne le lisait. Un
+   * refus de position se soldait donc par un bouton qui tourne dix secondes et
+   * rien d'autre — le symptôme exact d'une panne, pour un fonctionnement
+   * normal.
+   */
+  locationError: string | null;
 }
 
-export function MapStatus({ status, mapError }: MapStatusProps) {
+export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   const { t } = useI18n();
   const { offline, missingZone } = useOfflineState();
 
@@ -44,6 +54,17 @@ export function MapStatus({ status, mapError }: MapStatusProps) {
       <div className="map-status is-error" role="alert">
         <TriangleAlert size={15} />
         {mapError}
+      </div>
+    );
+  }
+
+  // La réponse à un geste précis — on vient de toucher le bouton de position —
+  // passe avant l'état général de la carte : c'est celle qu'on attend.
+  if (locationError) {
+    return (
+      <div className="map-status is-warning" role="alert">
+        <TriangleAlert size={15} />
+        {locationError}
       </div>
     );
   }

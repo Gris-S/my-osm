@@ -52,6 +52,39 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
   durée du panneau à celle de la bulle et échoue si elles s'écartent de plus
   d'une minute. **Un défaut trouvé sur l'appareil gagne son scénario**, comme un
   calcul qui casse gagne son test.
+- **Vingt-deux scénarios** au 16 septembre 2026 : après le chemin principal
+  (démarrage, recherche, itinéraire, cohérence, hors-ligne, réglages, zones
+  tactiles, navigation, sans-clés), tout ce qui se règle ou s'affiche à côté —
+  météo, départs de transports, téléchargement hors ligne et sa reprise après
+  un arrêt brutal, clés d'API, paramètres, signets, filtres, fond de carte,
+  permission refusée, rotation, veille, recentrage d'ouverture. C'est là que
+  vivent les défauts longtemps : **personne ne regarde deux fois un écran de
+  réglages**.
+- Deux défauts réels trouvés en écrivant cette deuxième vague, tous deux
+  invisibles au code : le recentrage d'ouverture ne se produisait jamais (voir
+  la section sur `useGeolocation`), et un refus de position ne s'affichait nulle
+  part alors que le message existait, traduit, depuis toujours.
+
+**Le parcours se trompe plus souvent que l'application, et il faut s'en
+méfier.** Cinq fois il a accusé à tort, toujours pour la même raison : il
+interrogeait un écran avant que la donnée ne soit arrivée — résultats du
+géocodeur, page en cours de rechargement, départs encore en « Looking up… »,
+bouton de position dans les dix secondes que l'API s'autorise. **Avant de
+déclarer un défaut, vérifier qu'on a attendu** ; `attendreQue` est là pour ça, et
+un scénario qui conclut après un `dodo` fixe est suspect par construction.
+
+Deux autres pièges, du même genre :
+
+- **Une assertion qui passe sans rien lire est pire qu'une absence
+  d'assertion** : elle donne l'assurance. `.apikey-input` est une enveloppe, pas
+  le champ — en lire le `type` rendait `""`, et « les clés sont masquées »
+  passait au vert sans avoir rien vérifié. Toujours regarder le **détail**
+  imprimé à côté d'un `✓`, pas seulement le `✓`.
+- **Un scénario qui fait redémarrer l'application casse la redirection du
+  port** : la socket de débogage porte le PID. `rediriger()` la repose à chaque
+  tentative de `connecter()`, et le parcours se reconnecte au début de chaque
+  scénario — sans quoi un changement de permission fait échouer tout ce qui
+  suit, avec un « fetch failed » qui ressemble à une panne de l'application.
 
 **Git** : le projet est un dépôt git à la racine (`MY OSM/`) depuis le
 14 septembre 2026. Les sauvegardes de `outils/save.sh` restent possibles mais
@@ -2935,8 +2968,35 @@ corriger. Le jour où l'on en aura besoin, c'est ici que le greffon se rebranche
 **Rien ne se localise au lancement tant que l'autorisation n'est pas déjà
 accordée** (`App`) : appeler `locate()` d'emblée faisait surgir la boîte de
 dialogue d'Android avant que l'utilisateur ait vu la carte — le plus mauvais
-moment pour être refusé. L'état est lu par `navigator.permissions.query`, et un
-navigateur qui ne connaît pas cette API garde le comportement d'avant.
+moment pour être refusé.
+
+**`navigator.permissions.query` ne sert à rien pour le savoir, et s'y fier a
+coûté la fonction entière.** Mesurée sur appareil le 16 septembre 2026, elle
+répond `prompt` **permission accordée comme retirée** : elle décrit
+l'autorisation de l'origine web, pas celle qu'Android accorde au paquet. Le
+garde exigeait `granted` ; il ne l'obtenait jamais ; le recentrage d'ouverture
+était donc court-circuité à chaque lancement, en silence, alors que la position
+s'obtenait en 1,9 s dès qu'on touchait le bouton. Aucun test ne pouvait le voir
+— chaque morceau, pris à part, avait l'air juste. C'est le parcours sur
+appareil (`recentrage`) qui l'a montré, en regardant **où la carte se pose**.
+
+On ne se fie donc à cette API que lorsqu'elle tranche vraiment (`denied`
+interdit, `granted` autorise), et l'on s'en remet sinon au souvenir d'une
+position déjà obtenue — `osm-local:geo-seen`, posé par `useGeolocation` au
+premier succès. Ce souvenir ne ment pas : la position n'a pu être obtenue
+qu'avec l'accord de l'utilisateur. **Ne pas remplacer ce garde par un test sur
+`granted`** sans refaire la mesure.
+
+Même cause pour le message d'erreur : une permission retirée au niveau du
+système ne produit **pas** `PERMISSION_DENIED` dans cette WebView. L'appel reste
+sans réponse jusqu'au `timeout` de dix secondes et revient en `TIMEOUT` (10,0 s
+mesurées). D'où `geo.timeout`, qui renvoie aux réglages du téléphone au lieu
+d'annoncer une « position indisponible » exacte et inutile. Ce message
+n'existait nulle part à l'écran : `useGeolocation` posait `error`, et **personne
+ne le lisait** — un refus se soldait par un bouton qui tourne dix secondes puis
+rien. Il passe désormais par `MapStatus` (`locationError`), et s'efface au bout
+de huit secondes, la permission pouvant être accordée dans les réglages sans que
+l'application en soit prévenue.
 
 ### Feuilles de style de l'interface (`src/styles/ui/`)
 

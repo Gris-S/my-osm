@@ -37,6 +37,8 @@ export const fr = {
   "geo.unsupported": "Géolocalisation non disponible sur cet appareil.",
   "geo.denied": "Géolocalisation refusée — autorisez-la dans les réglages du téléphone.",
   "geo.unavailable": "Position indisponible pour le moment.",
+  "geo.timeout":
+    "Aucune position au bout de dix secondes — vérifiez que la localisation est activée, et autorisée pour MY OSM dans les réglages du téléphone.",
 
   // Recherche d'enseigne
   "brand.loading": "recherche…",

@@ -40,6 +40,19 @@
   to { transform: rotate(360deg); }
 }
 
+/* Un refus de géolocalisation n'est pas une panne de l'application : le
+   bandeau garde son apparence ordinaire. Il se distingue seulement par la place
+   qu'il prend — la phrase renvoie aux réglages du téléphone, elle est longue —
+   et par l'absence de fondu différé : c'est la réponse à un geste, elle doit
+   arriver avec lui. */
+.map-status.is-warning {
+  max-width: min(92vw, 520px);
+  text-align: left;
+  line-height: 1.35;
+  animation: none;
+  opacity: 1;
+}
+
 /* Une panne de carte n'est pas un chargement : elle se distingue, et elle
    reste. C'est souvent la seule information disponible sur un téléphone, où
    aucune console n'est ouverte. */

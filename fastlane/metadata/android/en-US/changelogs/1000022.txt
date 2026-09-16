@@ -1,0 +1,10 @@
+Two fixes, both found by driving the app on a real phone.
+
+Opening the app recentres the map on your position again. It had quietly
+stopped: the check guarding it asked the Android WebView a question that gets
+the same answer whether location is allowed or not.
+
+Denied location is now explained on screen, and points at your phone's
+settings, instead of a button that spins for ten seconds and then says nothing.
+
+The release walkthrough grew from nine checks to twenty-two.
