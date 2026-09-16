@@ -1,9 +1,11 @@
+A new app icon.
+
 The app now starts in English, whatever the phone's language. French is two
-taps away in Menu › Settings, where "System" still follows the device.
+taps away in Menu › Settings.
 
 A window on first launch strongly recommends adding a free TomTom key, and
 points to the project on GitHub. It appears once.
 
 In guidance: the manoeuvre icon is much larger and reaches the edge of the
-banner, a roundabout now shows which exit to take inside the icon, and tapping
-the album art opens the music player.
+banner, a roundabout shows which exit to take inside the icon, and tapping the
+album art opens the music player.
