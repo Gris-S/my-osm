@@ -1260,14 +1260,47 @@ const SCENARIOS = [
         const trouve = /topResumedActivity=\S*\{[^}]*?\s([A-Za-z0-9_.]+)\/[^\s}]+/.exec(sortie);
         return trouve ? trouve[1] : "?";
       };
+      /**
+       * Le paquet qui tient une session média **vivante**.
+       *
+       * Lu dans la « Sessions Stack » et nulle part ailleurs : le dump porte
+       * aussi une liste « Audio playback (lastly played comes first) » qui garde
+       * le dernier lecteur **après** qu'il a rendu sa session. Compter `PLAYING`
+       * sur le dump entier fait donc croire à une lecture en cours alors qu'il
+       * n'y a plus rien à piloter — c'est ce qui m'a trompé.
+       */
+      const sessionVivante = () => {
+        const dump = adb("shell", "dumpsys", "media_session");
+        const pile = /Sessions Stack[\s\S]*?(?=\nAudio playback|\nMedia session config|$)/.exec(dump)?.[0] ?? "";
+        for (const bloc of pile.split(/\n(?=\s{4}\S)/)) {
+          const paquet = /package=(\S+)/.exec(bloc)?.[1];
+          const joue = /state=PlaybackState \{state=(PLAYING|BUFFERING|PAUSED)/.test(bloc);
+          if (paquet && joue) return paquet;
+        }
+        return null;
+      };
+
+      const lecteur = sessionVivante();
+      if (!lecteur) {
+        return verifier(
+          "aucune session média vivante : rien à vérifier ici",
+          true,
+          "lancer un lecteur et le laisser jouer pendant le scénario"
+        );
+      }
+
       const avant = auPremierPlan();
       await cliquer(".music-art");
       await dodo(4000);
       const apres = auPremierPlan();
+      // **Exiger le lecteur, pas « autre chose que MY OSM ».** La version d'avant
+      // se satisfaisait de n'importe quelle sortie de l'application : mesuré,
+      // elle est passée au vert sur l'écran d'accueil alors que la lecture
+      // s'était arrêtée et que rien ne s'était ouvert.
       verifier(
-        "toucher la pochette ouvre une autre application",
-        apres !== avant && apres !== PAQUET,
-        `${avant} → ${apres}`
+        "toucher la pochette ouvre le lecteur",
+        apres === lecteur,
+        `${avant} → ${apres}` + (apres === lecteur ? "" : `  (attendu ${lecteur})`)
       );
 
       // On revient, sinon tout ce qui suit se croirait dans MY OSM.
