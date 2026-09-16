@@ -53,9 +53,9 @@ encore.
 </tr>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/04-navigation.png" width="220" alt="Navigation voiture pas à pas"><br>
+<img src="docs/screenshots/04-navigation.png" width="220" alt="Navigation voiture pas à pas avec la musique en cours"><br>
 <b>La navigation au volant</b><br>
-<sub>Instruction après instruction, avec la circulation en direct, les vitesses limites et les voies à emprunter.</sub>
+<sub>Instruction après instruction, avec la circulation en direct, les vitesses limites — et ce que vous écoutez, quel que soit le lecteur.</sub>
 </td>
 <td width="33%" align="center">
 <img src="docs/screenshots/05-offline.png" width="220" alt="Téléchargement d'une zone hors ligne"><br>
