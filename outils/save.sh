@@ -24,6 +24,7 @@ dest="$RACINE/saves/$(date +%F)_${numero}_${slug}"
 rsync -a \
   --exclude '/saves/' \
   --exclude '/livrables/' \
+  --exclude '/parcours/' \
   --exclude 'node_modules/' \
   --exclude '/app/dist/' \
   --exclude '/apk/android/build/' \
