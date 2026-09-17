@@ -30,6 +30,14 @@
 # fdroiddata.
 # ---------------------------------------------------------------------------
 
+# Avertissements, au niveau de l'application (demande du mainteneur) :
+# TetheredNet (instances fixes) et NonFreeNet (imagerie Esri hors de France,
+# chargée sans clé ; services optionnels à clé).
+AntiFeatures:
+  NonFreeNet:
+    en-US: Esri imagery abroad; optional TomTom, Mapillary, PRIM, Météo-France
+  TetheredNet:
+    en-US: OpenFreeMap, Photon, Nominatim, OSRM, Overpass and Transitous
 Categories:
   - Navigation
   - Public Transport
@@ -61,13 +69,6 @@ Builds:
     # L'identifiant **complet** du commit du tag v0.1.0-alpha.29, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
     commit: f4e3a1b770514a841545eb8edd9db2585dc09a4f
-    # Avertissements demandés par le mainteneur (TetheredNet) ou dus (NonFreeNet :
-    # l'imagerie Esri hors de France se charge sans clé).
-    antifeatures:
-      NonFreeNet:
-        en-US: Esri imagery abroad; optional TomTom, Mapillary, PRIM, Météo-France
-      TetheredNet:
-        en-US: OpenFreeMap, Photon, Nominatim, OSRM, Overpass and Transitous
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
