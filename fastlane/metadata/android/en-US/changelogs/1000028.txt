@@ -1,0 +1,3 @@
+Internal change for F-Droid: the release build no longer assumes a signing
+configuration, which F-Droid removes before building. Nothing changes in the
+app itself.

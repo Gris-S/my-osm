@@ -58,9 +58,19 @@ android {
         release {
             // Version à partager : non débogable (ni `run-as`, ni débogage de la
             // WebView, que Capacitor suit sur ce drapeau).
-            def signedForRelease = signingConfigs.release.storeFile != null
-            signingConfig signedForRelease ? signingConfigs.release : signingConfigs.debug
-            if (!signedForRelease) {
+            //
+            // F-Droid **retire le bloc `signingConfigs`** avant de construire
+            // (`remove_signing_keys` de fdroidserver), mais pas les lignes qui s'y
+            // réfèrent : `signingConfigs.release` n'existe alors plus, et Gradle
+            // échouait (17 septembre 2026). D'où `findByName`. Sans configuration
+            // du tout, l'APK sort non signé — ce que F-Droid attend : il le compare
+            // à celui de la release, puis publie celui-ci, signé de notre clé.
+            def releaseSigning = signingConfigs.findByName("release")
+            def signedForRelease = releaseSigning?.storeFile != null
+            if (releaseSigning != null) {
+                signingConfig signedForRelease ? releaseSigning : signingConfigs.debug
+            }
+            if (releaseSigning != null && !signedForRelease) {
                 logger.warn(
                     "MY OSM : aucune clé de release (MYOSM_KEYSTORE). L'APK est signé avec la clé de " +
                     "débogage, publique : bon pour essayer sur son propre téléphone, à ne pas publier."
