@@ -8,14 +8,15 @@
 # `apk/package.json` sans changer ce fichier, c'est casser la construction chez
 # eux sans s'en apercevoir.
 #
-# ⚠ NON VÉRIFIÉ. Le serveur de construction de F-Droid n'est pas reproductible
-# ici : cette recette est écrite d'après leur documentation et d'après la chaîne
-# réelle du projet, mais elle n'a jamais été exécutée. À valider par `fdroid
-# build org.osmlocal.plans:1000023` avant d'ouvrir la merge request.
+# ⚠ JAMAIS EXÉCUTÉE. L'ordre des étapes a été vérifié dans le code de
+# fdroidserver 2.4.5 et le fichier passe `fdroid lint`, mais la construction
+# elle-même n'a pas tourné sur leur image : c'est la CI de la merge request sur
+# fdroiddata qui la fera la première.
 # ---------------------------------------------------------------------------
 
 Categories:
   - Navigation
+  - Public Transport
 License: GPL-3.0-or-later
 AuthorName: Gris-S
 SourceCode: https://github.com/Gris-S/my-osm
@@ -36,11 +37,9 @@ Builds:
     commit: v0.1.0-alpha.23
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
-    # à notre charge. Les chemins des étapes ci-dessous en partent, d'où les
-    # « ../../../ » qui remontent à la racine du dépôt.
+    # à notre charge. Les étapes de `build:` en partent aussi, d'où le
+    # `cd ../../..` qui remonte à la racine du dépôt.
     subdir: apk/android/app
-    gradle:
-      - yes
 
     # Node n'est pas sur l'image de construction. Version épinglée **avec son
     # empreinte** : sans elle, la recette ferait confiance à un téléchargement.
@@ -49,8 +48,20 @@ Builds:
       - echo "3e301118d7df53d563b7e96c1617545f26e2f76f9724be668d6cab65c15dda5d  node.tar.xz" | sha256sum -c -
       - tar xJf node.tar.xz
       - cp -a node-v26.8.1-linux-x64/. /usr/local/
+    gradle:
+      - yes
 
-    # Dépendances only : rien ne se construit ici (règle de F-Droid).
+    # Tout se fait dans `build:`, rien dans `init:`. Ce que fait le serveur,
+    # d'après fdroidserver 2.4.5 (build.py, common.py) :
+    #   - `init:` tourne dans `subdir`, puis le scanner passe et **supprime**
+    #     les chemins de `scandelete`, puis `build:` tourne. Des `npm ci` en
+    #     `init:` avec `node_modules` en `scandelete` : Gradle ne trouvait plus
+    #     le code Android de Capacitor (apk/node_modules/@capacitor/android).
+    #     Installées en `build:`, les dépendances arrivent après le scanner.
+    #   - Les lignes de `build:` sont jointes par « ; » dans **un seul** bash :
+    #     un `cd` vaut pour les lignes suivantes. D'où un seul `cd` en tête,
+    #     depuis `subdir` jusqu'à la racine du dépôt.
+    #
     # `npm ci` et non `npm install` : les deux verrous sont versionnés, et la
     # construction doit être reproductible.
     #
@@ -58,27 +69,21 @@ Builds:
     # un nom que npm exécute tout seul pendant `npm ci` : il lançait `adb` et
     # faisait échouer l'installation sur une machine sans téléphone. Renommé
     # `install-apk` — ne jamais réintroduire un script portant un nom réservé.
-    init:
-      - npm --prefix app ci
-      - npm --prefix apk ci
-
-    # La construction proprement dite : l'application web, puis la copie de son
-    # `dist/` dans le projet Android par Capacitor. Gradle prend le relais.
     #
     # `MYOSM_DIAGNOSTICS=0` retire l'objet de diagnostic `window.__myosm` et
     # rend le journal de navigation inerte. Aucune clé d'API n'est passée : il
     # n'y a pas de `.env.local` dans un clone, et `vite.config.ts` **refuse de
     # construire** une version de partage si une clé traînait dans
     # l'environnement. Les clés se saisissent dans l'application.
+    #
+    # Pas de `scandelete` : `node_modules` n'existe pas encore quand le scanner
+    # passe, et un chemin qui ne correspond à rien est une erreur pour lui.
     build:
-      - cd ../../.. && OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix app run build
-      - cd ../.. && npx cap sync android
-
-    # `npm ci` dépose des binaires précompilés dans node_modules ; ils ne
-    # servent qu'à la construction et n'entrent pas dans l'APK.
-    scandelete:
-      - app/node_modules
-      - apk/node_modules
+      - cd ../../..
+      - npm --prefix app ci
+      - npm --prefix apk ci
+      - OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix app run build
+      - cd apk && npx cap sync android
 
 # Le numéro de version est déduit de `app/package.json` par
 # `apk/android/app/build.gradle` : 0.1.0-alpha.23 -> 1000023. Une version

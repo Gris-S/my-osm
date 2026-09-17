@@ -85,10 +85,19 @@ cd apk && npm run apk:release
 
 - [ ] `fastlane/metadata/android/en-US/` à jour : changelog du `versionCode`,
       captures, descriptions dans les limites (80 / 4000 / 500 caractères)
-- [ ] `docs/fdroid/org.osmlocal.plans.yml` à jour — **et validé par
-      `fdroid build`**, ce qui n'a jamais été fait
-- [ ] Issue de demande d'inclusion sur `gitlab.com/fdroid/rfp`
-- [ ] Merge request sur `fdroiddata` avec la recette
+- [ ] `docs/fdroid/org.osmlocal.plans.yml` à jour (`versionName`,
+      `versionCode`, `commit`, `CurrentVersion*`)
+- [ ] `fdroid lint` et `fdroid rewritemeta` passés sur une copie, dans un
+      dossier `metadata/` (`pip install fdroidserver` dans un venv suffit).
+      `rewritemeta` retire les commentaires : c'est **sa** sortie qui part
+      dans fdroiddata, le fichier commenté reste ici
+- [ ] Les étapes de `build:` rejouées **d'un seul bash**, depuis
+      `apk/android/app`, sur un clone du tag — puis `./gradlew assembleRelease`
+- [ ] Première inclusion : merge request sur `gitlab.com/fdroid/fdroiddata`
+      (`metadata/org.osmlocal.plans.yml`). Pas d'issue `rfp` : elle sert aux
+      demandes faites par des tiers. La CI de la merge request fait la
+      première vraie construction
+- [ ] Versions suivantes : rien à faire, `UpdateCheckMode: Tags` repère le tag
 
 ---
 
