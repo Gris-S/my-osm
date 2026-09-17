@@ -1282,6 +1282,16 @@ const SCENARIOS = [
       if (!(await attendre(".music-card", 20_000))) {
         return verifier("pas de musique en cours : rien à vérifier ici", true, "lancer un lecteur pour éprouver ce scénario");
       }
+      // Sans l'accès aux notifications, l'encart n'est qu'un avis, et sa
+      // pastille un `span` : le prendre pour la pochette accusait l'application
+      // à tort. Une réinstallation retire cet accès — c'est ainsi qu'on l'a vu.
+      if (await js("!!document.querySelector('.music-card.is-notice')")) {
+        return verifier(
+          "accès aux notifications refusé : rien à vérifier ici",
+          true,
+          "l'accorder dans les réglages Android pour éprouver ce scénario"
+        );
+      }
 
       const pochette = await js(`(()=>{const b=document.querySelector('.music-art');
         if(!b)return null;
