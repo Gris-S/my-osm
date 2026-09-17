@@ -21,10 +21,10 @@
 # (0.1.0-alpha.28) a construit et **reproduit** l'APK sur leur serveur, mais
 # refusé celui de la release : Gradle y glissait un bloc « Dependency
 # metadata », chiffré pour Google Play (`dependenciesInfo` coupé depuis
-# 0.1.0-alpha.29). Depuis 0.1.0-alpha.28, le vrai `fdroid build`
+# 0.1.0-alpha.30). Depuis 0.1.0-alpha.28, le vrai `fdroid build`
 # (fdroidserver master, comme leur CI) tourne ici jusqu'à l'APK, et
 # `verify_apks` le reconnaît identique à la release signée ; depuis
-# 0.1.0-alpha.29, `fdroid scanner` passe aussi sur l'APK de la release.
+# 0.1.0-alpha.30, `fdroid scanner` passe aussi sur l'APK de la release.
 #
 # `rewritemeta` retire ces commentaires : c'est **sa** sortie qui part dans
 # fdroiddata.
@@ -58,17 +58,17 @@ Repo: https://github.com/Gris-S/my-osm.git
 # mises à jour passent alors d'une source à l'autre sans désinstaller. Une
 # version qui ne se reproduit pas est **sautée** par F-Droid, pas signée par eux.
 # L'asset de la release doit donc s'appeler exactement `MY-OSM-<version>.apk`.
-# Vérifié pour 0.1.0-alpha.29 avec `common.verify_apks` de fdroidserver : l'APK
+# Vérifié pour 0.1.0-alpha.30 avec `common.verify_apks` de fdroidserver : l'APK
 # d'un clone propre (signé de la clé de débogage, faute de la nôtre) correspond
 # à celui de la release.
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.29
-    versionCode: 1000029
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.29, pas le tag :
+  - versionName: 0.1.0-alpha.30
+    versionCode: 1000030
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.30, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: f4e3a1b770514a841545eb8edd9db2585dc09a4f
+    commit: 083ed78f47c642b5d6d135b3bed2505c586b2e1f
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -79,7 +79,7 @@ Builds:
     # trixie n'a que Node 20, et le CLI de Capacitor 8 refuse de tourner sous
     # 22 (« The Capacitor CLI requires NodeJS >=22.0.0 », mesuré). Forky donne
     # Node 24. Le Node de Debian ne lit pas le TypeScript : la configuration
-    # Capacitor est donc en JSON depuis 0.1.0-alpha.29. Construit dans un
+    # Capacitor est donc en JSON depuis 0.1.0-alpha.30. Construit dans un
     # conteneur Debian avec ce Node, l'APK est identique, octet pour octet, à
     # celui de la release (construit avec Node 26). Même méthode que
     # les recettes d'io.github.nyxar77.pulse et de jp.nonbili.noutube.
@@ -145,5 +145,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.29
-CurrentVersionCode: 1000029
+CurrentVersion: 0.1.0-alpha.30
+CurrentVersionCode: 1000030
