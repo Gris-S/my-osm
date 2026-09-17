@@ -81,7 +81,8 @@ Builds:
     # Ordre réel chez F-Droid (fdroidserver 2.4.5, build.py et common.py) :
     # `prebuild:` dans `subdir`, puis le scanner, puis `build:`. Chaque liste est
     # jointe par « ; » dans **un seul** bash : un `cd` vaut pour les lignes
-    # suivantes.
+    # suivantes. Une commande par ligne, jamais de `;` ni de `&&` (demande du
+    # mainteneur, !49227).
     #
     # Les dépendances s'installent **avant** le scanner, pour qu'il les examine.
     # `npm ci` et non `npm install` : les deux verrous sont versionnés.
@@ -115,7 +116,8 @@ Builds:
     build:
       - cd ../../..
       - OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix app run build
-      - cd apk && npx cap sync android
+      - cd apk
+      - npx cap sync android
 
 # Empreinte SHA-256 du certificat de release, en minuscules et sans « : ».
 AllowedAPKSigningKeys: 0537bb84f0222e9e6892e06c478be29bcf0b95bb93ffc92e1cc48e518cada2c9
