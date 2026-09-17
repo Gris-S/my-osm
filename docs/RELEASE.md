@@ -80,6 +80,10 @@ cd apk && npm run apk:release
       nom exact du tag, et `AutoUpdateMode: Version v%v` le reconstruit.
 - [ ] Notes de release **en anglais**, avec l'avertissement de désinstallation
 - [ ] `sha256sum livrables/MY-OSM.apk` publiée avec le fichier
+- [ ] L'asset s'appelle **exactement** `MY-OSM-0.1.0-alpha.N.apk` : la recette
+      F-Droid le télécharge par ce nom (`Binaries:`) pour le comparer à sa
+      propre construction. Autre nom, ou APK qui ne se reproduit pas : F-Droid
+      saute la version
 
 ## 6. F-Droid
 

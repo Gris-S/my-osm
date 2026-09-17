@@ -28,6 +28,17 @@ AutoName: MY OSM
 RepoType: git
 Repo: https://github.com/Gris-S/my-osm.git
 
+# Builds reproductibles, signature du développeur (choix du 17 septembre 2026) :
+# F-Droid reconstruit l'APK, le compare octet pour octet à celui de la release
+# GitHub et, s'ils sont identiques, publie **celui-ci**, signé par nous. Les
+# mises à jour passent alors d'une source à l'autre sans désinstaller. Une
+# version qui ne se reproduit pas est **sautée** par F-Droid, pas signée par eux.
+# L'asset de la release doit donc s'appeler exactement `MY-OSM-<version>.apk`.
+# Vérifié pour 0.1.0-alpha.26 avec `common.verify_apks` de fdroidserver : l'APK
+# d'un clone propre (signé de la clé de débogage, faute de la nôtre) correspond
+# à celui de la release.
+Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
+
 Builds:
   - versionName: 0.1.0-alpha.26
     versionCode: 1000026
@@ -84,6 +95,9 @@ Builds:
       - npm --prefix apk ci
       - OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix app run build
       - cd apk && npx cap sync android
+
+# Empreinte SHA-256 du certificat de release, en minuscules et sans « : ».
+AllowedAPKSigningKeys: 0537bb84f0222e9e6892e06c478be29bcf0b95bb93ffc92e1cc48e518cada2c9
 
 # Le numéro de version est déduit de `app/package.json` par
 # `apk/android/app/build.gradle` : 0.1.0-alpha.26 -> 1000026. Une version
