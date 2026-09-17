@@ -320,9 +320,9 @@ export const CONFIG = {
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
-    // Dernier recours : miroir public listé sur le wiki OSM, hébergé en Russie.
-    // À retirer si cet hébergement ne convient pas.
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    // `maps.mail.ru` (VK, en Russie) figurait ici en dernier recours : retiré
+    // le 17 septembre 2026. Il recevait la zone consultée dès que les trois
+    // autres tardaient, et un exploitant de ce genre n'a pas à la connaître.
   ],
 
   // Délai au-delà duquel on interroge *aussi* l'instance suivante, sans

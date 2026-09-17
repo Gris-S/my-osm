@@ -1,0 +1,2 @@
+Place details no longer fall back on the Overpass mirror run by VK (maps.mail.ru):
+only overpass-api.de, overpass.kumi.systems and overpass.private.coffee are used.
