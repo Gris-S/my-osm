@@ -1665,7 +1665,7 @@ Trois sources derrière un même encart, en haut à droite :
   le **département** : le code INSEE de la commune commence par lui (`75104` →
   `75`, `97411` → `974`), et c'est la maille de la vigilance.
 - **Météo-France** (`portail-api.meteofrance.fr`) pour les vigilances, derrière
-  des identifiants gratuits et facultatifs. Ne pas chercher à la remplacer par
+  une clé gratuite et facultative. Ne pas chercher à la remplacer par
   **MeteoAlarm** : ses flux européens n'envoient aucun en-tête d'origine
   croisée — mesuré — et sont donc hors de portée d'un navigateur.
 
@@ -1679,32 +1679,14 @@ Trois sources derrière un même encart, en haut à droite :
   (`3410` pour l'Hérault) qui porte seule les vagues-submersion — les deux sont
   lus et la couleur la plus forte l'emporte.
 
-  **Deux formes d'identifiants**, celle qui est renseignée l'emportant : une
-  clé API durable (en-tête `apikey`), ou l'identifiant et le secret de
-  l'application, avec lesquels `fetchToken` demande un jeton
-  `client_credentials` et le renouvelle — les jetons du portail ne durent
-  qu'une heure, et celui de la console d'essai encore moins. Le jeton est
-  oublié une minute avant l'échéance annoncée, et un 401 déclenche un
-  renouvellement puis un unique réessai.
-
-  **Le point d'authentification n'est pas joignable depuis un navigateur**, et
-  c'est le piège de cette API : son préflight (déclenché par l'en-tête
-  `Authorization`) répond 200 mais **sans aucun en-tête d'origine croisée** —
-  mesuré — si bien que la requête n'est jamais envoyée. Passer les identifiants
-  dans le corps pour éviter le préflight ne sauve rien : l'API refuse alors
-  avec « Unsupported Client Authentication Method ». D'où le relais du serveur
-  de développement (`vite.config.ts`, chemin `/api/meteofrance/token`), et
-  `METEOFRANCE_TOKEN_URL` qui est **relatif**. Ne pas le remettre en absolu :
-  ça fonctionne en ligne de commande et échoue silencieusement dans le
-  navigateur. L'endpoint de vigilance, lui, autorise bien l'origine croisée
-  (`Authorization` comme `apikey`) et est appelé directement. En production web,
-  il faudrait un relais équivalent — ou une clé API, qui s'utilise sans relais.
-  **Dans l'APK, pas de relais** : `relayedFetch` (`services/native.ts`) appelle
-  l'adresse réelle par le natif (`CapacitorHttp`). Sans cela, vérifié sur le
-  téléphone, l'adresse relative tombait sur l'application, qui répondait par sa
-  propre page HTML. Le
-  secret part par ailleurs dans le code envoyé au client, comme toute valeur
-  `VITE_`.
+  **Une clé API seulement** (en-tête `apikey`). L'identifiant et le secret
+  d'application, avec leur jeton `client_credentials`, ont été **retirés le
+  17 septembre 2026, à la demande de l'utilisateur** : trois champs pour un
+  service embrouillaient l'écran des clés. Ne pas les réintroduire. Leur point
+  d'authentification (`portail-api.meteofrance.fr/token`) répond au préflight
+  sans en-tête d'origine croisée — mesuré — et demandait un relais ;
+  l'endpoint de vigilance, lui, accepte `apikey` depuis n'importe quelle
+  origine et s'appelle directement.
 
   **La section vigilance n'apparaît que s'il y a une vigilance en cours.**
   Silence de la source, absence de clé, lieu hors de France et beau temps se
@@ -2793,15 +2775,12 @@ défaut.
   | Mapillary | `graph`, `fields=id&limit=1` | 200 / 400 | `*` |
   | Météo-France (clé API) | vigilance, en-tête `apikey` | 200 / 401 | `*` |
 
-- **Six états d'affichage, et pas deux.** « Refusée » accuse la clé, « service
-  injoignable » avoue qu'on ne sait pas : un 429 ou un 500 ne sont pas un verdict
-  et ne doivent pas être présentés comme tels. Seuls 400, 401 et 403 concluent.
-- **L'identifiant et le secret Météo-France ne sont pas vérifiables**, et
-  l'interface le dit au lieu d'inventer un état. Ils s'échangent contre un jeton
-  sur un point d'accès dont le préflight répond 200 **sans aucun en-tête
-  d'origine croisée** (re-mesuré) : aucun navigateur ne peut le joindre. Le
-  serveur de développement le relaie, une application empaquetée n'a pas de
-  relais — c'est la même limite que celle déjà notée pour la vigilance.
+- **Plusieurs états d'affichage, et pas deux.** « Refusée » accuse la clé,
+  « service injoignable » avoue qu'on ne sait pas : un 429 ou un 500 ne sont pas
+  un verdict et ne doivent pas être présentés comme tels. Seuls 400, 401 et 403
+  concluent. (L'état « non vérifiable » a disparu avec l'identifiant et le
+  secret Météo-France, le 17 septembre 2026 : toutes les clés restantes se
+  vérifient.)
 - **Attention au débit, pas seulement au quota.** Un banc d'essai enchaînant les
   vérifications a rendu des **429** chez TomTom. La section n'en déclenche qu'une
   par emplacement à l'ouverture, ce qui est sans danger ; un script de mise au

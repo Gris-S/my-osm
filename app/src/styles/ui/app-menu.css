@@ -223,6 +223,32 @@
   color: var(--text-secondary);
 }
 
+/* Un bloc à la largeur du texte, pas un flex : un libellé qui passe à la
+   ligne (PRIM) garderait sinon l'icône collée au bord droit, loin de son
+   texte. Et pas un `inline-block`, dont la marge négative décale la ligne
+   différemment selon ce qui suit. */
+.apikey-signup {
+  display: block;
+  width: fit-content;
+  margin: -4px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.apikey-signup svg {
+  margin-left: 4px;
+  vertical-align: -1px;
+}
+
+.apikey-apis {
+  margin: -6px 0 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
 .apikey-row + .apikey-row {
   margin-top: 12px;
   padding-top: 12px;

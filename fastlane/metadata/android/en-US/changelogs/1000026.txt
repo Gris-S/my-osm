@@ -1,0 +1,6 @@
+Menu › API now says where to get each key: TomTom, Île-de-France Mobilités
+(PRIM), Mapillary and Météo-France each link to their sign-up page, and PRIM
+and Météo-France name the APIs to look for.
+
+Météo-France now takes an API key only: the application id and secret fields
+are gone. If you used them, generate an API key on the portal.

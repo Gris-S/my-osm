@@ -31,9 +31,7 @@ export type ApiKeyId =
   | "tomtom"
   | "idfm"
   | "mapillary"
-  | "meteofranceApiKey"
-  | "meteofranceClientId"
-  | "meteofranceClientSecret";
+  | "meteofranceApiKey";
 
 export interface ApiKeySlot {
   id: ApiKeyId;
@@ -58,16 +56,6 @@ export const API_KEY_SLOTS: ApiKeySlot[] = [
     id: "meteofranceApiKey",
     label: "apikeys.meteofranceApiKey",
     builtIn: import.meta.env.VITE_METEOFRANCE_API_KEY ?? "",
-  },
-  {
-    id: "meteofranceClientId",
-    label: "apikeys.meteofranceClientId",
-    builtIn: import.meta.env.VITE_METEOFRANCE_CLIENT_ID ?? "",
-  },
-  {
-    id: "meteofranceClientSecret",
-    label: "apikeys.meteofranceClientSecret",
-    builtIn: import.meta.env.VITE_METEOFRANCE_CLIENT_SECRET ?? "",
   },
 ];
 

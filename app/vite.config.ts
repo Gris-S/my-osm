@@ -4,30 +4,10 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Relais vers le point d'authentification de Météo-France.
-//
-// Il ne peut pas être appelé directement depuis le navigateur : sa réponse au
-// préflight (OPTIONS, déclenché par l'en-tête `Authorization`) ne porte aucun
-// en-tête d'origine croisée — mesuré — et le navigateur abandonne donc avant
-// même d'envoyer la requête. Passer les identifiants dans le corps plutôt que
-// dans l'en-tête ne sauve rien : l'API répond « Unsupported Client
-// Authentication Method ».
-//
-// Le serveur de développement fait donc l'intermédiaire, et l'application
-// s'adresse à sa propre origine. Les autres services (vigilance comprise)
-// autorisent l'origine croisée et sont appelés directement.
-const METEOFRANCE_TOKEN_PROXY = {
-  '/api/meteofrance/token': {
-    target: 'https://portail-api.meteofrance.fr',
-    changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/api\/meteofrance\/token/, '/token'),
-  },
-}
-
 // Relais vers Bison Futé (Point d'Accès National), pour le calque « Trafic ».
 //
-// Même raison que ci-dessus, et même mesure : le flux d'événements routiers du
-// réseau national n'envoie **aucun en-tête d'origine croisée**. Il est pourtant
+// Le flux d'événements routiers du réseau national n'envoie **aucun en-tête
+// d'origine croisée** (mesuré), et le navigateur abandonne donc la requête. Il est pourtant
 // servi en HTTPS, gratuit, sans clé et en direct — c'est la seule source de
 // trafic routier français qui coche toutes ces cases. Le serveur de
 // développement fait donc l'intermédiaire.
@@ -49,7 +29,7 @@ const TRAFFIC_PROXY = {
   },
 }
 
-const PROXY = { ...METEOFRANCE_TOKEN_PROXY, ...TRAFFIC_PROXY }
+const PROXY = { ...TRAFFIC_PROXY }
 
 /**
  * Vrai quand on compile pour l'empaquetage Android (`../apk`).
@@ -91,8 +71,6 @@ const API_KEY_VARS = [
   'VITE_IDFM_API_KEY',
   'VITE_MAPILLARY_TOKEN',
   'VITE_METEOFRANCE_API_KEY',
-  'VITE_METEOFRANCE_CLIENT_ID',
-  'VITE_METEOFRANCE_CLIENT_SECRET',
 ]
 
 const IS_RELEASE = process.env.MYOSM_DIAGNOSTICS === '0'

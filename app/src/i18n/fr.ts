@@ -137,9 +137,6 @@ export const fr = {
   "apikeys.valid": "active",
   "apikeys.invalid": "refusée",
   "apikeys.unreachable": "service injoignable",
-  "apikeys.uncheckable": "non vérifiable ici",
-  "apikeys.uncheckable.why":
-    "Le point d'authentification de Météo-France n'autorise pas l'origine croisée : aucun navigateur ne peut vérifier ce couple.",
   "apikeys.absent": "absente",
 
   // D'où vient la clé employée. Le dire évite de croire une suppression sans
@@ -151,23 +148,29 @@ export const fr = {
   "apikeys.group.tomtom": "TomTom",
   "apikeys.group.tomtom.hint":
     "Navigation voiture : circulation en direct, péages évités, vitesses limites, voies à emprunter. Et la couleur du débit sur le calque « Trafic ».",
+  "apikeys.group.tomtom.link": "Obtenir une clé gratuite sur tomtom.com",
   "apikeys.tomtom": "Clé",
 
   "apikeys.group.idfm": "Île-de-France Mobilités (PRIM)",
   "apikeys.group.idfm.hint":
     "Prochains passages aux arrêts, et itinéraires en transports en commun. 1 000 appels par jour.",
+  "apikeys.group.idfm.link": "Obtenir une clé gratuite sur prim.iledefrance-mobilites.fr",
+  "apikeys.group.idfm.apis":
+    "API employées : « Prochains passages (plateforme Île-de-France Mobilités) - requête unitaire » et « Calculateur Île-de-France Mobilités - Accès générique (v2) ».",
   "apikeys.idfm": "Clé",
 
   "apikeys.group.mapillary": "Mapillary",
   "apikeys.group.mapillary.hint": "Photos de rue et leur couverture sur la carte.",
+  "apikeys.group.mapillary.link": "Créer un jeton gratuit sur mapillary.com",
+  "apikeys.group.mapillary.apis": "Enregistrer une application, puis copier son « Client Token » (MLY|…).",
   "apikeys.mapillary": "Jeton",
 
   "apikeys.group.meteofrance": "Météo-France",
   "apikeys.group.meteofrance.hint":
-    "Vigilance météorologique dans l'encart météo. Renseigner soit la clé d'API, soit l'identifiant et le secret — ces derniers l'emportent, mais ne fonctionnent qu'avec le serveur de développement.",
+    "Vigilance météorologique dans l'encart météo.",
+  "apikeys.group.meteofrance.link": "Obtenir des identifiants gratuits sur portail-api.meteofrance.fr",
+  "apikeys.group.meteofrance.apis": "Souscrire à l'API « Données Publiques de Vigilance », puis « Générer Token » : choisir « API Key » (pas OAuth2) et une longue validité. La copier aussitôt — le portail ne la réaffiche pas.",
   "apikeys.meteofranceApiKey": "Clé d'API",
-  "apikeys.meteofranceClientId": "Identifiant d'application",
-  "apikeys.meteofranceClientSecret": "Secret d'application",
 
   // Barre de recherche
   "search.placeholder": "Rechercher un lieu ou une adresse",
@@ -300,7 +303,7 @@ export const fr = {
   // n'existe plus une fois l'application empaquetée — y renvoyer quelqu'un sur
   // un téléphone ne lui donnait aucun moyen d'agir.
   "layers.streetPhotosNoToken": "Demande un jeton Mapillary (gratuit) — Menu › API",
-  "layers.streetPhotosNote": "Ajoutez un jeton Mapillary (gratuit) dans {file}. Il est gratuit et sans carte bancaire.",
+  "layers.streetPhotosNote": "Ajoutez un jeton Mapillary dans {file}. Il est gratuit et sans carte bancaire.",
 
   // Lieux enregistrés
   "bookmarks.aria": "Lieux enregistrés",

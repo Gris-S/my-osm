@@ -462,40 +462,17 @@ export const CONFIG = {
   //
   //     VITE_METEOFRANCE_API_KEY=votre_clé
   //
-  // Sans identifiants, l'encart météo fonctionne normalement : la section
-  // vigilance ne s'affiche simplement pas.
+  // Sans clé, l'encart météo fonctionne normalement : la section vigilance ne
+  // s'affiche simplement pas.
   //
-  // Deux formes d'identifiants sont acceptées, et c'est celle qui est
-  // renseignée qui l'emporte :
-  //
-  //  - **une clé API** (`VITE_METEOFRANCE_API_KEY`), envoyée en en-tête
-  //    `apikey`. C'est la forme durable : elle vaut jusqu'à la date choisie
-  //    lors de sa création.
-  //  - **un identifiant et un secret d'application** (`..._CLIENT_ID` et
-  //    `..._CLIENT_SECRET`), avec lesquels l'application demande elle-même un
-  //    jeton et le renouvelle à l'expiration. C'est ce qu'il faut si l'on ne
-  //    veut plus recopier à la main le jeton d'une heure que délivre la
-  //    console d'essai du portail.
-  //
-  // Le secret part dans le code envoyé au navigateur, comme toute valeur
-  // `VITE_` : acceptable en usage local, à remplacer par un relais côté
-  // serveur si l'application était publiée.
+  // **Une clé API seulement**, envoyée en en-tête `apikey` : elle vaut jusqu'à
+  // la date choisie à sa création, et l'endpoint de vigilance l'accepte depuis
+  // n'importe quelle origine. L'identifiant et le secret d'application ont été
+  // retirés le 17 septembre 2026 (demande explicite) : trois champs pour un
+  // service embrouillaient l'écran des clés, et leur jeton exigeait un relais.
   get METEOFRANCE_API_KEY(): string {
     return apiKey("meteofranceApiKey");
   },
-  get METEOFRANCE_CLIENT_ID(): string {
-    return apiKey("meteofranceClientId");
-  },
-  get METEOFRANCE_CLIENT_SECRET(): string {
-    return apiKey("meteofranceClientSecret");
-  },
-  // Chemin **relatif** : le point d'authentification de Météo-France refuse le
-  // préflight d'origine croisée (mesuré), et passer les identifiants dans le
-  // corps ne lève pas l'obstacle — l'API n'accepte que l'en-tête
-  // `Authorization`. Le serveur de développement relaie donc l'appel (voir
-  // `vite.config.ts`). En production, il faudrait un relais équivalent — ou
-  // une clé API, qui, elle, s'utilise directement.
-  METEOFRANCE_TOKEN_URL: "/api/meteofrance/token",
   METEOFRANCE_VIGILANCE_URL: "https://public-api.meteofrance.fr/public/DPVigilance/v1/cartevigilance/encours",
 
   // Calcul d'itinéraires par la route (voiture / marche). Les transports en
@@ -592,7 +569,6 @@ export const CONFIG = {
   RELAY_TARGETS: {
     "/api/traffic/events":
       "https://tipi.bison-fute.gouv.fr/bison-fute-ouvert/publicationsDIR/Evenementiel-DIR/grt/RRN/content.xml",
-    "/api/meteofrance/token": "https://portail-api.meteofrance.fr/token",
   } as Record<string, string>,
   get TOMTOM_KEY(): string {
     return apiKey("tomtom");

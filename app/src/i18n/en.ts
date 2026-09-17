@@ -113,9 +113,6 @@ export const en: Dict = {
   "apikeys.valid": "active",
   "apikeys.invalid": "rejected",
   "apikeys.unreachable": "service unreachable",
-  "apikeys.uncheckable": "not checkable here",
-  "apikeys.uncheckable.why":
-    "Météo-France's authentication endpoint sends no cross-origin headers: no browser can verify this pair.",
   "apikeys.absent": "absent",
 
   "apikeys.origin.stored": "Key entered in the app.",
@@ -125,23 +122,29 @@ export const en: Dict = {
   "apikeys.group.tomtom": "TomTom",
   "apikeys.group.tomtom.hint":
     "Car navigation: live traffic, tolls avoided, speed limits, lane guidance. And the flow colour on the Traffic layer.",
+  "apikeys.group.tomtom.link": "Get a free key at tomtom.com",
   "apikeys.tomtom": "Key",
 
   "apikeys.group.idfm": "Île-de-France Mobilités (PRIM)",
   "apikeys.group.idfm.hint":
     "Live departures at stops, and public transport journeys. 1,000 calls a day.",
+  "apikeys.group.idfm.link": "Get a free key at prim.iledefrance-mobilites.fr",
+  "apikeys.group.idfm.apis":
+    "APIs used: “Prochains passages (plateforme Île-de-France Mobilités) - requête unitaire” and “Ile-de-France Mobilités Calculator - Generic access (v2)”.",
   "apikeys.idfm": "Key",
 
   "apikeys.group.mapillary": "Mapillary",
   "apikeys.group.mapillary.hint": "Street photos and their coverage on the map.",
+  "apikeys.group.mapillary.link": "Create a free token at mapillary.com",
+  "apikeys.group.mapillary.apis": "Register an application, then copy its “Client Token” (MLY|…).",
   "apikeys.mapillary": "Token",
 
   "apikeys.group.meteofrance": "Météo-France",
   "apikeys.group.meteofrance.hint":
-    "Weather warnings in the weather card. Fill in either the API key, or the application id and secret — the latter win, but only work with the dev server.",
+    "Weather warnings in the weather card.",
+  "apikeys.group.meteofrance.link": "Get free credentials at portail-api.meteofrance.fr",
+  "apikeys.group.meteofrance.apis": "Subscribe to the “Données Publiques de Vigilance” API, then “Générer Token”: choose “API Key” (not OAuth2) and a long validity. Copy it at once — the portal won't show it again.",
   "apikeys.meteofranceApiKey": "API key",
-  "apikeys.meteofranceClientId": "Application id",
-  "apikeys.meteofranceClientSecret": "Application secret",
 
   "search.placeholder": "Search for a place or an address",
   "search.clear": "Clear",
@@ -263,7 +266,7 @@ export const en: Dict = {
   "layers.streetPhotos": "Street photos",
   "layers.streetPhotosTitle": "Show the photographed streets, and open a photo on click",
   "layers.streetPhotosNoToken": "Needs a (free) Mapillary token — Menu › API",
-  "layers.streetPhotosNote": "Add a (free) Mapillary token in {file}. It is free and needs no bank card.",
+  "layers.streetPhotosNote": "Add a Mapillary token in {file}. It is free and needs no bank card.",
 
   "bookmarks.aria": "Saved places",
   "bookmarks.empty": "No place saved here.",

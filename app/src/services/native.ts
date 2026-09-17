@@ -5,9 +5,10 @@
 // `window.Capacitor`, qu'Android injecte, et se comporte en site web ordinaire
 // quand il n'est pas là.
 //
-// **Les relais.** Deux services n'autorisent pas l'origine croisée — le flux
-// Bison Futé et le point d'authentification de Météo-France — et passent, en
-// développement, par le serveur de Vite (`vite.config.ts`). Dans l'APK il n'y a
+// **Les relais.** Le flux Bison Futé n'autorise pas l'origine croisée et passe,
+// en développement, par le serveur de Vite (`vite.config.ts`). (Le point
+// d'authentification de Météo-France était dans ce cas ; il a été retiré avec
+// l'identifiant et le secret, le 17 septembre 2026.) Dans l'APK il n'y a
 // pas de serveur : l'adresse relative tombait sur l'application elle-même, qui
 // répondait par sa propre page HTML — vérifié sur le téléphone, 200 et
 // `text/html` pour les deux. Le greffon `CapacitorHttp` fait la requête côté

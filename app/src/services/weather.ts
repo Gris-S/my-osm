@@ -1,7 +1,6 @@
 import { CONFIG } from "../config";
 import type { LonLat } from "../types";
 import type { TranslationKey } from "../i18n";
-import { relayedFetch } from "./native";
 
 // ---------------------------------------------------------------------------
 // Météo, qualité de l'air, pollens et vigilance.
@@ -72,17 +71,8 @@ export interface Area {
   department?: string;
 }
 
-function hasApiKey(): boolean {
-  return CONFIG.METEOFRANCE_API_KEY.trim().length > 0;
-}
-
-/** Identifiants d'application, avec lesquels on demande un jeton soi-même. */
-function hasOAuthCredentials(): boolean {
-  return CONFIG.METEOFRANCE_CLIENT_ID.trim().length > 0 && CONFIG.METEOFRANCE_CLIENT_SECRET.trim().length > 0;
-}
-
 function hasVigilanceKey(): boolean {
-  return hasApiKey() || hasOAuthCredentials();
+  return CONFIG.METEOFRANCE_API_KEY.trim().length > 0;
 }
 
 // --- Cache -----------------------------------------------------------------
@@ -339,44 +329,6 @@ function findDomain(node: unknown, department: string): VigilanceDomain | undefi
 
 const vigilanceCache = new Map<string, CacheEntry<VigilanceAlert[]>>();
 
-/** Jeton en cours, et l'instant où il cesse d'être valable. */
-let token: { value: string; expiresAt: number } | null = null;
-
-/**
- * Demande un jeton au portail (OAuth2, « client_credentials »).
- *
- * Les jetons de Météo-France sont courts — de l'ordre de l'heure — ce qui rend
- * impraticable de recopier celui de la console d'essai. Avec l'identifiant et
- * le secret de l'application, l'application le redemande elle-même, ici, et
- * l'oublie une minute avant l'échéance annoncée pour ne pas se faire prendre
- * de vitesse par une requête partie trop tard.
- */
-async function fetchToken(signal?: AbortSignal): Promise<string> {
-  const credentials = btoa(`${CONFIG.METEOFRANCE_CLIENT_ID}:${CONFIG.METEOFRANCE_CLIENT_SECRET}`);
-  // Relayé : le serveur de développement dans un navigateur, le natif dans l'APK.
-  const res = await relayedFetch(`${CONFIG.METEOFRANCE_TOKEN_URL}?grant_type=client_credentials`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${credentials}` },
-    signal,
-  });
-  if (!res.ok) throw new Error("Identifiants Météo-France refusés.");
-  const data = (await res.json()) as { access_token?: string; expires_in?: number };
-  if (!data.access_token) throw new Error("Jeton Météo-France illisible.");
-
-  token = {
-    value: data.access_token,
-    expiresAt: Date.now() + Math.max(60, (data.expires_in ?? 3600) - 60) * 1000,
-  };
-  return token.value;
-}
-
-/** En-tête d'authentification : la clé durable, ou un jeton tenu à jour. */
-async function vigilanceHeaders(signal?: AbortSignal, renew = false): Promise<Record<string, string>> {
-  if (!hasOAuthCredentials()) return { apikey: CONFIG.METEOFRANCE_API_KEY };
-  const value = renew || !token || token.expiresAt <= Date.now() ? await fetchToken(signal) : token.value;
-  return { Authorization: `Bearer ${value}` };
-}
-
 /**
  * Vigilances en cours pour un département, aujourd'hui (échéance « J »).
  *
@@ -389,19 +341,11 @@ export async function getVigilance(department: string, signal?: AbortSignal): Pr
   const known = cached(vigilanceCache, department);
   if (known) return known;
 
-  let res = await fetch(CONFIG.METEOFRANCE_VIGILANCE_URL, {
-    headers: await vigilanceHeaders(signal),
+  const res = await fetch(CONFIG.METEOFRANCE_VIGILANCE_URL, {
+    headers: { apikey: CONFIG.METEOFRANCE_API_KEY },
     signal,
   });
-  // Un jeton peut expirer plus tôt qu'annoncé : on en redemande un et on
-  // réessaie, une fois. Une clé API, elle, n'a rien à renouveler.
-  if (res.status === 401 && hasOAuthCredentials()) {
-    res = await fetch(CONFIG.METEOFRANCE_VIGILANCE_URL, {
-      headers: await vigilanceHeaders(signal, true),
-      signal,
-    });
-  }
-  if (res.status === 401 || res.status === 403) throw new Error("Identifiants Météo-France refusés.");
+  if (res.status === 401 || res.status === 403) throw new Error("Clé Météo-France refusée.");
   if (!res.ok) throw new Error(`Vigilance indisponible (${res.status})`);
 
   const data: VigilanceResponse = await res.json();

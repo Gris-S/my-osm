@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Eye, EyeOff, LoaderCircle, RotateCcw, TriangleAlert, X } from "lucide-react";
+import { Check, ExternalLink, Eye, EyeOff, LoaderCircle, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { t, useI18n, type TranslationKey } from "../i18n";
 import { checkApiKey, type KeyStatus } from "../services/apiKeyCheck";
 import {
@@ -42,19 +42,55 @@ import {
 /**
  * Les emplacements, groupés par service.
  *
- * Le groupement n'est pas cosmétique : Météo-France accepte **deux** formes
- * d'identification, une clé d'API ou un couple identifiant/secret, et
- * l'application emploie la seconde si elle est renseignée. Les présenter à la
- * suite des autres, à plat, laisserait croire qu'il faut les trois.
+ * Un groupe par service, même s'il n'a qu'une clé : le titre, l'usage et le
+ * lien d'inscription se lisent ensemble, au-dessus du champ.
+ *
+ * `signup` mène là où l'on obtient la clé : sans lui, le champ demande quelque
+ * chose sans dire où le trouver. `apis` nomme ce qu'il faut y chercher, tel que
+ * le portail l'affiche — sur PRIM et chez Météo-France, un compte ne suffit
+ * pas à savoir quelle API l'application interroge. Adresses relevées le
+ * 17 septembre 2026 :
+ * - TomTom : `my.tomtom.com`, les boutons « Get started » de
+ *   docs.tomtom.com/pricing — sans carte bancaire.
+ * - PRIM : l'accueil du portail, où se crée le compte et le jeton. Les deux
+ *   API sont celles de `IDFM_STOP_MONITORING_URL` et `IDFM_NAVITIA_URL`.
+ * - Mapillary : le tableau de bord développeur, où s'enregistre l'application
+ *   dont on copie le « Client Token ».
+ * - Météo-France : le portail des API, API « Données Publiques de Vigilance ».
  */
-const GROUPS: { title: TranslationKey; hint: TranslationKey; ids: ApiKeyId[] }[] = [
-  { title: "apikeys.group.tomtom", hint: "apikeys.group.tomtom.hint", ids: ["tomtom"] },
-  { title: "apikeys.group.idfm", hint: "apikeys.group.idfm.hint", ids: ["idfm"] },
-  { title: "apikeys.group.mapillary", hint: "apikeys.group.mapillary.hint", ids: ["mapillary"] },
+const GROUPS: {
+  title: TranslationKey;
+  hint: TranslationKey;
+  ids: ApiKeyId[];
+  signup?: { url: string; label: TranslationKey };
+  apis?: TranslationKey;
+}[] = [
+  {
+    title: "apikeys.group.tomtom",
+    hint: "apikeys.group.tomtom.hint",
+    ids: ["tomtom"],
+    signup: { url: "https://my.tomtom.com/", label: "apikeys.group.tomtom.link" },
+  },
+  {
+    title: "apikeys.group.idfm",
+    hint: "apikeys.group.idfm.hint",
+    ids: ["idfm"],
+    signup: { url: "https://prim.iledefrance-mobilites.fr/", label: "apikeys.group.idfm.link" },
+    apis: "apikeys.group.idfm.apis",
+  },
+  {
+    title: "apikeys.group.mapillary",
+    hint: "apikeys.group.mapillary.hint",
+    ids: ["mapillary"],
+    signup: { url: "https://www.mapillary.com/dashboard/developers", label: "apikeys.group.mapillary.link" },
+    apis: "apikeys.group.mapillary.apis",
+  },
   {
     title: "apikeys.group.meteofrance",
     hint: "apikeys.group.meteofrance.hint",
-    ids: ["meteofranceApiKey", "meteofranceClientId", "meteofranceClientSecret"],
+    ids: ["meteofranceApiKey"],
+    signup: { url: "https://portail-api.meteofrance.fr/", label: "apikeys.group.meteofrance.link" },
+    apis: "apikeys.group.meteofrance.apis",
   },
 ];
 
@@ -73,6 +109,13 @@ export function ApiKeysSettings() {
           <section key={group.title} className="apikey-group">
             <h3 className="apikey-group-title">{t(group.title)}</h3>
             <p className="apikey-group-hint">{t(group.hint)}</p>
+            {group.signup && (
+              <a className="apikey-signup" href={group.signup.url} target="_blank" rel="noreferrer">
+                {t(group.signup.label)}
+                <ExternalLink size={12} />
+              </a>
+            )}
+            {group.apis && <p className="apikey-apis">{t(group.apis)}</p>}
             {group.ids.map((id) => (
               <KeyRow key={id} id={id} />
             ))}
@@ -193,10 +236,9 @@ const ORIGIN_LABEL = {
 /**
  * La pastille d'état.
  *
- * Six états, et chacun dit quelque chose de différent — c'est tout l'intérêt
- * de ne pas se contenter d'un vert et d'un rouge. « Injoignable » n'accuse pas
- * la clé, « non vérifiable » explique que personne ne peut la vérifier depuis
- * un navigateur, et une saisie non enregistrée n'a pas d'état du tout.
+ * Plusieurs états, et chacun dit quelque chose de différent — c'est tout
+ * l'intérêt de ne pas se contenter d'un vert et d'un rouge. « Injoignable »
+ * n'accuse pas la clé, et une saisie non enregistrée n'a pas d'état du tout.
  */
 function StatusPill({ status, dirty }: { status: KeyStatus; dirty: boolean }) {
   if (dirty) return <span className="apikey-pill is-draft">{t("apikeys.unsaved")}</span>;
@@ -228,12 +270,6 @@ function StatusPill({ status, dirty }: { status: KeyStatus; dirty: boolean }) {
         <span className="apikey-pill is-unknown">
           <TriangleAlert size={12} />
           {t("apikeys.unreachable")}
-        </span>
-      );
-    case "uncheckable":
-      return (
-        <span className="apikey-pill is-unknown" title={t("apikeys.uncheckable.why")}>
-          {t("apikeys.uncheckable")}
         </span>
       );
     default:

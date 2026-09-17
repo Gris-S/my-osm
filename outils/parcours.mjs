@@ -349,6 +349,18 @@ const surLesZones = (corps) =>
     r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
     const fait=await (${corps})(db);db.close();return fait})()`);
 
+/** Le paquet de l'activité au premier plan, ou « ? » si le relevé échoue. */
+function auPremierPlan() {
+  const sortie = adb("shell", "dumpsys", "activity", "activities");
+  // La ligne se lit « topResumedActivity=ActivityRecord{… u0
+  // org.osmlocal.plans/.MainActivity t4292} » : l'activité n'est **pas**
+  // collée à l'accolade fermante. Exiger qu'elle le soit ne trouvait rien,
+  // les deux relevés valaient « ? », et la vérification échouait sur une
+  // mesure qui n'avait tout simplement pas eu lieu.
+  const trouve = /topResumedActivity=\S*\{[^}]*?\s([A-Za-z0-9_.]+)\/[^\s}]+/.exec(sortie);
+  return trouve ? trouve[1] : "?";
+}
+
 /** Ramène l'application au premier plan après un passage en veille. */
 function reveiller() {
   adb("shell", "monkey", "-p", PAQUET, "-c", "android.intent.category.LAUNCHER", "1");
@@ -854,7 +866,40 @@ const SCENARIOS = [
       );
       verifier("d'où vient chaque clé est dit", await js("!!document.querySelector('.apikey-origin')"),
         (await texte(".apikey-origin")) ?? "");
+      // Le lien vers l'inscription TomTom : présent, vers my.tomtom.com, et
+      // ouvert **hors** de l'application — une page TomTom qui remplacerait la
+      // carte dans la WebView laisserait l'utilisateur sans retour.
+      const lien = await js(`(()=>{const a=document.querySelector('.apikey-signup');
+        return a?{href:a.href,cible:a.target,texte:a.innerText.trim()}:null})()`);
       capture("14-cles-api");
+      // Chaque service dit où obtenir sa clé ; PRIM et Météo-France nomment en
+      // plus l'API à chercher sur leur portail.
+      const liens = await js("[...document.querySelectorAll('.apikey-signup')].map(a=>new URL(a.href).host).join(', ')");
+      verifier("chaque service mène à sa page d'inscription", liens.split(", ").length === 4, liens);
+      const apis = await js("document.querySelectorAll('.apikey-apis').length");
+      verifier("les API à chercher sont nommées", apis === 3, `${apis} mention(s)`);
+      // Le bas de la fenêtre, où Mapillary et Météo-France sortent de la capture.
+      await js("(()=>{const g=document.querySelectorAll('.apikey-group');g[g.length-1]?.scrollIntoView({block:'end'});return true})()");
+      await dodo(600);
+      capture("14b-cles-api-bas");
+      await js("(()=>{document.querySelector('.apikey-group')?.scrollIntoView({block:'start'});return true})()");
+      if (verifier("TomTom indique où obtenir une clé", lien !== null, lien?.texte ?? "")) {
+        verifier("le lien mène à my.tomtom.com", lien.href === "https://my.tomtom.com/", lien.href);
+        const avant = auPremierPlan();
+        await cliquer(".apikey-signup");
+        await dodo(4000);
+        const apres = auPremierPlan();
+        const resteIci = await js("location.href");
+        verifier(
+          "il s'ouvre dans le navigateur, pas dans l'application",
+          apres !== PAQUET && apres !== "?" && !/tomtom/.test(resteIci ?? ""),
+          `${avant} → ${apres}`
+        );
+        reveiller();
+        await dodo(3000);
+        await connecter(30_000);
+        return;
+      }
       await fermerModale();
     },
   },
@@ -1250,16 +1295,6 @@ const SCENARIOS = [
       );
       capture("24-musique");
 
-      const auPremierPlan = () => {
-        const sortie = adb("shell", "dumpsys", "activity", "activities");
-        // La ligne se lit « topResumedActivity=ActivityRecord{… u0
-        // org.osmlocal.plans/.MainActivity t4292} » : l'activité n'est **pas**
-        // collée à l'accolade fermante. Exiger qu'elle le soit ne trouvait rien,
-        // les deux relevés valaient « ? », et la vérification échouait sur une
-        // mesure qui n'avait tout simplement pas eu lieu.
-        const trouve = /topResumedActivity=\S*\{[^}]*?\s([A-Za-z0-9_.]+)\/[^\s}]+/.exec(sortie);
-        return trouve ? trouve[1] : "?";
-      };
       /**
        * Le paquet qui tient une session média **vivante**.
        *

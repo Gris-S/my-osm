@@ -17,13 +17,6 @@ import type { ApiKeyId } from "./apiKeys";
 //   PRIM (IDFM)     200 / 401   `access-control-allow-origin: *`
 //   Mapillary       200 / 400   `access-control-allow-origin: *`
 //   Météo-France    200 / 401   `access-control-allow-origin: *`
-//
-// **Une exception, et elle est irréductible** : l'identifiant et le secret
-// Météo-France s'échangent contre un jeton sur `portail-api.meteofrance.fr`,
-// dont le préflight répond 200 **sans aucun en-tête d'origine croisée**
-// (mesuré). Aucun navigateur ne peut donc les vérifier. Le serveur de
-// développement les relaie, mais une application empaquetée n'a pas de relais.
-// L'interface le dit au lieu d'afficher un état qu'elle ne sait pas établir.
 // ---------------------------------------------------------------------------
 
 export type KeyStatus =
@@ -36,9 +29,7 @@ export type KeyStatus =
   /** Le service a refusé la clé. */
   | { kind: "invalid" }
   /** Le service n'a pas répondu : on ne sait pas, et on ne prétend pas savoir. */
-  | { kind: "unreachable" }
-  /** Cet emplacement ne peut pas être vérifié depuis un navigateur. */
-  | { kind: "uncheckable" };
+  | { kind: "unreachable" };
 
 /** Un point d'observation quelconque, pour les appels qui exigent des coordonnées. */
 const PROBE = { lon: 2.3522, lat: 48.8566 };
@@ -57,15 +48,8 @@ export async function checkApiKey(
   const key = value.trim();
   if (!key) return { kind: "empty" };
 
-  // Le couple identifiant/secret ne se vérifie qu'en échangeant un jeton, ce
-  // qu'un navigateur ne peut pas faire (voir l'en-tête de ce fichier).
-  if (id === "meteofranceClientId" || id === "meteofranceClientSecret") {
-    return { kind: "uncheckable" };
-  }
-
   try {
     const response = await request(id, key, signal);
-    if (response === null) return { kind: "uncheckable" };
     if (response.ok) return { kind: "valid" };
     // 401 et 403 disent « pas vous » ; 400 est la réponse de Mapillary à un
     // jeton mal formé. Tout le reste — 429, 5xx, une panne — n'est pas un
@@ -78,7 +62,7 @@ export async function checkApiKey(
   }
 }
 
-function request(id: ApiKeyId, key: string, signal?: AbortSignal): Promise<Response> | null {
+function request(id: ApiKeyId, key: string, signal?: AbortSignal): Promise<Response> {
   const here = `${PROBE.lat},${PROBE.lon}`;
   switch (id) {
     case "tomtom":
@@ -111,8 +95,5 @@ function request(id: ApiKeyId, key: string, signal?: AbortSignal): Promise<Respo
 
     case "meteofranceApiKey":
       return fetch(CONFIG.METEOFRANCE_VIGILANCE_URL, { headers: { apikey: key }, signal });
-
-    default:
-      return null;
   }
 }
