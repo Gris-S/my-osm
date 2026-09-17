@@ -40,17 +40,17 @@ Repo: https://github.com/Gris-S/my-osm.git
 # mises à jour passent alors d'une source à l'autre sans désinstaller. Une
 # version qui ne se reproduit pas est **sautée** par F-Droid, pas signée par eux.
 # L'asset de la release doit donc s'appeler exactement `MY-OSM-<version>.apk`.
-# Vérifié pour 0.1.0-alpha.26 avec `common.verify_apks` de fdroidserver : l'APK
+# Vérifié pour 0.1.0-alpha.27 avec `common.verify_apks` de fdroidserver : l'APK
 # d'un clone propre (signé de la clé de débogage, faute de la nôtre) correspond
 # à celui de la release.
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.26
-    versionCode: 1000026
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.26, pas le tag :
+  - versionName: 0.1.0-alpha.27
+    versionCode: 1000027
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.27, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: 7a634777a852387f4e249bbcb9a44739167d77f1
+    commit: 1a8e86edd08bb3626e1ff342bdde8b6c2399e713
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -60,8 +60,10 @@ Builds:
     # Node vient de Debian, comme le demande F-Droid, mais de **forky** :
     # trixie n'a que Node 20, et le CLI de Capacitor 8 refuse de tourner sous
     # 22 (« The Capacitor CLI requires NodeJS >=22.0.0 », mesuré). Forky donne
-    # Node 24, et l'APK construit avec Node 24.20 est identique, octet pour
-    # octet, à celui de la release (construit avec Node 26). Même méthode que
+    # Node 24. Le Node de Debian ne lit pas le TypeScript : la configuration
+    # Capacitor est donc en JSON depuis 0.1.0-alpha.27. Construit dans un
+    # conteneur Debian avec ce Node, l'APK est identique, octet pour octet, à
+    # celui de la release (construit avec Node 26). Même méthode que
     # les recettes d'io.github.nyxar77.pulse et de jp.nonbili.noutube.
     sudo:
       - echo "deb https://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
@@ -87,7 +89,7 @@ Builds:
       - npm --prefix app ci
       - npm --prefix apk ci
 
-    # Ce que le scanner relève dans les dépendances (14 fichiers, mesuré) : rien
+    # Ce que le scanner relève dans les dépendances (13 fichiers, mesuré) : rien
     # de tout cela n'entre dans l'APK ni ne sert à le construire, sauf l'archive
     # que `cap sync android` décompresse — gardée, comme chez Pulse.
     # `scandelete` ne retire que les fichiers signalés sous ces chemins.
@@ -97,7 +99,6 @@ Builds:
       - app/node_modules/three/examples
       - app/node_modules/source-map/lib/mappings.wasm
       - app/node_modules/long/dist/long.min.js.gz
-      - apk/node_modules/@typescript/typescript-linux-x64/lib/tsc
       - apk/node_modules/@capacitor/cli/assets
 
     # `MYOSM_DIAGNOSTICS=0` retire l'objet de diagnostic `window.__myosm` et
@@ -124,5 +125,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.26
-CurrentVersionCode: 1000026
+CurrentVersion: 0.1.0-alpha.27
+CurrentVersionCode: 1000027
