@@ -15,6 +15,15 @@ def appVersionCode = { String v ->
 android {
     namespace = "org.osmlocal.plans"
     compileSdk = rootProject.ext.compileSdkVersion
+    // Pas de « Dependency metadata » dans l'APK. Le plugin Android l'ajoute par
+    // défaut au bloc de signature : la liste des dépendances, **chiffrée pour
+    // Google Play seul**. Rien que Google n'ait à recevoir ici, et F-Droid
+    // refuse l'APK qui la porte (« Found extra signing block », 17 septembre
+    // 2026).
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
     defaultConfig {
         applicationId "org.osmlocal.plans"
         minSdkVersion rootProject.ext.minSdkVersion

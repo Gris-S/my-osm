@@ -1,0 +1,3 @@
+The APK no longer carries Google's "dependency metadata" block, a list of the
+app's libraries encrypted so that only Google Play can read it. Nothing else
+changes in the app.
