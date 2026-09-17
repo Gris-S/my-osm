@@ -3,15 +3,21 @@
 #
 # Ce fichier n'est pas lu depuis ce dépôt : il se recopie dans `fdroiddata`,
 # sous `metadata/org.osmlocal.plans.yml`, au moment de la demande d'inclusion
-# (une issue sur gitlab.com/fdroid/rfp, puis une merge request sur fdroiddata).
+# (merge request fdroiddata !49227, ouverte le 17 septembre 2026).
 # Il est gardé ici pour vivre avec la chaîne de build qu'il décrit : changer
 # `apk/package.json` sans changer ce fichier, c'est casser la construction chez
 # eux sans s'en apercevoir.
 #
-# ⚠ JAMAIS EXÉCUTÉE. L'ordre des étapes a été vérifié dans le code de
-# fdroidserver 2.4.5 et le fichier passe `fdroid lint`, mais la construction
-# elle-même n'a pas tourné sur leur image : c'est la CI de la merge request sur
-# fdroiddata qui la fera la première.
+# Vérifiée hors de leur serveur, avec fdroidserver 2.4.5 : `fdroid lint`,
+# `rewritemeta`, le schéma de fdroiddata, `checkupdates`, le scanner, puis les
+# étapes rejouées avec Node 24.20 sur un clone du commit, jusqu'à un APK que
+# `common.verify_apks` reconnaît identique à celui de la release. La première
+# tentative sur leur CI a échoué sur trois points, corrigés depuis : `xz`
+# absent de l'image, `AutoUpdateMode: Version v%v` refusé par le schéma, et
+# `commit:` qui doit être un identifiant de commit.
+#
+# `rewritemeta` retire ces commentaires : c'est **sa** sortie qui part dans
+# fdroiddata.
 # ---------------------------------------------------------------------------
 
 Categories:
@@ -42,67 +48,81 @@ Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 Builds:
   - versionName: 0.1.0-alpha.26
     versionCode: 1000026
-    # Le dépôt préfixe ses tags d'un « v » (v0.1.0-alpha.16 est le premier
-    # publié). `commit:` doit reprendre le **nom exact du tag**, sans quoi le
-    # serveur de F-Droid ne trouve rien à construire.
-    commit: v0.1.0-alpha.26
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.26, pas le tag :
+    # un tag se déplace, un commit non (demande du mainteneur, !49227).
+    commit: 7a634777a852387f4e249bbcb9a44739167d77f1
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
-    # à notre charge. Les étapes de `build:` en partent aussi, d'où le
+    # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
     # `cd ../../..` qui remonte à la racine du dépôt.
     subdir: apk/android/app
 
-    # Node n'est pas sur l'image de construction. Version épinglée **avec son
-    # empreinte** : sans elle, la recette ferait confiance à un téléchargement.
+    # Node vient de Debian, comme le demande F-Droid, mais de **forky** :
+    # trixie n'a que Node 20, et le CLI de Capacitor 8 refuse de tourner sous
+    # 22 (« The Capacitor CLI requires NodeJS >=22.0.0 », mesuré). Forky donne
+    # Node 24, et l'APK construit avec Node 24.20 est identique, octet pour
+    # octet, à celui de la release (construit avec Node 26). Même méthode que
+    # les recettes d'io.github.nyxar77.pulse et de jp.nonbili.noutube.
     sudo:
-      - curl -Lo node.tar.xz https://nodejs.org/dist/v26.8.1/node-v26.8.1-linux-x64.tar.xz
-      - echo "3e301118d7df53d563b7e96c1617545f26e2f76f9724be668d6cab65c15dda5d  node.tar.xz" | sha256sum -c -
-      - tar xJf node.tar.xz
-      - cp -a node-v26.8.1-linux-x64/. /usr/local/
+      - echo "deb https://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
+      - apt-get update
+      - apt-get install -y -t forky npm
     gradle:
       - yes
 
-    # Tout se fait dans `build:`, rien dans `init:`. Ce que fait le serveur,
-    # d'après fdroidserver 2.4.5 (build.py, common.py) :
-    #   - `init:` tourne dans `subdir`, puis le scanner passe et **supprime**
-    #     les chemins de `scandelete`, puis `build:` tourne. Des `npm ci` en
-    #     `init:` avec `node_modules` en `scandelete` : Gradle ne trouvait plus
-    #     le code Android de Capacitor (apk/node_modules/@capacitor/android).
-    #     Installées en `build:`, les dépendances arrivent après le scanner.
-    #   - Les lignes de `build:` sont jointes par « ; » dans **un seul** bash :
-    #     un `cd` vaut pour les lignes suivantes. D'où un seul `cd` en tête,
-    #     depuis `subdir` jusqu'à la racine du dépôt.
+    # Ordre réel chez F-Droid (fdroidserver 2.4.5, build.py et common.py) :
+    # `prebuild:` dans `subdir`, puis le scanner, puis `build:`. Chaque liste est
+    # jointe par « ; » dans **un seul** bash : un `cd` vaut pour les lignes
+    # suivantes.
     #
-    # `npm ci` et non `npm install` : les deux verrous sont versionnés, et la
-    # construction doit être reproductible.
+    # Les dépendances s'installent **avant** le scanner, pour qu'il les examine.
+    # `npm ci` et non `npm install` : les deux verrous sont versionnés.
     #
     # Le script d'`apk/` qui posait l'APK sur un téléphone s'appelait `install`,
     # un nom que npm exécute tout seul pendant `npm ci` : il lançait `adb` et
     # faisait échouer l'installation sur une machine sans téléphone. Renommé
     # `install-apk` — ne jamais réintroduire un script portant un nom réservé.
-    #
+    prebuild:
+      - cd ../../..
+      - npm --prefix app ci
+      - npm --prefix apk ci
+
+    # Ce que le scanner relève dans les dépendances (14 fichiers, mesuré) : rien
+    # de tout cela n'entre dans l'APK ni ne sert à le construire, sauf l'archive
+    # que `cap sync android` décompresse — gardée, comme chez Pulse.
+    # `scandelete` ne retire que les fichiers signalés sous ces chemins.
+    scanignore:
+      - apk/node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz
+    scandelete:
+      - app/node_modules/three/examples
+      - app/node_modules/source-map/lib/mappings.wasm
+      - app/node_modules/long/dist/long.min.js.gz
+      - apk/node_modules/@typescript/typescript-linux-x64/lib/tsc
+      - apk/node_modules/@capacitor/cli/assets
+
     # `MYOSM_DIAGNOSTICS=0` retire l'objet de diagnostic `window.__myosm` et
     # rend le journal de navigation inerte. Aucune clé d'API n'est passée : il
     # n'y a pas de `.env.local` dans un clone, et `vite.config.ts` **refuse de
     # construire** une version de partage si une clé traînait dans
     # l'environnement. Les clés se saisissent dans l'application.
-    #
-    # Pas de `scandelete` : `node_modules` n'existe pas encore quand le scanner
-    # passe, et un chemin qui ne correspond à rien est une erreur pour lui.
     build:
       - cd ../../..
-      - npm --prefix app ci
-      - npm --prefix apk ci
       - OSM_TARGET=apk MYOSM_DIAGNOSTICS=0 npm --prefix app run build
       - cd apk && npx cap sync android
 
 # Empreinte SHA-256 du certificat de release, en minuscules et sans « : ».
 AllowedAPKSigningKeys: 0537bb84f0222e9e6892e06c478be29bcf0b95bb93ffc92e1cc48e518cada2c9
 
-# Le numéro de version est déduit de `app/package.json` par
-# `apk/android/app/build.gradle` : 0.1.0-alpha.26 -> 1000026. Une version
-# finale passe devant toutes ses alphas (suffixe 9999).
-AutoUpdateMode: Version v%v
-UpdateCheckMode: Tags
+# `checkupdates` ne sait pas lire la version : `build.gradle` la **calcule**
+# depuis `app/package.json` (0.1.0-alpha.N -> 1000000 + N). On la lui donne
+# donc à lire dans `app/package.json`, et le code se recalcule de même.
+# ⚠ Ne vaut que pour 0.1.0-alpha.N. Au passage en 0.1.1, 0.2.0 ou en version
+# finale, la regex ne trouvera plus rien et F-Droid cessera de voir les
+# nouvelles versions : adapter ces deux champs (merge request sur fdroiddata).
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9]
+UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
+VercodeOperation:
+  - 1000000 + %c
 CurrentVersion: 0.1.0-alpha.26
 CurrentVersionCode: 1000026

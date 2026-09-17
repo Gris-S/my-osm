@@ -101,7 +101,13 @@ cd apk && npm run apk:release
       (`metadata/org.osmlocal.plans.yml`). Pas d'issue `rfp` : elle sert aux
       demandes faites par des tiers. La CI de la merge request fait la
       première vraie construction
-- [ ] Versions suivantes : rien à faire, `UpdateCheckMode: Tags` repère le tag
+- [ ] Versions suivantes : rien à faire tant qu'on reste en `0.1.0-alpha.N`,
+      `checkupdates` repère le tag et écrit le commit. **Au passage en 0.1.1,
+      0.2.0 ou en version finale**, adapter `UpdateCheckData` et
+      `VercodeOperation` dans la recette (merge request sur fdroiddata), sans
+      quoi F-Droid ne voit plus les nouvelles versions
+- [ ] Le Node de la recette vient de Debian forky (Node 24) : une dépendance
+      qui exigerait plus récent casserait la construction chez F-Droid
 
 ---
 
