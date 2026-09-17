@@ -1,0 +1,9 @@
+{
+  "appId": "org.osmlocal.plans",
+  "appName": "MY OSM",
+  "webDir": "../app/dist",
+  "android": {},
+  "server": {
+    "androidScheme": "https"
+  }
+}

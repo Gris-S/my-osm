@@ -2,9 +2,27 @@
 
 **Le code source n'est pas ici.** Il reste dans `../app`, et ce dossier ne
 contient que la coquille native : la configuration Capacitor et le projet
-Android engendré. `capacitor.config.ts` pointe son `webDir` vers
+Android engendré. `capacitor.config.json` pointe son `webDir` vers
 `../app/dist` — une seule source, deux enveloppes, aucune copie à tenir à
 jour.
+
+## La configuration Capacitor
+
+`capacitor.config.json`, et **pas** `.ts` : F-Droid construit avec le Node de
+Debian, qui ne sait pas lire le TypeScript directement, et le TypeScript 7 ne
+fournit plus l'API dont Capacitor se servait pour le lire à sa place. La
+première construction chez F-Droid a échoué là (17 septembre 2026). Le JSON
+ne demande rien. Il n'a pas de commentaires, d'où ceux-ci :
+
+- **`server.androidScheme: "https"`.** Le schéma décide de l'origine de la
+  page, donc de ce que les services distants voient dans l'en-tête `Origin`.
+  `https` est le seul qui donne un contexte sécurisé, exigé par la
+  géolocalisation, les capteurs de mouvement et le stockage privé à l'origine
+  (OPFS).
+- **Débogage de la WebView : non réglé.** Capacitor le suit sur le drapeau
+  « débogable » de l'APK — actif en debug (`outils/journal.sh`), coupé en
+  release (audit de sécurité du 15 septembre 2026). Ne pas ajouter
+  `webContentsDebuggingEnabled`.
 
 ## Construire
 

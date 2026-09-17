@@ -2657,7 +2657,7 @@ Pixel 8. Ce qui en est sorti, et les règles à tenir.
   `livrables/MY-OSM.apk`, **à partager** : non débogable (`run-as` refusé),
   sans débogage de la WebView, sans objet de diagnostic. Vérifié : aucune prise
   de débogage ouverte, `run-as` refusé, application fonctionnelle.
-  - **Ne pas remettre `webContentsDebuggingEnabled` dans `capacitor.config.ts`** :
+  - **Ne pas remettre `webContentsDebuggingEnabled` dans `capacitor.config.json`** :
     sans réglage, Capacitor le suit sur le drapeau « débogable » (`CapConfig`),
     ce qui donne exactement la répartition voulue. Forcé à vrai, il ouvrait les
     DevTools — stockage lisible, JavaScript exécuté avec le pont natif — à tout

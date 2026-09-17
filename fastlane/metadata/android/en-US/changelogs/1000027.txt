@@ -1,0 +1,2 @@
+Internal change for F-Droid: the Capacitor configuration is now plain JSON,
+so the app builds with Debian's Node. Nothing changes in the app itself.
