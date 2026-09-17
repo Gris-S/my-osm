@@ -67,6 +67,9 @@ cd apk && npm run apk:release
 - [ ] `unzip` de `livrables/MY-OSM.apk` : aucune des clés, pas de `__myosm`
 - [ ] `apksigner verify --print-certs` montre **votre** certificat, pas celui de
       débogage
+- [ ] `fdroid scanner livrables/MY-OSM.apk` (fdroidserver master) ne trouve
+      rien — en particulier aucun bloc « Dependency metadata », que F-Droid
+      refuse et que `dependenciesInfo` coupe dans `build.gradle`
 - [ ] La version lue dans l'APK correspond à `app/package.json`
 
 > **À savoir :** le premier APK signé avec la vraie clé **ne s'installera pas
