@@ -42,11 +42,14 @@ interface MapStatusProps {
    * normal.
    */
   locationError: string | null;
+  /** Distance au bas de l'écran, en pixels : au-dessus de la fiche ouverte. */
+  offsetBottom?: number;
 }
 
-export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
+export function MapStatus({ status, mapError, locationError, offsetBottom }: MapStatusProps) {
   const { t } = useI18n();
   const { offline, missingZone } = useOfflineState();
+  const place = offsetBottom ? { bottom: `max(20px, ${offsetBottom}px)` } : undefined;
   // « Aucune catégorie » est un choix, pas un incident : il se dit, puis se
   // tait. Il restait affiché en permanence pour qui a tout décoché exprès.
   const [emptyExpired, setEmptyExpired] = useState(false);
@@ -64,7 +67,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   // chargement des commerces n'intéresse personne.
   if (mapError) {
     return (
-      <div className="map-status is-error" role="alert">
+      <div className="map-status is-error" style={place} role="alert">
         <TriangleAlert size={15} />
         {mapError}
       </div>
@@ -75,7 +78,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   // passe avant l'état général de la carte : c'est celle qu'on attend.
   if (locationError) {
     return (
-      <div className="map-status is-warning" role="alert">
+      <div className="map-status is-warning" style={place} role="alert">
         <TriangleAlert size={15} />
         {locationError}
       </div>
@@ -88,7 +91,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   // savoir, sans console, qu'on est sorti des zones téléchargées.
   if (offline) {
     return (
-      <div className="map-status" role="status">
+      <div className="map-status" style={place} role="status">
         <WifiOff size={15} />
         {t(missingZone ? "mapStatus.offlineGap" : "mapStatus.offline")}
       </div>
@@ -99,7 +102,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   // mieux vaut le dire que laisser chercher.
   if (status === "empty" && !emptyExpired) {
     return (
-      <div className="map-status" role="status">
+      <div className="map-status" style={place} role="status">
         <SlidersHorizontal size={15} />
         {t("mapStatus.empty")}
       </div>
@@ -109,7 +112,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   if (status !== "loading") return null;
 
   return (
-    <div className="map-status" role="status">
+    <div className="map-status" style={place} role="status">
       <LoaderCircle size={15} className="map-status-spinner" />
       {t("mapStatus.loading")}
     </div>

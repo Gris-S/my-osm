@@ -631,6 +631,16 @@
   visibility: hidden;
 }
 
+/* Même chose pour la colonne de droite (signets, catégories, calques,
+   position) : pendant un guidage, le bandeau pousse la météo vers le bas, et
+   entre elle et la fiche d'une grande gare il ne reste pas la place de quatre
+   boutons. Ils remontaient alors sur le bandeau et sur la météo (mesuré le
+   19 septembre 2026, Gare de Lyon). Réduire la fiche la rendrait illisible ;
+   les boutons reviennent à sa fermeture. */
+.app-shell.is-navigating.has-sheet :is(.bookmarks-menu, .filter-menu, .map-options, .locate-button) {
+  visibility: hidden;
+}
+
 /* Les boutons du bas remontent au-dessus de la barre de route. La transition
    est déjà portée par `.map-buttons` : ils glissent au lieu de sauter. */
 

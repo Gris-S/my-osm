@@ -19,8 +19,14 @@
      914). C'est une colonne flexible : **seule la liste des passages rétrécit et
      défile** (`.departures`). Quand toute la fiche défilait, son bord supérieur
      et son titre sortaient du cadre ; et un défilement posé ici rognerait le
-     menu de partage, qui déborde au-dessus de la fiche. */
-  max-height: calc(100% - max(16px, env(safe-area-inset-top)) - 240px);
+     menu de partage, qui déborde au-dessus de la fiche.
+
+     La réserve compte **toute** la colonne : météo et boussole (96 px), puis
+     signets, catégories, calques et position (quatre boutons de 44 px, 12 px
+     d'écart), et la marge au-dessus de la fiche. À 240 px, elle datait de deux
+     boutons : sur la fiche de Gare de Lyon, les calques passaient à moitié et
+     la position entièrement sous la fiche (mesuré le 19 septembre 2026). */
+  max-height: calc(100% - max(16px, env(safe-area-inset-top)) - 332px);
   display: flex;
   flex-direction: column;
 }

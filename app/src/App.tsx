@@ -363,6 +363,8 @@ export default function App() {
    * du guidage lui-même.
    */
   const carGuiding = carNav.active && !choosingRoute;
+  /** Le panneau d'itinéraire des transports, qui prend toute la hauteur. */
+  const transitPanelOpen = itineraryOpen && !guiding && routeMode === "transit";
 
   function handleStartItinerary() {
     if (!selectedPlace) return;
@@ -747,17 +749,24 @@ export default function App() {
           status={brand || itineraryOpen || guiding ? "idle" : poiStatus}
           mapError={mapError}
           locationError={geolocation.error}
+          // Au-dessus de la fiche ou de la colonne du guidage, comme les
+          // boutons de droite : posé en bas, il passait sous la fiche d'une
+          // gare, et le message ne se voyait plus.
+          offsetBottom={locateButtonOffset}
         />
       )}
 
       {/* Pas de bouton de position pendant un guidage voiture : la barre de
           route porte déjà son « Recentrer », et deux boutons qui ramènent au
           même endroit sur le même bord ne font qu'encombrer. */}
-      {!photoExpanded && !carGuiding && !searching && (
+      {/* Ni position ni calques sur le panneau des transports : il occupe toute
+          la hauteur, et les deux boutons se posaient sur le détail du trajet.
+          En voiture et à pied, le panneau est court et les laisse libres. */}
+      {!photoExpanded && !carGuiding && !searching && !transitPanelOpen && (
         <LocateButton onClick={handleLocate} loading={geolocation.loading} offsetBottom={locateButtonOffset} />
       )}
 
-      {!photoExpanded && !carGuiding && !searching && (
+      {!photoExpanded && !carGuiding && !searching && !transitPanelOpen && (
       <MapOptionsMenu
         open={mapOptionsOpen}
         onOpenChange={setMapOptionsOpen}

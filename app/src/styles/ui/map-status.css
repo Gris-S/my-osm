@@ -54,7 +54,7 @@
    et par l'absence de fondu différé : c'est la réponse à un geste, elle doit
    arriver avec lui. */
 .map-status.is-warning {
-  max-width: min(92vw, 520px);
+  max-width: min(calc(100vw - 120px), 520px);
   text-align: left;
   line-height: 1.35;
   animation: none;
@@ -67,7 +67,7 @@
 .map-status.is-error {
   background: var(--closed);
   color: #fff;
-  max-width: min(92vw, 520px);
+  max-width: min(calc(100vw - 120px), 520px);
   text-align: left;
   line-height: 1.35;
   /* Le bandeau de chargement apparaît en fondu différé ; une erreur, non. */

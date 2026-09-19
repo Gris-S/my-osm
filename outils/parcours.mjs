@@ -374,6 +374,28 @@ const effacerTrajetsSauf = (gardes) =>
     const r=store.getAllKeys();r.onsuccess=()=>{for(const k of r.result){if(!garder.has(k)){store.delete(k);n++}}};
     tx.oncomplete=()=>ok(n);tx.onerror=()=>ok(-1)})`);
 
+
+/**
+ * Les éléments flottants de l'interface qui se recouvrent, deux à deux.
+ *
+ * On mesure les enfants positionnés de `.app-shell` (boutons, menus, bandeau,
+ * fiche, panneaux), en ignorant la carte et ses marqueurs. Rend la liste des
+ * paires qui se recouvrent de plus de deux pixels dans les deux sens.
+ */
+const chevauchements = () =>
+  js(`(()=>{const shell=document.querySelector('.app-shell');const skip=/maplibregl|map-container|marker|modal-backdrop/;const items=[];
+    const visit=(el,d)=>{for(const c of el.children){const cs=getComputedStyle(c);
+      if(cs.display==='none'||cs.visibility==='hidden'||+cs.opacity===0)continue;
+      const cls=typeof c.className==='string'?c.className:c.tagName;if(skip.test(cls))continue;
+      const r=c.getBoundingClientRect();
+      if((cs.position==='absolute'||cs.position==='fixed')&&r.width>0&&r.height>0)items.push({n:cls.split(' ')[0],r});
+      else if(d<2)visit(c,d+1)}};
+    visit(shell,0);const out=[];
+    for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){const a=items[i].r,b=items[j].r;
+      const w=Math.min(a.right,b.right)-Math.max(a.left,b.left),h=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+      if(w>2&&h>2)out.push(items[i].n+' × '+items[j].n)}
+    return out.join(', ')})()`);
+
 /** Le paquet de l'activité au premier plan, ou « ? » si le relevé échoue. */
 function auPremierPlan() {
   const sortie = adb("shell", "dumpsys", "activity", "activities");
@@ -1591,6 +1613,71 @@ const SCENARIOS = [
         return b&&m?Math.round(b.bottom-m.top):null})()`);
       verifier("le burger reste sous le bandeau", recouvre !== null && recouvre <= 0, `chevauchement ${recouvre} px`);
       capture("27-guidage-transports");
+      await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+      await dodo(1000);
+    },
+  },  {
+    id: "chevauchements",
+    titre: "Aucun bouton, menu ou panneau ne se recouvre, dans les états chargés",
+    // Mesuré le 19 septembre 2026, sans que rien ne l'ait signalé : sur la
+    // fiche de Gare de Lyon, calques et position passaient sous la fiche ; sur
+    // le panneau des transports, ils se posaient sur le détail du trajet ; et
+    // pendant un guidage, la fiche d'une grande gare faisait remonter la
+    // colonne de droite sur le bandeau. On mesure donc les recouvrements,
+    // état par état, au lieu de compter sur quelqu'un pour les voir.
+    async executer() {
+      await scene();
+      await positionSimulee(48.8726, 2.3311); // Auber
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await carteVers(2.3311, 48.8726, 15);
+      const etat = async (nom) => {
+        const liste = await chevauchements();
+        verifier(`rien ne se recouvre : ${nom}`, liste === "", liste);
+      };
+      await etat("carte");
+
+      await saisir("Gare de Lyon");
+      await attendre(".search-result");
+      await cliquerPremierLieu();
+      await attendre(".sheet");
+      await attendreQue("!document.querySelector('.sheet')?.innerText.includes('Looking up')", 10_000);
+      await dodo(1500);
+      await etat("fiche d'une grande gare");
+
+      await cliquer(".sheet-action-primary");
+      await attendre(".itinerary-panel");
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[2])m[2].click();return true})()");
+      await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
+      await etat("panneau des transports");
+
+      await cliquer(".nav-start");
+      await attendre(".nav-banner .nav-maneuver", 15_000);
+      await dodo(1500);
+      await etat("guidage en transports");
+      // Le bandeau le plus haut : une descente, avec la note du décalage manuel.
+      for (let i = 0; i < 3; i++) {
+        await js("(()=>{const b=document.querySelectorAll('.transit-nudge button')[1];if(b)b.click();return true})()");
+        await dodo(400);
+      }
+      await dodo(1500);
+      await etat("guidage, bandeau le plus haut");
+
+      // La fiche de la gare d'arrivée, ouverte pendant le guidage.
+      await js(`(()=>{const m=window.__myosm.map;m.jumpTo({center:[2.3736,48.8443],zoom:16.5});return true})()`);
+      await dodo(3000);
+      const ouverte = await js(`(()=>{const m=window.__myosm.map;const f=m.queryRenderedFeatures({layers:['poi-layer']})
+        .find((x)=>/Gare de Lyon/.test(x.properties.label||''));if(!f)return false;
+        const p=m.project(f.geometry.coordinates);m.fire('click',{point:p,lngLat:m.unproject(p),originalEvent:new MouseEvent('click')});return true})()`);
+      if (ouverte && (await attendre(".sheet", 8000))) {
+        await dodo(2000);
+        await etat("guidage avec la fiche d'une gare");
+        capture("28-guidage-fiche");
+      } else {
+        verifier("la fiche d'une gare s'ouvre pendant le guidage", false, "marqueur introuvable");
+      }
+      await js("(()=>{const c=document.querySelector('.sheet-close');if(c)c.click();return true})()");
+      await dodo(500);
       await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
       await dodo(1000);
     },

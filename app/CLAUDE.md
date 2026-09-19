@@ -45,6 +45,17 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
 - **L'APK doit être débogable** : la release ne l'est pas. Pour essayer la
   configuration de F-Droid — sans aucune clé — passer par
   `cd apk && npm run apk:nokeys`.
+- **Le scénario `chevauchements` mesure les recouvrements** des éléments
+  flottants (enfants positionnés de `.app-shell`) dans les états chargés :
+  carte, fiche d'une grande gare, panneau des transports, guidage, bandeau le
+  plus haut, fiche ouverte pendant un guidage. Ajouté le 19 septembre 2026
+  après trois recouvrements que personne n'avait vus : calques et position
+  sous la fiche de Gare de Lyon (la réserve de `.sheet` datait de deux
+  boutons, elle en compte quatre : 332 px), les mêmes posés sur le panneau
+  des transports (retirés quand il est ouvert), et la colonne de droite
+  remontée sur le bandeau quand une fiche s'ouvre en guidage (masquée tant
+  que la fiche est là, comme la colonne du bas). Le message d'état de la carte
+  suit la même hauteur que les boutons : il passait sous la fiche.
 - Le parcours **rend l'appareil à son état** en terminant : réglages, mode
   avion, position simulée effacée par le rechargement. Tout nouveau scénario
   doit respecter cette règle. Depuis le 19 septembre 2026, il relève au départ
