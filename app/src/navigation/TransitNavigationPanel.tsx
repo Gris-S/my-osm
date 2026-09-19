@@ -1,9 +1,10 @@
 import { ChevronLeft, ChevronRight, Flag, Footprints, Play, Square, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { StationExit } from "./exits";
-import { useNavDockRef } from "./dockClearance";
+import { useNavBannerRef, useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
 import type { TransitStep } from "./transitSteps";
+import type { TransitLine } from "../transport/journeyView";
 import { formatClock, navPlural, useNav } from "./strings";
 import type { TransitNavSession } from "./useTransitNavigation";
 
@@ -27,18 +28,21 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
   const { nav } = useNav();
   // Hauteur de la colonne du bas, lue par `App` pour y ranger les boutons de droite.
   const dockRef = useNavDockRef();
+  // Bas du bandeau, lu par la feuille de style pour y ranger le burger et la météo.
+  const bannerRef = useNavBannerRef();
   const { current, upcoming, offset } = session;
 
   if (!session.active || !current) return null;
 
   return (
     <>
-      <div className="nav-banner">
+      <div className="nav-banner" ref={bannerRef}>
         <Instruction
           step={current}
           next={session.upcoming[0] ?? null}
           stopsLeft={session.stopsLeft}
           exit={session.exit}
+          connection={session.connection}
         />
         {/* Le décalage manuel se dit : sans cela, un guidage volontairement
             décalé d'une étape passerait pour une erreur du calcul. */}
@@ -63,7 +67,7 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
             <ol className="transit-steps">
               {upcoming.map((step, rank) => (
                 <li key={`${step.legIndex}-${step.kind}-${rank}`} className="transit-step">
-                  <span className="transit-step-time">{formatClock(step.at)}</span>
+                  <span className="transit-step-time">{formatClock(clockOf(step))}</span>
                   <Badge step={step} />
                   <span className="transit-step-text">{shortText(step, nav)}</span>
                 </li>
@@ -109,6 +113,16 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
   );
 }
 
+/**
+ * L'heure écrite en face d'une action : celle du **geste**, pas celle où
+ * l'action devient courante. « Descendre à Auber » s'écrit à l'arrivée du
+ * train, et non à son départ — l'heure où le guidage se met à
+ * l'afficher. De même, « Prendre le A » s'écrit au départ du train.
+ */
+function clockOf(step: TransitStep): Date {
+  return step.kind === "board" || step.kind === "alight" ? step.until : step.at;
+}
+
 /** La pastille d'une action : la ligne à ses couleurs, ou le pictogramme. */
 function Badge({ step }: { step: TransitStep }) {
   if (step.kind === "walk") {
@@ -143,12 +157,14 @@ function Instruction({
   next,
   stopsLeft,
   exit,
+  connection,
 }: {
   step: TransitStep;
   /** L'action d'après : elle complète la marche qui mène à un arrêt. */
   next: TransitStep | null;
   stopsLeft: number | null;
   exit: StationExit | null;
+  connection: TransitLine | null;
 }) {
   const { nav } = useNav();
   const minutes = Math.max(1, Math.round((step.durationSeconds ?? 0) / 60));
@@ -209,6 +225,12 @@ function Instruction({
         {/* La sortie n'apparaît que sur une descente, et seulement là où la
             station en déclare une : un arrêt de bus n'en a pas. */}
         {step.kind === "alight" && exit && <span className="transit-exit">{exitText(exit, nav)}</span>}
+        {/* Correspondance sans sortie : la ligne à chercher sur le fléchage. */}
+        {step.kind === "alight" && !exit && connection && (
+          <span className="transit-exit is-connection">
+            {nav("transit.connection", { line: `${connection.mode} ${connection.label}`.trim() })}
+          </span>
+        )}
       </div>
     </div>
   );

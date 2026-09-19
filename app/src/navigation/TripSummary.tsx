@@ -89,7 +89,7 @@ export function TripSummary({ trip, onClose }: { trip: Trip; onClose: () => void
           >
             {trip.ascent !== null && trip.descent !== null && (
               <span className="trip-stat-note">
-                D+ {trip.ascent} m · D− {trip.descent} m
+                {`D+\u00a0${trip.ascent}\u00a0m · D−\u00a0${trip.descent}\u00a0m`}
               </span>
             )}
           </Stat>

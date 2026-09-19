@@ -612,10 +612,23 @@
    Le décalage est **constant** et taillé pour le bandeau le plus haut, celui
    qui porte en plus la ligne « recalcul » : un décalage qui suivrait la hauteur
    réelle ferait sauter les deux boutons chaque fois que cette ligne apparaît ou
-   s'efface. */
+   s'efface.
+   Plancher seulement, depuis le 19 septembre 2026 : le bandeau des transports
+   dépasse ce décalage, et il publie son bas réel (`useNavBannerRef`). */
 .app-shell.is-navigating .app-menu,
 .app-shell.is-navigating .map-dock {
-  top: calc(max(16px, env(safe-area-inset-top)) + 132px);
+  top: max(
+    calc(max(16px, env(safe-area-inset-top)) + 132px),
+    calc(var(--nav-banner-bottom, 0px) + 12px)
+  );
+}
+
+/* Une fiche ouverte pendant le guidage prend le bas de l'écran : la colonne du
+   bas (musique, suite du trajet) s'efface derrière elle, sans quoi elle restait
+   visible au-dessus de la fiche et les boutons de droite s'y posaient
+   (capture du 18 septembre 2026). Elle revient à la fermeture de la fiche. */
+.app-shell.is-navigating.has-sheet .nav-dock {
+  visibility: hidden;
 }
 
 /* Les boutons du bas remontent au-dessus de la barre de route. La transition
@@ -880,6 +893,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.history-figure-value {
+  /* « 0 min » passait sur deux lignes, repoussé par la note d'à côté. */
+  white-space: nowrap;
+}
+
 .history-figures svg {
   color: var(--text-secondary);
   align-self: center;
@@ -911,10 +929,18 @@
 }
 
 .history-dialog.is-reading .history-list,
-.history-dialog.is-reading .history-item {
+.history-dialog.is-reading .history-item,
+.history-dialog.is-reading .history-detail {
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
+}
+
+/* La hauteur que la barre fixe laisse libre revient à la carte du trajet. Un
+   trajet court laissait sinon un grand blanc sous « Supprimer » (capture du
+   18 septembre 2026). MapLibre suit la taille de son conteneur. */
+.history-dialog.is-reading .trip-map {
+  flex: 1 0 190px;
 }
 
 .history-stepper {
@@ -1035,7 +1061,10 @@
    sortir de l'écran. */
 .transit-remaining {
   padding: 12px 14px 4px;
-  max-height: 40vh;
+  /* Quatre à cinq actions visibles, la suite défile : à 40vh, la liste d'un
+     trajet à deux correspondances montait jusqu'au bandeau et poussait la
+     colonne de droite dessus. */
+  max-height: 28vh;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;

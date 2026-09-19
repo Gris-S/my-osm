@@ -139,7 +139,7 @@ export default function App() {
     handleAddStop,
     handleRemoveStop,
     handleMoveStop,
-  } = useItinerary(geolocation.position, geolocation.locate);
+  } = useItinerary(geolocation.position, geolocation.positionAt, geolocation.locate);
 
   // La durée annoncée **avant** de partir vient du même moteur que celle
   // annoncée **au** départ, dès qu'une clé TomTom permet de connaître le
@@ -376,7 +376,7 @@ export default function App() {
   function handleRouteTo(place: Place) {
     setStops([{ kind: "current" }, { kind: "place", place }]);
     setSelectedPlace(null);
-    if (!geolocation.position) geolocation.locate();
+    // La position est redemandée par `useItinerary` si elle n'est pas fraîche.
   }
 
   // Un lien de position ouvert depuis une autre application — « Itinéraire »
@@ -534,7 +534,7 @@ export default function App() {
     <div
       className={`app-shell ${editingStop !== null ? "is-picking" : ""} ${
         guiding && !choosingRoute ? "is-navigating" : ""
-      } ${run.active ? "is-running" : ""}`}
+      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${run.active ? "is-running" : ""}`}
     >
       {/* **Pendant la navigation voiture, aucun calque** (demande explicite) :
           ni POI (commerces, parkings, transports…), ni signets, ni relief,
@@ -740,7 +740,14 @@ export default function App() {
       )}
 
       {!photoExpanded && !guiding && (
-        <MapStatus status={brand ? "idle" : poiStatus} mapError={mapError} locationError={geolocation.error} />
+        <MapStatus
+          // L'état des catégories ne concerne que la carte qu'on explore : sur
+          // un itinéraire ou un guidage, « aucune catégorie » se posait sur le
+          // panneau sans rien lui apprendre.
+          status={brand || itineraryOpen || guiding ? "idle" : poiStatus}
+          mapError={mapError}
+          locationError={geolocation.error}
+        />
       )}
 
       {/* Pas de bouton de position pendant un guidage voiture : la barre de

@@ -47,7 +47,13 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
   `cd apk && npm run apk:nokeys`.
 - Le parcours **rend l'appareil à son état** en terminant : réglages, mode
   avion, position simulée effacée par le rechargement. Tout nouveau scénario
-  doit respecter cette règle.
+  doit respecter cette règle. Depuis le 19 septembre 2026, il relève au départ
+  **tout le `localStorage`** et les trajets de l'historique, puis rend le premier
+  tel quel et efface les trajets qu'il a créés : il remettait auparavant des
+  valeurs par défaut, et laissait dans l'historique des « 0 min · 12 km » que
+  l'utilisateur a pris pour de vrais trajets. Le relevé est aussi écrit dans
+  `parcours/…/etat-initial.json` — hors du dépôt : il contient les adresses
+  Maison et Travail.
 - Le scénario `coherence` garde précisément le défaut d'origine : il compare la
   durée du panneau à celle de la bulle et échoue si elles s'écartent de plus
   d'une minute. **Un défaut trouvé sur l'appareil gagne son scénario**, comme un
@@ -436,6 +442,22 @@ l'horaire du jour quand la ligne le diffuse). Points à connaître :
 - **Les sections `waiting` ne deviennent pas des étapes** : leur durée est déjà
   dans le total du trajet, et les afficher couperait en deux la lecture d'une
   correspondance. Les marches de moins de 30 secondes sont écartées de même.
+- **Une station se vise par son identifiant, jamais par ses coordonnées.**
+  Vers le point de la station Ranelagh, Navitia visait l'adresse la plus proche
+  (« 46 Avenue Mozart »), faisait descendre à La Muette et marcher six minutes ;
+  vers `stop_area:IDFM:71243`, il descend à Ranelagh et arrive cinq minutes plus
+  tôt (mesuré le 19 septembre 2026). `resolveJourneyStopArea` (`idfm.ts`) tire
+  la zone de correspondance du référentiel ouvert (zone d'arrêt, puis jeu
+  `relations`), sans clé ni quota ; `useItinerary` passe la station en
+  `fromStation`/`toStation` (`JourneyOptions`). Faute de réponse, on retombe sur
+  les coordonnées.
+- **« Ma position » n'est prise que fraîche** (`CONFIG.ROUTE_POSITION_MAX_AGE_MS`,
+  deux minutes). `useGeolocation` garde son dernier relevé, même vieux de
+  plusieurs heures et même quand le suivant échoue : un trajet de nuit partait
+  ainsi d'un quartier quitté depuis des heures, et manquait le dernier RER
+  qu'on pouvait encore prendre. `useItinerary` retient l'instant où
+  « Ma position » entre dans le parcours, redemande un relevé s'il le faut et
+  n'accepte que ceux d'après ; sans GPS, le panneau demande un départ.
 - **Navitia rend l'heure locale du réseau** (`20260901T182027`, sans décalage) :
   elle est reconstruite comme une date locale, ce qui suppose un appareil à
   l'heure française — le seul cas d'usage d'un réseau francilien.
@@ -1492,6 +1514,25 @@ a pas de position à suivre.
   l'Économie » sont à trois cents mètres l'une de l'autre, se tromper coûte plus
   que de n'avoir rien dit. Vérifié : deux directions opposées donnent bien deux
   sorties opposées.
+- **Pas de sortie pour une correspondance souterraine** (`exitWanted`, testé
+  dans `tests/transitExit.test.ts`). Descendre du RER A à Auber pour prendre le
+  9 à Havre-Caumartin se fait par les couloirs : annoncer « Sortie 1 — r. du
+  Havre » y envoyait dehors (capture du 18 septembre 2026). Règle générale :
+  sortie vers un bus, un tram ou l'arrivée ; pas de sortie vers un métro, un
+  RER ou un train, **sauf** si la marche passe par la rue — Navitia la calcule
+  alors sur la voirie (`street_network`, `TransitLeg.connection === false`) au
+  lieu d'une correspondance déclarée (`transfer`). Ni la zone de
+  correspondance d'IDFM (Auber et Havre-Caumartin sont dans deux zones) ni le
+  type Navitia ne disent « couloir » à coup sûr : Javel (RER C ↔ métro 10)
+  traverse une rue en `transfer`. La sortie cède alors la place à « Suivre
+  « Correspondance » Métro 9 » (`connectionTo`, demande explicite) : c'est le
+  fléchage de la station qui guide, jusqu'à l'autre quai.
+- **L'heure écrite dans « La suite » est celle du geste** (`clockOf`) :
+  l'arrivée pour « Descendre à… », le départ pour « Prendre… ». L'instant où
+  l'action devient courante (`at`) n'est pas une heure à lire.
+- **La fiche d'un arrêt de bus ouverte en route montre la ligne à prendre**
+  (`setJourneyStopHints`) : un arrêt peut avoir deux poteaux à 60 m, chacun pour
+  une ligne ; la fiche du plus proche annonçait celle qu'on ne prenait pas.
 - **La recherche est réservée aux modes fermés** (métro, RER, train). Mesuré :
   un arrêt de bus quelconque de Paris a presque toujours une bouche de métro à
   moins de 350 m, et proposer « sortie 4 » à quelqu'un qui descend d'un bus
@@ -1633,10 +1674,12 @@ accepte un filtre géographique et évite toute pagination.
   objets OSM. Garder la contrainte de mode (un bus n'est pas un métro) et celle
   de distance (« Mairie » nomme des dizaines d'arrêts).
 - **Les arrêts de bus n'apparaissent qu'à partir de `MIN_ZOOM_FOR_BUS_STOPS`**
-  (16). Ils sont des milliers à Paris : en vue large ils rendaient la carte
-  illisible, et interroger leurs lignes sur une telle étendue coûtait 1,6 Mo.
-  La requête les écarte au même seuil (`includeBus`), ce qui autorise un rayon
-  de 10 km pour les gares et stations.
+  (14, le zoom d'ouverture, depuis le 19 septembre 2026 — demande explicite :
+  la carte s'ouvrait sur la position sans une pastille). Ils sont des milliers à
+  Paris : interroger leurs lignes sur toute la vue coûtait 400 Ko au zoom 14. Le
+  ferré est donc lu sur 10 km, les bus **à part**, sur
+  `IDFM_BUS_LINES_MAX_RADIUS` (1,5 km, 110 Ko à Châtelet) : un poteau plus
+  lointain garde son pictogramme jusqu'à ce qu'on s'en approche.
 - **Le rattachement est filtré par mode** (`MODES_BY_FAMILY`) : sans ce filtre
   une gare hérite des bus voisins, qui portent presque le même nom à quelques
   dizaines de mètres. Le nom exact prime et porte jusqu'à 250 m — une gare

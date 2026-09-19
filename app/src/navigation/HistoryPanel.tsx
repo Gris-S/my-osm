@@ -301,26 +301,26 @@ function TripDetail({
       <ul className="history-figures">
         <li>
           <Timer size={14} />
-          {formatDuration(trip.elapsedSeconds)}
+          <span className="history-figure-value">{formatDuration(trip.elapsedSeconds)}</span>
           <small>{deltaText(trip)}</small>
         </li>
         <li>
           <Route size={14} />
-          {formatDistance(trip.distanceMeters)}
+          <span className="history-figure-value">{formatDistance(trip.distanceMeters)}</span>
           {trip.ascent !== null && (
             <small>
-              D+ {trip.ascent} m · D− {trip.descent} m
+              {`D+\u00a0${trip.ascent}\u00a0m · D−\u00a0${trip.descent}\u00a0m`}
             </small>
           )}
         </li>
         <li>
           <Footprints size={14} />
-          {trip.steps.toLocaleString(locale)}
+          <span className="history-figure-value">{trip.steps.toLocaleString(locale)}</span>
           <small>{stepsOrigin(trip)}</small>
         </li>
         <li>
           <Gauge size={14} />
-          {speed === null ? "—" : formatSpeed(speed, locale)}
+          <span className="history-figure-value">{speed === null ? "—" : formatSpeed(speed, locale)}</span>
           {rhythm !== null && (
             <small>
               {formatPace(rhythm)}

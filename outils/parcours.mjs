@@ -349,6 +349,31 @@ const surLesZones = (corps) =>
     r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
     const fait=await (${corps})(db);db.close();return fait})()`);
 
+/**
+ * Exécute `corps` sur la base de l'historique des trajets, **sans jamais la
+ * créer** : ouvrir une base absente la ferait naître vide en version 1, et
+ * l'application, qui crée son magasin à la montée de version, ne le créerait
+ * plus jamais. Rend `null` si la base n'existe pas.
+ */
+const surLHistorique = (corps) =>
+  js(`(async()=>{const db=await new Promise((ok)=>{const r=indexedDB.open('osm-local:navigation-history');
+    r.onupgradeneeded=(e)=>{if(e.oldVersion===0)r.transaction.abort()};
+    r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)});
+    if(!db)return null;if(!db.objectStoreNames.contains('trips')){db.close();return null}
+    const fait=await (${corps})(db);db.close();return fait})()`);
+
+/** Les identifiants des trajets enregistrés sur l'appareil. */
+const trajetsEnregistres = () =>
+  surLHistorique(`(db)=>new Promise((ok)=>{const r=db.transaction('trips').objectStore('trips').getAllKeys();
+    r.onsuccess=()=>ok(r.result);r.onerror=()=>ok([])})`);
+
+/** Efface les trajets qui n'étaient pas là avant le parcours ; rend leur nombre. */
+const effacerTrajetsSauf = (gardes) =>
+  surLHistorique(`(db)=>new Promise((ok)=>{const garder=new Set(${JSON.stringify(gardes)});
+    const tx=db.transaction('trips','readwrite');const store=tx.objectStore('trips');let n=0;
+    const r=store.getAllKeys();r.onsuccess=()=>{for(const k of r.result){if(!garder.has(k)){store.delete(k);n++}}};
+    tx.oncomplete=()=>ok(n);tx.onerror=()=>ok(-1)})`);
+
 /** Le paquet de l'activité au premier plan, ou « ? » si le relevé échoue. */
 function auPremierPlan() {
   const sortie = adb("shell", "dumpsys", "activity", "activities");
@@ -1527,6 +1552,49 @@ const SCENARIOS = [
       await dodo(1500);
     },
   },
+  {
+    id: "station-visee",
+    titre: "Un trajet vers une station y fait descendre, et le guidage reste lisible",
+    // Défaut du 18 septembre 2026 : vers « Ranelagh », le trajet faisait
+    // descendre à La Muette et marcher six minutes, Navitia visant l'adresse
+    // voisine de la station au lieu de la station. Et le bandeau des
+    // transports, plus haut que celui de la marche, passait sous le burger.
+    async executer() {
+      await scene();
+      await positionSimulee(48.8726, 2.3311); // Auber
+      // L'application garde le relevé réel de l'ouverture tant qu'il est
+      // frais : le bouton de position lui fait adopter la position simulée.
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await carteVers(2.3311, 48.8726, 15);
+      await saisir("Ranelagh");
+      await attendre(".search-result");
+      await cliquerPremierLieu();
+      verifier("la fiche de la station s'ouvre", await attendre(".sheet"));
+      verifier("c'est une station", /transport/i.test((await texte(".sheet-subtitle")) ?? ""), (await texte(".sheet-subtitle")) ?? "");
+      await cliquer(".sheet-action-primary");
+      await attendre(".itinerary-panel");
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[2])m[2].click();return true})()");
+      const calcule = await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
+      verifier("un trajet en transports est proposé", calcule);
+      if (!calcule) return;
+      const descente = await js(`(()=>{const m=[...document.querySelectorAll('.journey-step-mark.is-alight')].pop();
+        const s=m?.closest('.journey-step');return s?s.innerText.replace(/\\n+/g,' '):''})()`);
+      verifier("on descend à Ranelagh", /Ranelagh/.test(descente), descente);
+      capture("26-station-visee");
+
+      await cliquer(".nav-start");
+      verifier("le guidage en transports démarre", await attendre(".nav-banner .nav-maneuver", 15_000));
+      await dodo(800);
+      const recouvre = await js(`(()=>{const b=document.querySelector('.nav-banner')?.getBoundingClientRect();
+        const m=document.querySelector('.app-menu')?.getBoundingClientRect();
+        return b&&m?Math.round(b.bottom-m.top):null})()`);
+      verifier("le burger reste sous le bandeau", recouvre !== null && recouvre <= 0, `chevauchement ${recouvre} px`);
+      capture("27-guidage-transports");
+      await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+      await dodo(1000);
+    },
+  },
 ];
 
 // --- L'exécution ------------------------------------------------------------
@@ -1541,6 +1609,17 @@ async function main() {
   if (!choisis.length) throw new Error(`Aucun scénario ne correspond à : ${DEMANDES.join(", ")}`);
 
   await connecter();
+  // L'état de l'utilisateur, relevé avant le premier geste, pour le lui rendre
+  // tel quel : ses réglages (et non des valeurs par défaut), et un historique
+  // sans les trajets que les scénarios de guidage enregistrent. Un « 0 min ·
+  // 12 km » laissé par le parcours y a été pris pour un vrai trajet
+  // (18 septembre 2026). Gardé aussi sur disque, au cas où le parcours
+  // s'interromprait.
+  const etatInitial = {
+    stockage: await js("JSON.stringify(Object.fromEntries(Object.keys(localStorage).map((k)=>[k,localStorage.getItem(k)])))"),
+    trajets: (await trajetsEnregistres()) ?? [],
+  };
+  writeFileSync(join(SORTIE, "etat-initial.json"), JSON.stringify(etatInitial));
   const sansCles = !(await js("!!window.__myosm"));
   if (sansCles) console.log("⚠  window.__myosm absent : APK non débogable, le pilotage sera partiel.\n");
 
@@ -1567,14 +1646,11 @@ async function main() {
     // retour le referme, et ne fait rien sur la carte.
     adb("shell", "input", "keyevent", "4");
     await connecter();
-    await reglages({
-      "osm-local:theme": null,
-      "osm-local:lang": null,
-      "osm-local:basemap": "standard",
-      "osm-local:filters": '["transport"]',
-    });
+    const effaces = await effacerTrajetsSauf(etatInitial.trajets);
+    await js(`(()=>{const avant=${JSON.stringify(etatInitial.stockage)};const v=JSON.parse(avant);
+      localStorage.clear();for(const [k,x] of Object.entries(v))localStorage.setItem(k,x);return true})()`);
     js("location.reload()").catch(() => {});
-    console.log("   ✓ réglages rendus, position simulée effacée par le rechargement");
+    console.log(`   ✓ réglages rendus tels qu'avant le parcours, ${effaces ?? 0} trajet(s) d'essai effacé(s) de l'historique, position simulée effacée par le rechargement`);
   } catch {
     console.log("   ✗ remise en état incomplète — vérifier l'appareil");
   }

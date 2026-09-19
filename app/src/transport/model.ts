@@ -10,6 +10,8 @@
 // réponse mêle souvent temps réel et horaires théoriques.
 // ---------------------------------------------------------------------------
 
+import type { Place as MapPlace } from "../types";
+
 /** Longitude, latitude — même ordre que GeoJSON. */
 export type Position = [number, number];
 
@@ -168,6 +170,8 @@ export interface JourneyLeg extends Provenance {
    */
   boarding?: { lineId?: string; stopId?: string };
   shape?: Shape;
+  /** Marche : correspondance déclarée par le réseau (vrai) ou passage par la rue (faux). */
+  connection?: boolean;
 }
 
 export interface Journey extends Provenance {
@@ -225,6 +229,13 @@ export interface JourneyOptions {
   at?: number;
   arriveBy?: boolean;
   maxResults?: number;
+  /**
+   * La station visée au départ ou à l'arrivée, quand c'en est une. Une source
+   * qui sait la désigner par son identifiant le fait (IDFM) : viser ses seules
+   * coordonnées fait descendre à l'arrêt d'avant et marcher.
+   */
+  fromStation?: MapPlace;
+  toStation?: MapPlace;
 }
 
 export interface AlertScope {

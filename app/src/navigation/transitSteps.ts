@@ -155,3 +155,54 @@ export function remainingStops(leg: TransitLeg | undefined, now: number): number
   const ahead = leg.stops.slice(1).filter((stop) => stop.at.getTime() > now);
   return ahead.length;
 }
+
+/** Modes sans accès direct à la rue : on en sort par une sortie numérotée. */
+export const ENCLOSED_MODES = /m[ée]tro|rer|train|transilien|funiculaire/i;
+
+const enclosed = (line: TransitLine | undefined) => !!line?.mode && ENCLOSED_MODES.test(line.mode);
+
+/**
+ * Faut-il indiquer une sortie de station à la descente `index` ?
+ *
+ * Seulement quand on descend d'un mode fermé **pour aller dehors**. La règle
+ * est générale, et c'est une capture à Auber qui l'a apprise (18 septembre
+ * 2026) : descendre du RER A pour prendre le 9 à Havre-Caumartin se fait par
+ * les couloirs, et « Sortie 1 — r. du Havre » y envoyait dehors.
+ *
+ *  - vers un bus, un tram ou l'arrivée, on sort : oui ;
+ *  - vers un métro, un RER ou un train, on reste dedans — **sauf** si la marche
+ *    passe par la rue, ce que Navitia dit en la calculant sur la voirie
+ *    (`street_network`) au lieu d'une correspondance déclarée (`transfer`).
+ *
+ * Une correspondance déclarée peut elle aussi traverser une rue (Javel, RER C ↔
+ * métro 10) : on ne dit rien, le fléchage « Correspondance » guide mieux qu'un
+ * numéro de sortie. Mesuré le 19 septembre 2026 : Haussmann-Saint-Lazare ↔
+ * Saint-Lazare, Richelieu-Drouot, Nation et Javel en `transfer`, Concorde →
+ * Madeleine à pied en `street_network`. Une source qui ne dit pas le type de
+ * marche (`connection` absent) suit la règle des modes.
+ */
+export function exitWanted(steps: TransitStep[], index: number, legs: TransitLeg[]): boolean {
+  const alight = steps[index];
+  if (alight?.kind !== "alight" || !enclosed(alight.line)) return false;
+  const following = steps.slice(index + 1);
+  const boardAt = following.findIndex((step) => step.kind === "board" || step.kind === "arrive");
+  const next = boardAt >= 0 ? following[boardAt] : undefined;
+  if (next?.kind !== "board" || !enclosed(next.line)) return true;
+  const walks = following.slice(0, boardAt).filter((step) => step.kind === "walk");
+  return walks.some((step) => legs[step.legIndex]?.connection === false);
+}
+
+/**
+ * La ligne vers laquelle on fait correspondance **sans sortir**, à la descente
+ * `index` : celle qu'il faut chercher sur le fléchage « Correspondance ». `null`
+ * dès qu'une sortie se dit (voir `exitWanted`) ou que la suite n'est pas un
+ * mode fermé. C'est ce qui remplace la sortie dans une correspondance déclarée
+ * — y compris celles qui traversent une rue, comme Javel, où la signalétique
+ * guide jusqu'à l'autre station.
+ */
+export function connectionTo(steps: TransitStep[], index: number, legs: TransitLeg[]): TransitLine | null {
+  const alight = steps[index];
+  if (alight?.kind !== "alight" || !enclosed(alight.line) || exitWanted(steps, index, legs)) return null;
+  const next = steps.slice(index + 1).find((step) => step.kind === "board" || step.kind === "arrive");
+  return next?.kind === "board" && enclosed(next.line) ? (next.line ?? null) : null;
+}

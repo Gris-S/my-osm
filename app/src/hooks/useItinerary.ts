@@ -3,6 +3,7 @@ import { CONFIG, type TravelMode } from "../config";
 import { getRoute } from "../services/routing";
 import { journeyToRoute, type TransitJourney } from "../transport/journeyView";
 import { loadJourneys } from "../transport/journeys";
+import { isTransitStop } from "../services/idfm";
 import { t } from "../i18n";
 import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit } from "../types";
 
@@ -12,7 +13,7 @@ import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit }
 // mêmes noms. La position de l'appareil est passée d'en haut.
 // ---------------------------------------------------------------------------
 
-export function useItinerary(position: LonLat | null, locate: () => void) {
+export function useItinerary(devicePosition: LonLat | null, positionAt: number | null, locate: () => void) {
   // Le parcours entier, dans l'ordre : départ, étapes, arrivée. **Un seul
   // tableau**, et non trois états — le départ et l'arrivée se déplacent dans
   // l'ordre comme les étapes, ce qu'un départ et une arrivée tenus à part
@@ -42,6 +43,35 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
   editingStopRef.current = editingStop;
 
   const itineraryOpen = stops.length > 0;
+  // Relu par le calcul, qui ne dépend que des coordonnées (`routeKey`).
+  const stopsRef = useRef(stops);
+  stopsRef.current = stops;
+
+  // « Ma position » n'est prise que **fraîche**. La géolocalisation garde son
+  // dernier relevé, même vieux de plusieurs heures et même quand un nouveau
+  // échoue : un départ tiré de là proposait un trajet depuis un quartier
+  // quitté depuis longtemps. Quand « Ma position » entre dans le
+  // parcours, on retient l'instant, on redemande un relevé si le dernier est
+  // trop vieux, et l'on n'accepte qu'une position relevée depuis — le panneau
+  // attend, puis demande un départ si le GPS ne répond pas. Une fois le
+  // parcours ouvert, la position ne se périme plus : le trajet affiché ne doit
+  // pas disparaître parce que deux minutes ont passé.
+  const hasCurrentStop = stops.some((stop) => stop.kind === "current");
+  const [fixSince, setFixSince] = useState<number | null>(null);
+  const latestFix = useRef({ positionAt, locate });
+  latestFix.current = { positionAt, locate };
+  useEffect(() => {
+    if (!hasCurrentStop) {
+      setFixSince(null);
+      return;
+    }
+    const since = Date.now() - CONFIG.ROUTE_POSITION_MAX_AGE_MS;
+    setFixSince(since);
+    const { positionAt: at, locate: relocate } = latestFix.current;
+    if (at === null || at < since) relocate();
+  }, [hasCurrentStop]);
+  const position =
+    devicePosition && positionAt !== null && fixSince !== null && positionAt >= fixSince ? devicePosition : null;
 
   /**
    * Les coordonnées de chaque point du parcours, dans l'ordre. `null` là où
@@ -81,7 +111,6 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
         ? current
         : current.map((stop, at) => (at === index ? { kind: "current" } : stop))
     );
-    if (!position) locate();
   }
 
   /** Ajoute une étape à la fin du parcours, juste avant l'arrivée. */
@@ -159,7 +188,15 @@ export function useItinerary(position: LonLat | null, locate: () => void) {
 
     const request =
       routeMode === "transit"
-        ? loadJourneys(points, controller.signal).then((list) => {
+        ? loadJourneys(
+            // Une station choisie comme point du parcours se désigne comme
+            // telle : viser son seul point fait descendre à l'arrêt d'avant.
+            points.map((point, index) => {
+              const stop = stopsRef.current[index];
+              return stop?.kind === "place" && isTransitStop(stop.place) ? { ...point, station: stop.place } : point;
+            }),
+            controller.signal
+          ).then((list) => {
             if (cancelled) return;
             setJourneys(list);
             setJourneyIndex(0);

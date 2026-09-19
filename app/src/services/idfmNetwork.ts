@@ -122,18 +122,21 @@ interface StopRow {
 const areaCache = new Map<string, StopRow[]>();
 const AREA_CACHE_LIMIT = 24;
 
-function areaKey(lon: number, lat: number, radius: number, includeBus: boolean): string {
-  return `${lon.toFixed(3)},${lat.toFixed(3)},${Math.round(radius / 100)},${includeBus ? "b" : "r"}`;
+/** Ce qu'une lecture du référentiel rapporte : le ferré seul, ou les bus seuls. */
+type RowKind = "rail" | "bus";
+
+function areaKey(lon: number, lat: number, radius: number, kind: RowKind): string {
+  return `${lon.toFixed(3)},${lat.toFixed(3)},${Math.round(radius / 100)},${kind === "bus" ? "B" : "r"}`;
 }
 
 async function fetchStopRows(
   lon: number,
   lat: number,
   radius: number,
-  includeBus: boolean,
+  kind: RowKind,
   signal?: AbortSignal
 ): Promise<StopRow[]> {
-  const key = areaKey(lon, lat, radius, includeBus);
+  const key = areaKey(lon, lat, radius, kind);
   const cached = areaCache.get(key);
   if (cached) return cached;
 
@@ -142,7 +145,7 @@ async function fetchStopRows(
   // du référentiel, et une zone de dix kilomètres passe ainsi de 1,6 Mo à
   // 200 Ko.
   const area = `within_distance(pointgeo, geom'POINT(${lon.toFixed(5)} ${lat.toFixed(5)})', ${Math.round(radius)}m)`;
-  url.searchParams.set("where", includeBus ? area : `${area} and mode != "Bus"`);
+  url.searchParams.set("where", kind === "bus" ? `${area} and mode = "Bus"` : `${area} and mode != "Bus"`);
   url.searchParams.set("select", "id,mode,stop_id,stop_name,stop_lon,stop_lat");
 
   const res = await fetch(url, { signal });
@@ -302,10 +305,18 @@ export async function getLinesForStops(
   const result = new Map<string, StopLines>();
   if (stops.length === 0) return result;
 
-  const [index, rows] = await Promise.all([
+  // Le ferré sur tout le rayon, les bus sur un rayon plafonné : ils font 85 %
+  // du référentiel, et depuis qu'ils s'affichent au zoom d'ouverture (14), une
+  // vue de Paris en demandait 400 Ko d'un coup, contre 110 à 1,5 km. Un poteau
+  // plus lointain garde son pictogramme jusqu'à ce qu'on s'en approche.
+  const [index, rail, bus] = await Promise.all([
     loadLineIndex(signal),
-    fetchStopRows(center.lon, center.lat, Math.min(radius, CONFIG.IDFM_STOP_LINES_MAX_RADIUS), includeBus, signal),
+    fetchStopRows(center.lon, center.lat, Math.min(radius, CONFIG.IDFM_STOP_LINES_MAX_RADIUS), "rail", signal),
+    includeBus
+      ? fetchStopRows(center.lon, center.lat, Math.min(radius, CONFIG.IDFM_BUS_LINES_MAX_RADIUS), "bus", signal)
+      : Promise.resolve([] as StopRow[]),
   ]);
+  const rows = [...rail, ...bus];
 
   for (const stop of stops) {
     const wanted = normalizeName(stop.name);

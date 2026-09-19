@@ -1,4 +1,5 @@
 import { LoaderCircle, SlidersHorizontal, TriangleAlert, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n";
 import { useOfflineState } from "../hooks/useOfflineState";
 
@@ -46,6 +47,18 @@ interface MapStatusProps {
 export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
   const { t } = useI18n();
   const { offline, missingZone } = useOfflineState();
+  // « Aucune catégorie » est un choix, pas un incident : il se dit, puis se
+  // tait. Il restait affiché en permanence pour qui a tout décoché exprès.
+  const [emptyExpired, setEmptyExpired] = useState(false);
+  useEffect(() => {
+    if (status !== "empty") return;
+    const timer = setTimeout(() => setEmptyExpired(true), 6000);
+    return () => {
+      clearTimeout(timer);
+      // Le prochain « aucune catégorie » se redira.
+      setEmptyExpired(false);
+    };
+  }, [status]);
 
   // Une panne de carte prime sur tout le reste : tant qu'elle dure, l'état du
   // chargement des commerces n'intéresse personne.
@@ -84,7 +97,7 @@ export function MapStatus({ status, mapError, locationError }: MapStatusProps) {
 
   // Une carte vide parce que rien n'est coché ressemble à une carte en panne :
   // mieux vaut le dire que laisser chercher.
-  if (status === "empty") {
+  if (status === "empty" && !emptyExpired) {
     return (
       <div className="map-status" role="status">
         <SlidersHorizontal size={15} />

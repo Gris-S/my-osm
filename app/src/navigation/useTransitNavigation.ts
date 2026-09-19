@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat } from "../types";
-import type { TransitJourney } from "../transport/journeyView";
+import type { TransitJourney, TransitLine } from "../transport/journeyView";
 import { distance } from "./geo";
 import { bestExit, type StationExit } from "./exits";
 import {
   buildTransitSteps,
+  connectionTo,
+  exitWanted,
   remainingStops,
   scheduledStep,
   type TransitStep,
 } from "./transitSteps";
 import { useNavPosition } from "./useNavPosition";
+import { setJourneyStopHints } from "../services/idfm";
 import type { NavMapState } from "./useNavigation";
 import { useWakeLock } from "./useWakeLock";
 
@@ -55,7 +58,6 @@ const CONFIRM_METERS = 90;
  * une station de métro voisine en fournit toujours une à moins de 350 m —
  * enverrait sous terre quelqu'un qui est déjà dehors.
  */
-const ENCLOSED_MODES = /m[ée]tro|rer|train|transilien|funiculaire/i;
 
 export interface TransitNavSession {
   active: boolean;
@@ -70,6 +72,8 @@ export interface TransitNavSession {
   stopsLeft: number | null;
   /** La sortie à prendre en descendant, quand la station en déclare une. */
   exit: StationExit | null;
+  /** À une descente sans sortie : la ligne à rejoindre par les couloirs. */
+  connection: TransitLine | null;
   /** Décalage manuel, en nombre d'actions, par rapport à l'horaire. */
   offset: number;
   advance: () => void;
@@ -152,6 +156,21 @@ export function useTransitNavigation(): TransitNavSession {
     setNow(Date.now());
   }, []);
 
+  // Les poteaux de montée du trajet, pour la fiche d'un arrêt ouverte en route
+  // (voir `setJourneyStopHints`) : elle doit montrer la ligne qu'on va prendre.
+  useEffect(() => {
+    setJourneyStopHints(
+      journey
+        ? journey.legs.flatMap((leg) => {
+            const arrid = leg.kind === "transit" ? leg.stopPointId?.match(/^stop_point:IDFM:(\d+)$/)?.[1] : undefined;
+            const first = leg.stops?.[0];
+            return arrid && first ? [{ name: first.name, lon: first.lon, lat: first.lat, arrid }] : [];
+          })
+        : []
+    );
+    return () => setJourneyStopHints([]);
+  }, [journey]);
+
   const stop = useCallback(() => {
     setJourney(null);
     setOffset(0);
@@ -186,7 +205,8 @@ export function useTransitNavigation(): TransitNavSession {
   // servir, jamais pour tout le trajet d'avance.
   const alightStep = current?.kind === "alight" ? current : null;
   const exitStopKey = alightStep?.coord ? `${alightStep.coord.lon},${alightStep.coord.lat}` : null;
-  const enclosed = !!alightStep?.line?.mode && ENCLOSED_MODES.test(alightStep.line.mode);
+  // Sortie à indiquer ou non : voir `exitWanted` (`transitSteps.ts`).
+  const enclosed = !!alightStep && !!journey && exitWanted(steps, index, journey.legs);
 
   useEffect(() => {
     setExit(null);
@@ -249,6 +269,7 @@ export function useTransitNavigation(): TransitNavSession {
     upcoming: steps.slice(index + 1),
     stopsLeft,
     exit,
+    connection: journey && current?.kind === "alight" ? connectionTo(steps, index, journey.legs) : null,
     offset,
     advance,
     back,

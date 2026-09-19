@@ -200,7 +200,9 @@
 
 .itinerary-point-kind {
   flex-shrink: 0;
-  width: 34px;
+  /* « FROM » en capitales tient en 38 px : à 34, il débordait sur le
+     pictogramme de « My location » (« FROM⌖ »). */
+  width: 44px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);

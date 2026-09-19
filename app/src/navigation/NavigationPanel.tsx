@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Crosshair, Footprints, LoaderCircle, Mountain, Play, Square, X } from "lucide-react";
 import { formatDistance } from "../utils/format";
 import { ElevationProfile } from "./ElevationProfile";
-import { useNavDockRef } from "./dockClearance";
+import { useNavBannerRef, useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
 import { sampleElevation, type ElevationProfile as Profile } from "./elevation";
 import { maneuverIcon, maneuverSide, maneuverText, roundaboutExit } from "./maneuver";
@@ -32,6 +32,8 @@ export function NavigationPanel({ session }: { session: NavSession }) {
   const { nav } = useNav();
   // Hauteur de la colonne du bas, lue par `App` pour y ranger les boutons de droite.
   const dockRef = useNavDockRef();
+  // Bas du bandeau, lu par la feuille de style pour y ranger le burger et la météo.
+  const bannerRef = useNavBannerRef();
   const [detailOpen, setDetailOpen] = useState(false);
   // Le geste retour replie le détail ; la navigation elle-même ne s'arrête jamais par ce geste.
   useBackClose(session.active && detailOpen, () => setDetailOpen(false));
@@ -44,7 +46,7 @@ export function NavigationPanel({ session }: { session: NavSession }) {
 
   return (
     <>
-      <div className="nav-banner">
+      <div className="nav-banner" ref={bannerRef}>
         {arrived ? (
           <ArrivalBanner name={session.destinationName} />
         ) : next ? (

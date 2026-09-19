@@ -369,6 +369,10 @@ export const CONFIG = {
   // carte à sa zone d'arrêt régionale, seule à réunir les deux sens de
   // circulation.
   IDFM_STOPS_URL: "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets/records",
+  // Relations du référentiel : rattachent un arrêt ou une zone d'arrêt à sa
+  // **zone de correspondance**, celle que Navitia nomme `stop_area:IDFM:…`
+  // (Ranelagh : zone d'arrêt 44594, correspondance 71243).
+  IDFM_RELATIONS_URL: "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/relations/records",
 
   // Lignes desservant chaque arrêt, pour afficher sur la carte les pastilles du
   // RER A ou du bus 317 plutôt qu'un pictogramme générique. L'export accepte un
@@ -401,7 +405,17 @@ export const CONFIG = {
   // pastilles, et interroger leurs lignes sur une telle étendue coûtait plus
   // d'un méga-octet. Gares, stations de métro et de tramway, elles, s'affichent
   // dès le zoom des POI : elles sont peu nombreuses et servent de repères.
-  MIN_ZOOM_FOR_BUS_STOPS: 15,
+  //
+  // Abaissé de 15 à 14, le zoom d'ouverture, le 19 septembre 2026 (demande
+  // explicite) : la carte s'ouvrait sur la position sans une seule pastille —
+  // près de 400 arrêts de bus dans les tuiles autour, aucun affiché. Au
+  // zoom 14, le décombrement de MapLibre (jusqu'au zoom 15) garde la carte
+  // lisible, et le coût des lignes est tenu par `IDFM_BUS_LINES_MAX_RADIUS`.
+  MIN_ZOOM_FOR_BUS_STOPS: 14,
+  // Rayon des lignes de bus demandées autour du centre de la vue, en mètres.
+  // Mesuré à Châtelet : 110 Ko à 1,5 km, 400 Ko à 2,9 km (demi-diagonale d'une
+  // vue de téléphone au zoom 14).
+  IDFM_BUS_LINES_MAX_RADIUS: 1500,
 
   // Rayon maximal interrogé autour du centre de la vue, en mètres. Large est
   // ici sans danger : hors des bus, dix kilomètres de rayon tiennent en 200 Ko.
@@ -434,6 +448,13 @@ export const CONFIG = {
   // pour que les horaires restent justes, assez longue pour qu'un aller-retour
   // entre les modes ne coûte pas un appel de plus.
   IDFM_JOURNEYS_TTL_MS: 60000,
+
+  // Âge maximal de la position quand « Ma position » devient le point de
+  // départ (ou une étape) d'un itinéraire. Au-delà, on redemande un relevé et
+  // l'on attend. Constaté le 19 septembre 2026 : un trajet en transports partait
+  // d'une position relevée des heures plus tôt, à plusieurs kilomètres — le GPS
+  // ne répondait plus, et l'ancienne position servait sans rien dire.
+  ROUTE_POSITION_MAX_AGE_MS: 2 * 60_000,
 
   // Nombre de départs suivants montrés sous une étape dépliée : de quoi savoir
   // ce qu'on risque en ratant sa correspondance, sans transformer la frise en

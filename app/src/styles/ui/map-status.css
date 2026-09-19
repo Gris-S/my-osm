@@ -12,7 +12,10 @@
   gap: 7px;
   max-width: calc(100vw - 120px);
   padding: 8px 14px;
-  border-radius: var(--radius-pill);
+  /* Pas de pilule : une phrase longue passe sur trois lignes, et ses bords
+     sortaient alors des arrondis (message de position, 19 septembre 2026). À
+     18 px, une ligne seule a toujours l'air d'une pilule. */
+  border-radius: 18px;
   background: var(--surface);
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
@@ -25,6 +28,11 @@
      a une, se compte en dixièmes de seconde. Le bandeau n'apparaît donc qu'au
      bout d'une demi-seconde, pour ne pas clignoter à chaque déplacement. */
   animation: map-status-in 0.2s ease 0.5s both;
+}
+
+.map-status > svg {
+  /* Sinon la flèche d'une phrase longue écrase le pictogramme en un point. */
+  flex: none;
 }
 
 @keyframes map-status-in {

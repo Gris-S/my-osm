@@ -373,6 +373,85 @@ async function resolveMonitoringRefs(place: Place, signal?: AbortSignal): Promis
   return refs;
 }
 
+/**
+ * La zone de correspondance d'une station, sous le nom que lui donne Navitia
+ * (`stop_area:IDFM:71243`), ou `null` si le référentiel ne la connaît pas.
+ *
+ * Un itinéraire qui **vise une station** doit la nommer, pas donner ses
+ * coordonnées. Mesuré le 19 septembre 2026 : vers le point de la station
+ * Ranelagh, Navitia visait l'adresse la plus proche (« 46 Avenue Mozart »),
+ * faisait descendre à La Muette et marcher six minutes ; vers la zone
+ * `stop_area:IDFM:71243`, il fait descendre à Ranelagh et arrive cinq minutes
+ * plus tôt.
+ *
+ * Résolu par le référentiel ouvert (sans clé, hors quota) : la zone d'arrêt
+ * vient de `resolveMonitoringRefs`, déjà en cache pour une station ouverte, et
+ * sa correspondance du jeu `relations`. Le résultat est gardé avec les autres
+ * références.
+ */
+export async function resolveJourneyStopArea(place: Place, signal?: AbortSignal): Promise<string | null> {
+  const cacheKey = `hub:${place.id}`;
+  const cached = areaCache.get(cacheKey);
+  if (cached?.[0]) return cached[0].replace(/^STIF:hub:/, "");
+
+  const refs = await resolveMonitoringRefs(place, signal);
+  const match = refs[0]?.match(/^STIF:(StopArea:SP|StopPoint:Q):(\d+):$/);
+  if (!match) return null;
+  const field = match[1] === "StopArea:SP" ? "zdaid" : "arrid";
+
+  const url = new URL(CONFIG.IDFM_RELATIONS_URL);
+  url.searchParams.set("where", `${field}="${match[2]}"`);
+  url.searchParams.set("select", "zdcid");
+  url.searchParams.set("limit", "1");
+  const res = await fetch(url, { signal });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { results?: { zdcid?: string }[] };
+  const zdcid = data.results?.[0]?.zdcid;
+  if (!zdcid || !/^\d+$/.test(zdcid)) return null;
+
+  // Rangé parmi les références SIRI : le filtre de relecture n'accepte que ce
+  // qui commence par « STIF: ».
+  const hub = `stop_area:IDFM:${zdcid}`;
+  areaCache.set(cacheKey, [`STIF:hub:${hub}`]);
+  persistAreas();
+  return hub;
+}
+
+/**
+ * Les poteaux où le trajet suivi fait monter, posés par le guidage en
+ * transports le temps du trajet.
+ *
+ * Un arrêt de bus s'interroge par son poteau le plus proche (voir plus haut),
+ * et c'est juste en temps ordinaire. Mais un arrêt peut avoir deux poteaux à
+ * soixante mètres l'un de l'autre, chacun pour une ligne différente : la fiche
+ * ouverte pendant un trajet qui disait « prendre telle ligne ici » annonçait
+ * celle de l'autre poteau (capture du 18 septembre 2026). Quand l'arrêt ouvert porte le nom d'une montée du trajet,
+ * le poteau de cette montée s'ajoute donc à celui d'en face.
+ */
+export interface JourneyStopHint {
+  name: string;
+  lon: number;
+  lat: number;
+  /** Identifiant du poteau (`arrid`), tiré du `stop_point:IDFM:…` de Navitia. */
+  arrid: string;
+}
+
+let journeyStopHints: JourneyStopHint[] = [];
+
+export function setJourneyStopHints(hints: JourneyStopHint[]): void {
+  journeyStopHints = hints;
+}
+
+/** Ajoute aux références d'un arrêt de bus le poteau de montée du trajet suivi, s'il est là. */
+function withJourneyPoles(place: Place, refs: string[]): string[] {
+  if (TRANSIT_FAMILIES[place.rawType ?? ""] !== "bus" || journeyStopHints.length === 0) return refs;
+  const wanted = normalizeName(place.name);
+  const extra = journeyStopHints
+    .filter((hint) => normalizeName(hint.name) === wanted && distanceMeters(place, hint) < 150)
+    .map((hint) => `STIF:StopPoint:Q:${hint.arrid}:`);
+  return [...new Set([...refs, ...extra])];
+}
+
 // --- Interrogation ---------------------------------------------------------
 
 async function fetchVisits(monitoringRef: string, signal?: AbortSignal): Promise<MonitoredStopVisit[]> {
@@ -494,7 +573,7 @@ export async function getDepartures(
 ): Promise<LineDepartures[]> {
   if (!hasIdfmKey()) throw new Error("Clé PRIM absente");
 
-  const areas = await resolveMonitoringRefs(place, signal);
+  const areas = withJourneyPoles(place, await resolveMonitoringRefs(place, signal));
   if (areas.length === 0) return [];
 
   const cacheKey = areas.join("+");

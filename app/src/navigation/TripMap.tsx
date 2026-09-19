@@ -125,6 +125,20 @@ export function TripMap({ points, theme, onReady, color = TRACE_COLOR }: Props) 
     });
     mapRef.current = map;
 
+    // Le crédit des sources s'ouvre déplié, et une carte immobile ne le replie
+    // jamais (MapLibre attend un glissé) : il cachait la moitié du tracé. Replié,
+    // il reste lisible d'un appui sur le « i ». MapLibre ne le passe en compact
+    // qu'une fois les sources connues, et au premier redimensionnement — la
+    // carte grandit dans la fiche : on le replie donc à ces deux moments.
+    const collapseCredits = () => {
+      const credits = container.querySelector(".maplibregl-ctrl-attrib.maplibregl-compact");
+      if (!credits) return;
+      credits.classList.remove("maplibregl-compact-show");
+      credits.removeAttribute("open");
+    };
+    map.on("resize", collapseCredits);
+    map.once("idle", collapseCredits);
+
     map.on("style.load", () => {
       installTrace(map, points, color);
       map.fitBounds(boundsOf(points), { padding: 34, animate: false, maxZoom: 17 });

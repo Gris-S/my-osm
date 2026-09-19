@@ -180,6 +180,10 @@ function legFromSection(section: NavitiaSection): TransitLeg | null {
     stopPointId: stopTimes[0]?.stop_point?.id,
     realtime: section.data_freshness === "realtime",
     geometry: section.geojson?.coordinates?.length ? section.geojson : undefined,
+    // Une correspondance déclarée par le réseau (`transfer`) se fait le plus
+    // souvent par les couloirs ; une marche calculée sur la voirie
+    // (`street_network`, `crow_fly`) passe par la rue.
+    connection: kind === "walk" ? type === "transfer" : undefined,
   };
 }
 
@@ -216,10 +220,21 @@ const cache = new Map<string, CacheEntry<TransitJourney[]>>();
 // tronçon part de l'arrivée du précédent, et deux calculs lancés à des heures
 // différentes n'ont pas la même réponse. Elle est arrondie à la minute — la
 // résolution des horaires, et celle du cache lui-même (TTL d'une minute).
-function cacheKey(from: LonLat, to: LonLat, at: Date | undefined): string {
-  const round = (value: number) => value.toFixed(5);
+function cacheKey(from: JourneyEnd, to: JourneyEnd, at: Date | undefined): string {
   const when = at ? toNavitiaDate(at).slice(0, 13) : "now";
-  return `${round(from.lon)},${round(from.lat)}>${round(to.lon)},${round(to.lat)}@${when}`;
+  return `${navitiaPlace(from, 5)}>${navitiaPlace(to, 5)}@${when}`;
+}
+
+/**
+ * Une extrémité de trajet : des coordonnées, ou une zone de Navitia
+ * (`stop_area:IDFM:71243`) quand on vise une station — voir
+ * `resolveJourneyStopArea`.
+ */
+export type JourneyEnd = LonLat | string;
+
+function navitiaPlace(end: JourneyEnd, digits?: number): string {
+  if (typeof end === "string") return end;
+  return digits === undefined ? `${end.lon};${end.lat}` : `${end.lon.toFixed(digits)};${end.lat.toFixed(digits)}`;
 }
 
 // --- Requête ---------------------------------------------------------------
@@ -240,8 +255,8 @@ const NOT_COVERED = new Set(["no_origin", "no_destination", "no_origin_nor_desti
  * qu'une erreur.
  */
 export async function getJourneysBetween(
-  from: LonLat,
-  to: LonLat,
+  from: JourneyEnd,
+  to: JourneyEnd,
   at: Date | undefined,
   signal?: AbortSignal
 ): Promise<TransitJourney[]> {
@@ -250,8 +265,8 @@ export async function getJourneysBetween(
   if (cached && Date.now() - cached.at < CONFIG.IDFM_JOURNEYS_TTL_MS) return cached.value;
 
   const url = new URL(`${CONFIG.IDFM_NAVITIA_URL}/journeys`);
-  url.searchParams.set("from", `${from.lon};${from.lat}`);
-  url.searchParams.set("to", `${to.lon};${to.lat}`);
+  url.searchParams.set("from", navitiaPlace(from));
+  url.searchParams.set("to", navitiaPlace(to));
   // Sans `datetime`, Navitia part de maintenant — ce qu'on veut du premier
   // tronçon. Les suivants partent de l'arrivée du précédent.
   if (at) url.searchParams.set("datetime", toNavitiaDate(at));

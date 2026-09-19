@@ -78,3 +78,51 @@ export function useNavDockRef() {
     };
   }, []);
 }
+
+// ---------------------------------------------------------------------------
+// Jusqu'où descend le bandeau du haut.
+//
+// Le burger et la colonne météo/boussole descendent sous le bandeau pendant un
+// guidage. Leur décalage était constant (132 px), taillé pour le bandeau à
+// pied ; celui des transports est plus haut — nom de station sur deux lignes,
+// direction, puis la ligne « une étape d'avance » — et le burger et la météo
+// venaient s'y poser dessus (captures du 18 septembre 2026). Le bandeau publie
+// donc son bas dans `--nav-banner-bottom`, et la feuille de style prend le plus
+// grand des deux : le décalage d'origine reste un plancher, les boutons ne
+// sautent pas pour une ligne de moins.
+// ---------------------------------------------------------------------------
+
+function setBannerBottom(px: number) {
+  document.documentElement.style.setProperty("--nav-banner-bottom", `${Math.max(0, Math.round(px))}px`);
+}
+
+/** À poser sur le `.nav-banner` d'un panneau de navigation (`ref={bannerRef}`). */
+export function useNavBannerRef() {
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+      setBannerBottom(0);
+    },
+    []
+  );
+
+  return useCallback((banner: HTMLDivElement | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    if (!banner) {
+      setBannerBottom(0);
+      return;
+    }
+    const update = () => setBannerBottom(banner.getBoundingClientRect().bottom);
+    update();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(banner);
+    window.addEventListener("resize", update);
+    cleanupRef.current = () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+}

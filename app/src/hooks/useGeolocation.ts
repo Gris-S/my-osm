@@ -4,6 +4,12 @@ import { t } from "../i18n";
 
 interface GeolocationState {
   position: LonLat | null;
+  /**
+   * L'instant du relevé (`Date.now()`). Un échec ne l'efface pas, pas plus que
+   * la position : la carte peut garder son repère, mais un itinéraire qui part
+   * d'ici doit savoir de quand il date (`CONFIG.ROUTE_POSITION_MAX_AGE_MS`).
+   */
+  positionAt: number | null;
   loading: boolean;
   error: string | null;
 }
@@ -47,7 +53,7 @@ function retenirPositionObtenue(): void {
 }
 
 export function useGeolocation() {
-  const [state, setState] = useState<GeolocationState>({ position: null, loading: false, error: null });
+  const [state, setState] = useState<GeolocationState>({ position: null, positionAt: null, loading: false, error: null });
 
   /**
    * Efface le message d'erreur.
@@ -73,6 +79,7 @@ export function useGeolocation() {
         retenirPositionObtenue();
         setState({
           position: { lon: pos.coords.longitude, lat: pos.coords.latitude },
+          positionAt: Date.now(),
           loading: false,
           error: null,
         });

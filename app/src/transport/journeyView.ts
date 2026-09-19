@@ -59,6 +59,13 @@ export interface TransitLeg {
   /** Vrai quand l'horaire de l'étape tient compte du temps réel du jour. */
   realtime?: boolean;
   geometry?: GeoJSON.LineString;
+  /**
+   * Pour une marche : vrai si c'est une **correspondance déclarée** par le
+   * réseau (Navitia `transfer`), faux si elle passe par la rue (`street_network`),
+   * absent quand la source ne le dit pas. Le guidage en tire s'il faut indiquer
+   * une sortie de station.
+   */
+  connection?: boolean;
 }
 
 export interface TransitJourney {
@@ -131,6 +138,7 @@ function toTransitLeg(leg: JourneyLeg): TransitLeg {
     stopPointId: leg.boarding?.stopId,
     realtime: leg.dataQuality === "realtime",
     geometry: coordinates.length ? { type: "LineString", coordinates } : undefined,
+    connection: leg.connection,
   };
 }
 

@@ -1,4 +1,4 @@
-import { getDepartures, type TransitMode as IdfmMode } from "../../services/idfm";
+import { getDepartures, resolveJourneyStopArea, type TransitMode as IdfmMode } from "../../services/idfm";
 import { getLineShape, getStopLines } from "../../services/idfmNetwork";
 import { getJourneysBetween } from "../../services/transit";
 import type { Place } from "../../types";
@@ -98,6 +98,7 @@ function toCanonicalLeg(leg: TransitLeg, fetchedAt: number): JourneyLeg {
     stopCount: leg.stopCount,
     boarding: leg.lineId || leg.stopPointId ? { lineId: leg.lineId, stopId: leg.stopPointId } : undefined,
     shape: leg.geometry ? { type: "LineString", coordinates: leg.geometry.coordinates as Position[] } : undefined,
+    connection: leg.connection,
   };
 }
 
@@ -192,10 +193,17 @@ export const createIdfmProvider: ProviderFactory = (context) => ({
   },
 
   async planJourney(from, to, options, signal): Promise<Journey[]> {
+    // Une station visée est nommée par sa zone de correspondance, et non par
+    // ses coordonnées (voir `resolveJourneyStopArea`). Sans réponse du
+    // référentiel, on retombe sur les coordonnées : un trajet un peu moins bon
+    // vaut mieux que pas de trajet.
+    const hub = (station: Place | undefined) =>
+      station ? resolveJourneyStopArea(station, signal).catch(() => null) : Promise.resolve(null);
+    const [fromHub, toHub] = await Promise.all([hub(options.fromStation), hub(options.toStation)]);
     // Navitia, avec son cache d'une minute par couple et par heure de départ.
     const journeys = await getJourneysBetween(
-      { lon: from[0], lat: from[1] },
-      { lon: to[0], lat: to[1] },
+      fromHub ?? { lon: from[0], lat: from[1] },
+      toHub ?? { lon: to[0], lat: to[1] },
       options.at === undefined ? undefined : new Date(options.at),
       signal
     );
