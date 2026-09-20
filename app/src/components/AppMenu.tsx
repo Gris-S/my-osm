@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState, memo } from "react";
-import { Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
+import { Coffee, Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
 import type { AutoSource, Theme } from "../hooks/useTheme";
 import { useI18n, useLangSetting, type Lang, type TranslationKey } from "../i18n";
 import type { LonLat } from "../types";
+import { CONFIG } from "../config";
 // Navigation guidée — voir `src/navigation/README.md`. La section entière est
 // fournie par le module ; la fenêtre ne fait que lui donner sa place.
 import { ApiKeysSettings } from "./ApiKeysSettings";
@@ -280,6 +281,22 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
               <Scale size={17} />
               {t("menu.sources")}
             </button>
+
+            {/* Soutenir l'auteur : un lien, ouvert dans le navigateur, et non
+                le bouton livré par Buy Me a Coffee — voir `CONFIG.SUPPORT_URL`.
+                Il ferme le menu comme les autres entrées, pour ne pas le
+                retrouver ouvert en revenant du navigateur. */}
+            <a
+              className="app-menu-coffee"
+              role="menuitem"
+              href={CONFIG.SUPPORT_URL}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenuOpen(false)}
+            >
+              <Coffee size={16} />
+              {t("menu.coffee")}
+            </a>
 
             {/* Les crédits des sources, au bas du menu.
                 Ils étaient un bandeau pleine largeur posé sur la carte, qui

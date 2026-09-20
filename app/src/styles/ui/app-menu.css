@@ -410,6 +410,29 @@
    les boutons flottants sur un téléphone. La licence ODbL demande de les
    conserver, pas de les imposer en permanence : ici ils restent à un geste,
    lisibles, et leurs liens mènent aux licences. */
+/* Le lien de soutien, au bas des entrées : les couleurs de Buy Me a Coffee
+   (jaune #ffdd00, texte noir), fixes dans les deux thèmes — c'est une marque,
+   on la reconnaît à sa couleur. Il n'occupe pas toute la largeur : c'est une
+   proposition, pas une entrée de menu de plus. */
+.app-menu-coffee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 8px 14px 2px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  background: #ffdd00;
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.app-menu-coffee:active {
+  background: #f5d400;
+}
+
 .app-menu-credits {
   margin-top: 4px;
   padding: 10px 14px 2px;

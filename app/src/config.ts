@@ -270,6 +270,18 @@ export const CONFIG = {
   // Adresse publique du projet : le contact placé dans les `User-Agent`
   // envoyés aux services. Jamais une adresse personnelle.
   PROJECT_URL: "https://github.com/Gris-S/my-osm",
+  // Page de soutien de l'auteur, au bas du menu principal.
+  //
+  // C'est un **lien**, et surtout pas le bouton que Buy Me a Coffee propose :
+  // celui-ci est un script chargé depuis leur CDN à chaque ouverture de
+  // l'application, qui leur livrerait l'adresse IP de tout le monde sans que
+  // personne ait rien demandé, ne fonctionnerait pas hors ligne, et vaudrait à
+  // l'application un avertissement de plus sur F-Droid. Le lien, lui, ne part
+  // que si on le touche, et dans le navigateur.
+  //
+  // Adresse canonique relevée le 20 septembre 2026 : `/Gris_` redirige (301)
+  // vers `/gris_`, en minuscules.
+  SUPPORT_URL: "https://buymeacoffee.com/gris_",
   // Pages des sources citées dans « Sources et licences » (menu principal).
   ATTRIBUTION_LINKS: {
     osm: "https://www.openstreetmap.org/copyright",

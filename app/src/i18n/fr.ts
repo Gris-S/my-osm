@@ -56,6 +56,9 @@ export const fr = {
   "menu.settings": "Paramètres",
   "menu.download": "Téléchargement",
   "menu.api": "API",
+  /* Soutien à l'auteur, au bas du menu. Le nom du service reste tel qu'il
+     s'écrit, en anglais : c'est la page qu'on trouvera de l'autre côté. */
+  "menu.coffee": "M'offrir un café",
   "menu.version": "Version {version}",
   "menu.sources": "Sources et licences",
   "sources.title": "Sources et licences",

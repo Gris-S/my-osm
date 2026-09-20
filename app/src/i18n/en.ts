@@ -37,6 +37,7 @@ export const en: Dict = {
   "menu.settings": "Settings",
   "menu.download": "Downloads",
   "menu.api": "API",
+  "menu.coffee": "Buy me a coffee",
   "menu.version": "Version {version}",
   "menu.sources": "Sources & licences",
   "sources.title": "Sources & licences",

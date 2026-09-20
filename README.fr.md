@@ -189,6 +189,14 @@ encore renseignée. Elles ne sont jamais versionnées.
 
 ---
 
+## Soutien
+
+MY OSM est gratuite, sans publicité et ne collecte rien. Si elle vous sert, vous
+pouvez [m'offrir un café](https://buymeacoffee.com/gris_) — c'est facultatif, et
+l'application fonctionne pareil dans les deux cas.
+
+---
+
 ## Licence
 
 MY OSM est un logiciel libre sous **GNU General Public License v3.0 ou

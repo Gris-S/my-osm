@@ -184,6 +184,14 @@ and the build **fails** if one of them is still set. Keys are never committed.
 
 ---
 
+## Support
+
+MY OSM is free, has no ads and collects nothing. If it is useful to you, you can
+[buy me a coffee](https://buymeacoffee.com/gris_) — entirely optional, and the
+app works the same either way.
+
+---
+
 ## Licence
 
 MY OSM is free software under the **GNU General Public License v3.0 or later**
