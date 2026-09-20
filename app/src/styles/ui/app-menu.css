@@ -415,16 +415,21 @@
    on la reconnaît à sa couleur. Il n'occupe pas toute la largeur : c'est une
    proposition, pas une entrée de menu de plus. */
 .app-menu-coffee {
+  /* À la largeur de son texte, et centré : une pastille pleine largeur pesait
+     autant qu'une entrée du menu, alors que c'est une proposition qu'on peut
+     ignorer. */
+  /* `flex` et non `inline-flex` : le panneau du menu est un bloc, et une
+     pastille en ligne s'y collait à gauche au lieu de se centrer. */
   display: flex;
+  width: fit-content;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin: 8px 14px 2px;
-  padding: 9px 14px;
+  gap: 6px;
+  margin: 8px auto 2px;
+  padding: 7px 14px;
   border-radius: var(--radius-pill);
   background: #ffdd00;
   color: #000;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
