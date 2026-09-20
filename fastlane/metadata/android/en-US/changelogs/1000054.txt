@@ -1,0 +1,12 @@
+Search now gives one result per place: a station's platforms, stop points and
+building collapse into the station itself, and split street segments are merged.
+A stop served by a single line shows that line's badge, including when the
+result gathers several platforms, and the transport icon is readable on the
+dark theme.
+
+Between two transports, a transfer is no longer a walking step: the journey goes
+straight to the next line and shows the transfer time on it. The walking time is
+still counted.
+
+Menu > API now says that Mapillary belongs to Meta, and what reaches it once a
+token is entered.
