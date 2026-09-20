@@ -10,6 +10,7 @@ import { sampleElevationAlong } from "./elevation";
 import { reverseGeocode } from "../services/geocode";
 import { historyRetention, useNavCameraMode, walkSummaryEnabled } from "./settings";
 import { purgeTrips, saveTrip, type Trip } from "./history";
+import { isTrivialTrip } from "./trip";
 import { navText } from "./strings";
 import { useWakeLock } from "./useWakeLock";
 import { useLatest } from "../hooks/useLatest";
@@ -396,6 +397,11 @@ export function useNavigation(): NavSession {
       steps: readSteps(),
       completed: statusRef.current === "arrived",
     });
+    // Lancé puis arrêté aussitôt : ni fiche, ni historique (voir `isTrivialTrip`).
+    if (isTrivialTrip(trip)) {
+      stop();
+      return;
+    }
     // Fiche coupée dans la fenêtre « Modes » : le trajet s'enregistre de la
     // même façon, mais la navigation se ferme aussitôt, et le profil qui arrive
     // ensuite ne doit rien rouvrir.

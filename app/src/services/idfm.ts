@@ -208,6 +208,8 @@ const TRANSIT_FAMILIES: Record<string, "bus" | "rail"> = {
   tram: "rail",
   station: "rail",
   halt: "rail",
+  // `railway=stop`, tel que le géocodeur rend les quais du métro.
+  stop: "rail",
   train_station_entrance: "rail",
 };
 
@@ -253,11 +255,17 @@ interface StopCandidate {
 // d'identifiants de zone bruts à des références SIRI complètes : sans cela, un
 // navigateur qui avait déjà consulté un arrêt continuait de servir l'ancien
 // format, que l'API rejette — la station n'affichait alors plus aucun passage.
-const AREA_STORAGE_KEY = "osm-local:idfm-refs";
+//
+// Deuxième changement le 19 septembre 2026 : la zone jumelle se cherche plus
+// loin (`findFarSibling`). Les stations déjà résolues sans elle — Gare du Nord
+// sans son RER — doivent l'être de nouveau : nouvelle clé, et l'ancienne effacée.
+const AREA_STORAGE_KEY = "osm-local:idfm-refs-v2";
+const LEGACY_AREA_KEYS = ["osm-local:idfm-refs"];
 const areaCache = new Map<string, string[]>(readStoredAreas());
 
 function readStoredAreas(): [string, string[]][] {
   try {
+    for (const key of LEGACY_AREA_KEYS) localStorage.removeItem(key);
     const raw = localStorage.getItem(AREA_STORAGE_KEY);
     const stored = raw ? (JSON.parse(raw) as [string, string[]][]) : [];
     // Ceinture et bretelles : on ne garde que ce qui ressemble à une référence.
@@ -363,14 +371,54 @@ async function resolveMonitoringRefs(place: Place, signal?: AbortSignal): Promis
   const ranked = [...byArea.values()].sort((a, b) => score(b) - score(a));
   const best = ranked[0];
   const refs = [`STIF:StopArea:SP:${best.zdaid}:`];
-  const sibling = ranked
-    .slice(1)
-    .find((candidate) => normalizeName(candidate.name) === normalizeName(best.name) && candidate.type !== best.type);
+  const sibling =
+    ranked
+      .slice(1)
+      .find((candidate) => normalizeName(candidate.name) === normalizeName(best.name) && candidate.type !== best.type) ??
+    (await findFarSibling(best, place, signal));
   if (sibling) refs.push(`STIF:StopArea:SP:${sibling.zdaid}:`);
 
   areaCache.set(place.id, refs);
   persistAreas();
   return refs;
+}
+
+/**
+ * La zone jumelle d'une station — même nom, autre mode — quand elle est trop
+ * loin pour la première recherche (200 m). À Gare du Nord, la zone RER et
+ * Transilien est à plus de 200 m de la station de métro : la fiche n'affichait
+ * que les métros 4 et 5 (19 septembre 2026). On la cherche donc par son nom
+ * exact, jusqu'à 600 m. Une requête de plus au référentiel ouvert, sans clé ni
+ * quota, et le résultat est gardé avec la station.
+ */
+async function findFarSibling(best: StopCandidate, place: Place, signal?: AbortSignal): Promise<StopCandidate | null> {
+  const url = new URL(CONFIG.IDFM_STOPS_URL);
+  const name = best.name.replace(/"/g, "");
+  url.searchParams.set(
+    "where",
+    `arrname="${name}" and arrtype!="bus" and arrtype!="${best.type}" and ` +
+      `within_distance(arrgeopoint, geom'POINT(${place.lon.toFixed(6)} ${place.lat.toFixed(6)})', 600m)`
+  );
+  url.searchParams.set("select", "arrid,arrname,arrtype,zdaid,arrgeopoint");
+  url.searchParams.set("limit", "5");
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      results?: { arrid?: string; arrname?: string; arrtype?: string; zdaid?: string; arrgeopoint?: { lon: number; lat: number } }[];
+    };
+    const row = data.results?.find((r) => r.zdaid && r.arrid && r.arrgeopoint);
+    if (!row?.zdaid || !row.arrid || !row.arrgeopoint) return null;
+    return {
+      arrid: row.arrid,
+      zdaid: row.zdaid,
+      name: row.arrname ?? "",
+      type: row.arrtype ?? "",
+      distance: distanceMeters(place, row.arrgeopoint),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

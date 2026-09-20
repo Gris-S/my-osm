@@ -37,18 +37,54 @@ function osmRef(osmType: string | undefined, osmId: number): string {
   return `${type}/${osmId}`;
 }
 
+/**
+ * Les arrêts tels que Photon les rend. Les quais du métro arrivent en
+ * `railway=stop`, les poteaux en `highway=bus_stop` : sans les reconnaître, une
+ * recherche « Bastille » listait quatre « adresses » Bastille à côté de la
+ * station, au lieu de les réunir sous elle (19 septembre 2026).
+ */
+const TRANSIT_TAGS: Record<string, string[]> = {
+  // Les entrées aussi : six « Gare du Nord » sur vingt résultats en sont, et
+  // elles se fondent dans la station.
+  railway: ["station", "halt", "stop", "tram_stop", "platform", "train_station_entrance", "subway_entrance"],
+  highway: ["bus_stop"],
+  amenity: ["bus_station"],
+  public_transport: ["station", "stop_position", "platform"],
+  // Le bâtiment de la gare (« Gare de Lyon », « Gare Saint-Lazare »).
+  building: ["train_station"],
+};
+
+/**
+ * Le type d'arrêt que l'application connaît (`TRANSIT_FAMILIES`), pour ce que
+ * Photon rend. Un quai ou un point d'arrêt n'a pas de famille à lui : il est
+ * rangé avec les arrêts ferrés, et se fond de toute façon dans la station du
+ * même nom (`groupStops`). « Opéra » rendait quatre quais listés comme des
+ * adresses, qui prenaient la moitié des résultats (19 septembre 2026).
+ */
+function transitRawType(key: string, value: string): string {
+  if (key === "public_transport") return value === "station" ? "station" : "stop";
+  if (key === "building") return "station";
+  if (value === "platform") return "stop";
+  return value;
+}
+
 function toPlace(f: PhotonFeature): Place {
   const p = f.properties;
   const [lon, lat] = f.geometry.coordinates;
   const addressParts = [p.housenumber, p.street, p.postcode, p.city].filter(Boolean);
+  // Une adresse sans nom : le numéro et la rue en titre, la ville dessous.
+  // Sans cette coupe, « 56 Rue de la Roquette 75011 Paris » s'écrivait deux fois.
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+  const town = [p.postcode, p.city].filter(Boolean).join(" ");
+  const transit = !!p.osm_key && !!p.osm_value && (TRANSIT_TAGS[p.osm_key] ?? []).includes(p.osm_value);
   return {
     id: osmRef(p.osm_type, p.osm_id),
-    name: p.name || addressParts.join(" ") || t("place.unnamed"),
-    group: p.osm_key && p.osm_value ? groupFromTags({ [p.osm_key]: p.osm_value }) : null,
-    rawType: p.osm_value,
+    name: p.name || street || addressParts.join(" ") || t("place.unnamed"),
+    group: transit ? "transport" : p.osm_key && p.osm_value ? groupFromTags({ [p.osm_key]: p.osm_value }) : null,
+    rawType: transit && p.osm_key && p.osm_value ? transitRawType(p.osm_key, p.osm_value) : p.osm_value,
     lon,
     lat,
-    address: addressParts.join(" "),
+    address: p.name || !street ? addressParts.join(" ") : town,
   };
 }
 
@@ -173,7 +209,10 @@ export async function searchPlaces(query: string, near = CONFIG.DEFAULT_CENTER, 
   const url = new URL(CONFIG.PHOTON_URL);
   url.searchParams.set("q", query);
   url.searchParams.set("lang", "fr");
-  url.searchParams.set("limit", "8");
+  // Plus qu'on n'en montre : une station arrive avec ses quais, son arrêt de
+  // bus, ses points d'arrêt — cinq résultats sur huit pour « Opéra ». Réunis
+  // (`groupStops`), ils laissent la place aux autres lieux du même nom.
+  url.searchParams.set("limit", String(CONFIG.SEARCH_FETCH_RESULTS));
   url.searchParams.set("lat", String(near.lat));
   url.searchParams.set("lon", String(near.lon));
 

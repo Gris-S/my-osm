@@ -90,7 +90,9 @@ export function computeCarProgress(route: CarRoute, position: LonLat, from = 0):
       ? { step: nextStep, distanceMeters: Math.max(0, nextStep.atMeters - traveled) }
       : null,
     then: route.steps[stepIndex + 2] ?? null,
-    arrived: remainingMeters <= ARRIVAL_METERS,
+    // Près de la fin **et** près du tracé : un relevé lointain projeté sur la
+    // fin ne vaut pas arrivée (même défaut qu'à pied, voir `progress.ts`).
+    arrived: remainingMeters <= ARRIVAL_METERS && found.offset <= CAR_OFF_ROUTE_METERS,
   };
 }
 

@@ -209,6 +209,15 @@
   color: var(--text-secondary);
 }
 
+/* Le temps de correspondance, sur l'étape du transport qu'on rejoint : une
+   indication, pas un titre — c'est la ligne à prendre qu'on lit d'abord. */
+.journey-step-transfer {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
 /* Desserte détaillée : repliée par défaut, un arrêt bien desservi allongerait
    la frise sur plusieurs écrans. */
 .journey-stops-toggle {

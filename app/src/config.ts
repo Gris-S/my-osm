@@ -449,6 +449,11 @@ export const CONFIG = {
   // entre les modes ne coûte pas un appel de plus.
   IDFM_JOURNEYS_TTL_MS: 60000,
 
+  // Recherche : résultats demandés au géocodeur, et résultats montrés après
+  // réunion des arrêts d'une même station (voir `search/searchResults.ts`).
+  SEARCH_FETCH_RESULTS: 20,
+  SEARCH_SHOWN_RESULTS: 8,
+
   // Âge maximal de la position quand « Ma position » devient le point de
   // départ (ou une étape) d'un itinéraire. Au-delà, on redemande un relevé et
   // l'on attend. Constaté le 19 septembre 2026 : un trajet en transports partait

@@ -108,4 +108,12 @@ describe("carProgress", () => {
     const end = computeCarProgress(route, route.points[2], start.index);
     expect(end.arrived).toBe(true);
   });
+
+  it("ne tient pas pour arrivé un relevé lointain projeté sur la fin", () => {
+    // Deux kilomètres au nord-est de l'arrivée : la projection tombe sur la
+    // fin du tracé, mais on n'y est pas (17 septembre 2026 : « 0 min · 12 km »).
+    const far = computeCarProgress(route, { lon: 2.03, lat: 48.02 });
+    expect(far.remainingMeters).toBeLessThan(50);
+    expect(far.arrived).toBe(false);
+  });
 });

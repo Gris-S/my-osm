@@ -251,6 +251,9 @@ export function suggestBrands(query: string, limit = 3): string[] {
   // remonter les vraies enseignes avant les commerces isolés.
   const counts = new Map<string, number>();
   for (const { place } of seen.values()) {
+    // Un arrêt n'est pas une enseigne : les poteaux « Bastille » faisaient
+    // proposer « afficher tous les Bastille » comme s'il s'agissait d'une chaîne.
+    if (place.group === "transport") continue;
     const name = normalizeStopName(place.name);
     const compact = name.replace(/ /g, "");
     const hit = terms.some((term) => name.startsWith(term) || compact.startsWith(term.replace(/ /g, "")));

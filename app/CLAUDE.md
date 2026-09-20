@@ -56,6 +56,17 @@ sortie, un rapport et une capture par étape dans `parcours/` (hors du dépôt).
   remontée sur le bandeau quand une fiche s'ouvre en guidage (masquée tant
   que la fiche est là, comme la colonne du bas). Le message d'état de la carte
   suit la même hauteur que les boutons : il passait sous la fiche.
+- **`fin-de-trajet` et `bulle-voiture`** (19 septembre 2026) gardent quatre
+  défauts vus sur l'appareil : un guidage à pied arrêté aussitôt entrait dans
+  l'historique (`isTrivialTrip`, `trip.ts` : moins d'une minute ou de 50 m, ni
+  fiche ni historique, comme `MIN_RUN_MS` pour la course) ; arrêté en route, le
+  bandeau annonçait l'arrivée (il dit désormais « trajet interrompu ») ;
+  « 11 km » passait sur deux lignes ; la bulle d'un parcours proposé en voiture
+  sortait de l'écran (décalée par `MapView`, sa pointe suit `--tip-shift`).
+- **L'arrivée exige d'être près du tracé** (`progress.ts`, `carProgress.ts`) :
+  un relevé lointain projeté sur la fin du parcours valait arrivée, et le
+  guidage s'achevait aussitôt. C'est ce qui produisait les « 0 min · 12 km » de
+  l'historique, et ce que le scénario `navigation` rencontrait sans le dire.
 - Le parcours **rend l'appareil à son état** en terminant : réglages, mode
   avion, position simulée effacée par le rechargement. Tout nouveau scénario
   doit respecter cette règle. Depuis le 19 septembre 2026, il relève au départ
@@ -95,6 +106,13 @@ bouton de position dans les dix secondes que l'API s'autorise, quota de
 stockage calculé en différé. **Avant de déclarer un défaut, vérifier qu'on a
 attendu** ; `attendreQue` et `attendre` sont là pour ça, et un scénario qui
 conclut après un `dodo` fixe est suspect par construction.
+
+**Un téléphone en veille fausse toutes les mesures d'affichage.** Page cachée,
+les transitions CSS ne s'exécutent plus : un bouton qui glisse vers sa place
+reste figé à son point de départ, et `chevauchements` annonce des
+recouvrements qui n'existent pas (20 septembre 2026, trois à tort). Le parcours
+réveille donc l'écran et ramène l'application au premier plan avant de
+commencer, et prévient si la page reste cachée (écran verrouillé).
 
 Le signe le plus sûr qu'on accuse à tort : **le détail imprimé à côté du `✗`
 contredit le libellé**. « la place disponible est annoncée ✗ — 66 Mo used of
@@ -417,6 +435,12 @@ connaître :
   (proximité 200 m, départage sur nom/mode/distance), ce qui rend une **zone
   d'arrêt** — seule à réunir les deux sens. Une seconde zone du même nom dans
   un autre mode est ajoutée (métro + RER d'une même gare).
+- **La zone jumelle se cherche par son nom jusqu'à 600 m** (`findFarSibling`)
+  quand la première recherche (200 m) ne la trouve pas : à Gare du Nord, la
+  zone RER et Transilien est à plus de 200 m de la station de métro, et la
+  fiche n'affichait que les métros 4 et 5 (19 septembre 2026). La clé du cache
+  des zones est passée à `osm-local:idfm-refs-v2` pour que les stations déjà
+  résolues sans leur jumelle le soient de nouveau ; l'ancienne est effacée.
 - **Tous les modes se regroupent par terminus.** Ne pas retenter le
   regroupement par sens : `DirectionRef` est vide pour une partie des trains
   (constaté sur le RER A à Châtelet-Les Halles), ce qui mêlait deux directions
@@ -2894,6 +2918,55 @@ menu est `MENU_GROUPS` dans `FilterMenu.tsx`, **pas** celui de `FILTER_GROUPS` :
 ce dernier décide du classement des lieux (`groupFromTags` retient le premier
 groupe qui correspond), et le réordonner pour l'affichage changerait la
 catégorie de certains lieux.
+
+**La barre de recherche a été refondue** (demande explicite, 19 septembre 2026,
+croquis à l'appui ; scénario `recherche-refonte`) :
+
+- **Pendant la saisie, elle prend toute la largeur** : le menu s'efface
+  (`.app-shell.is-searching`), la météo l'était déjà, et la liste s'élargit avec
+  elle.
+- **Une colonne d'icônes, séparée par un trait vertical, dit ce qu'est chaque
+  résultat** (`search/searchResults.ts`, `resultKind`) : flèche pour une
+  adresse, épingle pleine pour un lieu, et pour un arrêt la **pastille de sa
+  ligne s'il n'en a qu'une** (RER A, bus 111), le pictogramme des transports
+  sinon (`search/useStopBadges.ts` : référentiel d'IDFM en Île-de-France, lignes
+  déjà vues dans une fiche ailleurs — pas de requête Transitous par résultat).
+  Pour un bus, **tous les poteaux du même nom** comptent (`busPoles:
+  "sameName"`) : Bourbaki, c'est le 107 d'un côté et le 111 de l'autre, donc
+  plusieurs lignes. Les recherches récentes prennent l'icône de leur type et
+  une horloge discrète à droite ; une récente déjà parmi les résultats ne se
+  répète pas.
+- **Les arrêts d'un même nom à moins de 400 m ne font qu'un résultat**
+  (`groupStops`), qui ouvre la station plutôt que le poteau. Il a fallu que le
+  géocodeur les reconnaisse : Photon rend les quais du métro en `railway=stop`
+  et les poteaux en `highway=bus_stop`, que `geocode.ts` classe désormais en
+  transports (`TRANSIT_TAGS`).
+- **Une station dont le nom ressemble à la saisie passe tout en haut**, sous
+  Maison et Travail (`looksLikeStation` : 70 % de ressemblance, ou un début de
+  nom dès trois lettres — « Ranel » ne ressemble à « Ranelagh » qu'à 62 %).
+  Réglage « Stations en premier dans la recherche », actif par défaut
+  (`osm-local:search-stations-first`).
+- **« Afficher tous les … » ne vaut que pour une enseigne** (demande explicite,
+  `designatesSpecificPlace`) : rien pour une station (même à moitié tapée), une
+  rue ou une adresse (numéro ou mot de voie en tête), un lieu unique nommé
+  exactement. **Un nom qui se répète parmi les commerces l'emporte** : une voie
+  privée « Mcdonald's » à Amilly ne doit pas cacher l'enseigne. Les arrêts ne
+  comptent plus pour reconnaître une enseigne (`suggestBrands`) : les poteaux
+  « Bastille » faisaient proposer « tous les Bastille ».
+- **Une station ne doit pas se noyer dans ses propres morceaux** (constaté sur
+  « opera », 19 septembre 2026 : cinq résultats sur huit étaient la même
+  station, dont quatre quais listés comme des adresses, et Opéra Garnier ou
+  Opéra Bastille n'apparaissaient plus). Trois règles : quais, points d'arrêt,
+  entrées et bâtiment de gare sont des arrêts (`TRANSIT_TAGS`, `transitRawType`) ;
+  deux arrêts proches se réunissent aussi quand un nom prolonge l'autre, sans
+  ce qui est entre parenthèses (« Gare du Nord (Métro ligne 5) », « Gare du
+  Nord - Dunkerque » : treize résultats, un seul affiché, sous le nom le plus
+  court) ; et l'on demande **20** résultats au géocodeur pour en montrer **8**
+  après réunion (`SEARCH_FETCH_RESULTS`, `SEARCH_SHOWN_RESULTS`).
+- **La recherche part de la position**, plus de Paris (`near`) : « Bourbaki »
+  proposait Bayonne et Moscou avant l'arrêt d'à côté. Et une adresse sans nom
+  s'écrit « 56 Rue de la Roquette » sur « 75011 Paris », plus deux fois en
+  entier.
 
 **Maison et travail sont aussi dans la barre de recherche** (demande
 explicite), plus seulement dans les champs d'itinéraire : en tête de la liste

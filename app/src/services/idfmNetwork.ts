@@ -300,7 +300,13 @@ export async function getLinesForStops(
   center: { lon: number; lat: number },
   radius: number,
   includeBus: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /**
+   * Pour un arrêt de bus : le poteau le plus proche (la carte, où l'on touche
+   * un poteau précis), ou tous les poteaux de même nom alentour (la recherche,
+   * où « Bourbaki » désigne l'arrêt entier — 107 d'un côté, 111 de l'autre).
+   */
+  busPoles: "nearest" | "sameName" = "nearest"
 ): Promise<Map<string, StopLines>> {
   const result = new Map<string, StopLines>();
   if (stops.length === 0) return result;
@@ -335,7 +341,8 @@ export async function getLinesForStops(
     if (MODES_BY_FAMILY[FAMILY_BY_SUBCLASS[stop.rawType ?? ""] ?? ""] === MODES_BY_FAMILY.bus) {
       const nearest = near.sort((a, b) => a.distance - b.distance)[0];
       if (!nearest) continue;
-      addLines(stop, [nearest], index, result);
+      const sameName = busPoles === "sameName" ? near.filter((entry) => normalizeName(entry.row.name) === wanted) : [];
+      addLines(stop, sameName.length ? sameName : [nearest], index, result);
       continue;
     }
 

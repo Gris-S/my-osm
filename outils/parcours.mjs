@@ -1617,6 +1617,170 @@ const SCENARIOS = [
       await dodo(1000);
     },
   },  {
+    id: "fin-de-trajet",
+    titre: "Un trajet interrompu se dit tel, un trajet d'une seconde ne se garde pas",
+    // Trois défauts vus le 19 septembre 2026 : un guidage à pied arrêté
+    // aussitôt entrait dans l'historique (« 0 min · 0 m ») ; arrêté en route, le
+    // bandeau annonçait « You have arrived » derrière une fiche qui disait
+    // « interrompu » ; et « 11 km » passait sur deux lignes dans la barre.
+    async executer() {
+      await scene();
+      const DEPART = [2.3376, 48.8606]; // Louvre
+      const ARRIVEE = [2.3470, 48.8584]; // Châtelet
+      let trajet = null;
+      try {
+        const url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${DEPART.join(",")};${ARRIVEE.join(",")}?overview=full&geometries=geojson`;
+        trajet = (await (await fetch(url)).json()).routes?.[0] ?? null;
+      } catch (erreur) {
+        return verifier("le service de routage répond", false, String(erreur.message ?? erreur));
+      }
+      if (!verifier("un trajet de référence est obtenu", trajet !== null)) return;
+      const points = [];
+      let dernier = null;
+      const ecart = (a, b) => Math.hypot((a[0] - b[0]) * 73000, (a[1] - b[1]) * 111000);
+      for (const p of trajet.geometry.coordinates) {
+        if (!dernier || ecart(dernier, p) > 12) {
+          points.push([Number(p[0].toFixed(5)), Number(p[1].toFixed(5))]);
+          dernier = p;
+        }
+      }
+      const combienDeTrajets = () =>
+        js(`(async()=>{const db=await new Promise((ok)=>{const r=indexedDB.open('osm-local:navigation-history');
+          r.onupgradeneeded=(e)=>{if(e.oldVersion===0)r.transaction.abort()};r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)});
+          if(!db||!db.objectStoreNames.contains('trips'))return 0;
+          const n=await new Promise((ok)=>{const r=db.transaction('trips').objectStore('trips').count();r.onsuccess=()=>ok(r.result)});
+          db.close();return n})()`);
+      const lancer = async () => {
+        await positionLeLongDe(points, 2500);
+        await cliquer(".locate-button");
+        await dodo(1500);
+        await carteVers(DEPART[0], DEPART[1], 16);
+        await saisir(`${ARRIVEE[1]}, ${ARRIVEE[0]}`);
+        if (!(await attendre(".search-result.is-brand", 12_000))) return "coordonnées non reconnues";
+        await cliquer(".search-result.is-brand");
+        if (!(await attendre(".sheet"))) return "pas de fiche";
+        await cliquer(".sheet-action-primary");
+        if (!(await attendre(".itinerary-panel"))) return "pas de panneau";
+        await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[1])m[1].click();return true})()");
+        if (!(await attendre(".itinerary-result", 30_000))) return `pas d'itinéraire : ${(await texte(".itinerary-panel")) ?? ""}`.slice(0, 160);
+        await cliquer(".nav-start");
+        if (!(await attendre(".nav-maneuver-icon", 30_000))) return `pas de manœuvre : ${(await texte(".nav-banner")) ?? ""}`;
+        return "";
+      };
+      const avant = await combienDeTrajets();
+
+      // 1. Arrêté aussitôt : ni fiche, ni historique.
+      let raté = await lancer();
+      if (!verifier("le guidage à pied démarre", raté === "", raté)) return;
+      await dodo(1500);
+      await cliquer(".nav-stop");
+      await dodo(2000);
+      verifier("pas de fiche de fin pour un trajet d'une seconde", !(await js("!!document.querySelector('.trip-summary')")));
+      verifier("rien n'entre dans l'historique", (await combienDeTrajets()) === avant, `${avant} → ${await combienDeTrajets()}`);
+      await js("(()=>{const b=document.querySelector('[aria-label=\"Close the directions\"]');if(b)b.click();return true})()");
+      await dodo(1000);
+
+      // 2. Arrêté en route, après plus d'une minute et de cinquante mètres.
+      raté = await lancer();
+      if (!verifier("le guidage à pied redémarre", raté === "", raté)) return;
+      const hauteurs = await js(`JSON.stringify([...document.querySelectorAll('.nav-bar-figures .nav-figure')].map((e)=>Math.round(e.getBoundingClientRect().height)))`);
+      verifier("les chiffres de la barre tiennent sur une ligne", JSON.parse(hauteurs).every((h) => h < 30), hauteurs);
+      await js("(()=>{window.__parcoursRouler&&window.__parcoursRouler();return true})()");
+      await dodo(75_000);
+      await cliquer(".nav-stop");
+      verifier("la fiche de fin paraît", await attendre(".trip-summary", 8000));
+      const fiche = (await texte(".trip-summary")) ?? "";
+      const bandeau = (await texte(".nav-banner")) ?? "";
+      verifier("la fiche dit le trajet interrompu", /before arrival|avant l'arrivée/i.test(fiche), fiche.slice(0, 80));
+      verifier("le bandeau n'annonce pas l'arrivée", !/arrived|arrivé/i.test(bandeau), bandeau);
+      capture("29-trajet-interrompu");
+      await js("(()=>{const b=document.querySelector('.trip-summary-close');if(b)b.click();return true})()");
+      await dodo(1000);
+    },
+  },
+  {
+    id: "bulle-voiture",
+    titre: "Les bulles des parcours proposés en voiture tiennent dans l'écran",
+    // Capture du 19 septembre 2026 : « 28 min · Toll-free · +2 min tr… »,
+    // coupée par le bord droit.
+    async executer() {
+      await scene();
+      await positionSimulee(48.7917, 2.4822);
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await saisir("48.8443, 2.3736");
+      await attendre(".search-result.is-brand", 12_000);
+      await cliquer(".search-result.is-brand");
+      await attendre(".sheet");
+      await cliquer(".sheet-action-primary");
+      await attendre(".itinerary-panel");
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[0])m[0].click();return true})()");
+      await attendre(".itinerary-result", 30_000);
+      await cliquer(".nav-start");
+      if (!verifier("des parcours sont proposés", await attendre(".route-choice-bubble", 40_000))) return;
+      await dodo(3000);
+      const debords = await js(`JSON.stringify([...document.querySelectorAll('.route-choice-bubble')].map((b)=>{const r=b.getBoundingClientRect();
+        return Math.round(Math.max(0,-r.left,r.right-innerWidth))}))`);
+      verifier("aucune bulle ne sort de l'écran", JSON.parse(debords).every((d) => d <= 1), `débords ${debords} px`);
+      capture("30-bulles-voiture");
+      await cliquer(".car-choice-cancel");
+      await dodo(1000);
+    },
+  },
+  {
+    id: "recherche-refonte",
+    titre: "La recherche dit ce qu'est chaque résultat, et met la station en tête",
+    // Refonte demandée le 19 septembre 2026 : barre pleine largeur pendant la
+    // saisie, une icône par nature (adresse, lieu, arrêt), arrêts d'un même nom
+    // réunis, station ressemblante en tête — réglable.
+    async executer() {
+      await scene();
+      await positionSimulee(48.8532, 2.3691); // Bastille
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await saisir("Bastille");
+      await attendreQue(`document.querySelectorAll('${LIEU}').length > 0`, 15_000);
+      await dodo(1500);
+      const largeur = await js("(()=>{const w=document.querySelector('.search-wrap').getBoundingClientRect();return Math.round(innerWidth-w.width)})()");
+      verifier("la barre prend toute la largeur", largeur <= 40, `${largeur} px de marge au total`);
+      verifier("le menu s'efface pendant la saisie", await js("getComputedStyle(document.querySelector('.app-menu')).visibility==='hidden'"));
+      const premier = await js(`(()=>{const e=document.querySelector('${LIEU}');return e?{nom:e.querySelector('.search-result-name')?.innerText,transport:!!e.querySelector('.is-transit, .search-line-badge')}:null})()`);
+      verifier("la station Bastille passe en tête", premier?.nom === "Bastille", JSON.stringify(premier));
+      verifier("elle porte l'icône des transports", !!premier?.transport);
+      const bastilles = await js(`[...document.querySelectorAll('${LIEU} .search-result-name')].filter((e)=>e.innerText==='Bastille').length`);
+      verifier("les arrêts Bastille sont réunis", bastilles <= 3, `${bastilles} lignes « Bastille »`);
+      capture("31-recherche-bastille");
+
+      await saisir("56 rue de la roquette");
+      await attendreQue(`!!document.querySelector('${LIEU} .search-result-name') && document.querySelector('${LIEU} .search-result-name').innerText.startsWith('56')`, 15_000);
+      const adresse = await js(`(()=>{const e=document.querySelector('${LIEU}');return e?{nom:e.querySelector('.search-result-name').innerText,sous:e.querySelector('.search-result-address')?.innerText,fleche:!!e.querySelector('.lucide-navigation')}:null})()`);
+      verifier("une adresse porte la flèche", !!adresse?.fleche, JSON.stringify(adresse));
+      verifier("le numéro et la rue en titre, la ville dessous", !!adresse && !/750/.test(adresse.nom) && /750/.test(adresse.sous ?? ""), JSON.stringify(adresse));
+
+      // « Afficher tous les … » : pour une enseigne, jamais pour une station ni
+      // une rue (demande explicite).
+      const enseigne = () => js("!!document.querySelector('.search-results .search-result.is-brand .lucide-store')");
+      await saisir("Bastille");
+      await attendreQue(`document.querySelectorAll('${LIEU}').length > 0`, 15_000);
+      await dodo(1500);
+      verifier("pas de « afficher tous les » pour une station", !(await enseigne()));
+      await saisir("rue de Rivoli");
+      await attendreQue(`document.querySelectorAll('${LIEU}').length > 0`, 15_000);
+      await dodo(1500);
+      verifier("ni pour une rue", !(await enseigne()));
+      await carteVers(2.3691, 48.8532, 15);
+      await dodo(2000);
+      await saisir("McDonald's");
+      await attendreQue(`document.querySelectorAll('${LIEU}').length > 0`, 15_000);
+      await dodo(1500);
+      verifier("mais bien pour une enseigne", await enseigne());
+      capture("32-recherche-enseigne");
+      await saisir("");
+      adb("shell", "input", "keyevent", "4");
+      await dodo(800);
+    },
+  },
+  {
     id: "chevauchements",
     titre: "Aucun bouton, menu ou panneau ne se recouvre, dans les états chargés",
     // Mesuré le 19 septembre 2026, sans que rien ne l'ait signalé : sur la
@@ -1695,7 +1859,17 @@ async function main() {
   const choisis = DEMANDES.length ? SCENARIOS.filter((s) => DEMANDES.includes(s.id)) : SCENARIOS;
   if (!choisis.length) throw new Error(`Aucun scénario ne correspond à : ${DEMANDES.join(", ")}`);
 
+  // Écran éteint ou application derrière : la page est « cachée », ses
+  // transitions ne s'exécutent plus, et les boutons restent figés au début de
+  // leur glissement. Le 20 septembre 2026, trois recouvrements ont ainsi été
+  // annoncés à tort, téléphone en veille. On réveille, on ramène l'application.
+  adb("shell", "input", "keyevent", "KEYCODE_WAKEUP");
+  adb("shell", "am", "start", "-n", `${PAQUET}/.MainActivity`);
+  await dodo(3000);
   await connecter();
+  if ((await js("document.visibilityState")) !== "visible") {
+    console.log("⚠  la page est cachée (écran verrouillé ?) : les mesures d'affichage seraient fausses.\n");
+  }
   // L'état de l'utilisateur, relevé avant le premier geste, pour le lui rendre
   // tel quel : ses réglages (et non des valeurs par défaut), et un historique
   // sans les trajets que les scénarios de guidage enregistrent. Un « 0 min ·

@@ -250,6 +250,9 @@
   flex-direction: column;
   gap: 1px;
   font-variant-numeric: tabular-nums;
+  /* « 11 km » passait sur deux lignes, le chiffre au-dessus de son unité,
+     quand l'heure d'arrivée et le temps restant prenaient la place. */
+  white-space: nowrap;
 }
 
 /* Le temps restant est la réponse à la seule question qu'on se pose : il porte
@@ -1298,7 +1301,9 @@
 .route-choice-bubble::after {
   content: "";
   position: absolute;
-  left: 50%;
+  /* Décalée quand la bulle l'est pour tenir dans l'écran (`--tip-shift`,
+     posé par `MapView`) : la pointe reste sur la route. */
+  left: calc(50% + var(--tip-shift, 0px));
   /* La pointe dépasse par le bas : moitié dans la bulle, moitié dehors, pour
      qu'elle se lise comme une flèche et non comme un coin arraché. */
   bottom: -3px;

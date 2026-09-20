@@ -12,6 +12,18 @@ import { navText } from "./strings";
 // historique vieux de six mois, ce qu'une chaîne figée interdirait.
 // ---------------------------------------------------------------------------
 
+/**
+ * Un trajet trop court pour être gardé : moins d'une minute, ou moins de
+ * cinquante mètres. C'est un guidage lancé puis arrêté aussitôt — ou un saut de
+ * position, qui fait « parcourir » douze kilomètres en zéro seconde. Comme une
+ * course lancée par erreur (`MIN_RUN_MS`), il ne laisse ni fiche de fin ni
+ * entrée d'historique : des « 0 min · 0 m » s'y accumulaient, et l'un d'eux a
+ * été pris pour un vrai trajet (18 septembre 2026).
+ */
+export function isTrivialTrip(trip: Pick<Trip, "elapsedSeconds" | "distanceMeters">): boolean {
+  return trip.elapsedSeconds < 60 || trip.distanceMeters < 50;
+}
+
 /** Vitesse moyenne en km/h, ou `null` si le trajet n'a ni durée ni longueur. */
 export function averageSpeed(trip: Trip): number | null {
   if (trip.distanceMeters < 1 || trip.elapsedSeconds < 1) return null;

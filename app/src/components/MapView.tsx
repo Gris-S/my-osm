@@ -958,7 +958,30 @@ export const MapView = memo(function MapView({
       );
     }
 
+    // Une bulle ancrée près du bord sortait de l'écran (« Toll-free · +2 min
+    // tr… », 19 septembre 2026). On la décale pour qu'elle tienne entière, et
+    // sa pointe se décale d'autant en sens inverse : elle désigne toujours la
+    // route. Rejoué après chaque déplacement — le cadrage des propositions
+    // arrive en animation, après la pose des bulles.
+    const keepInside = () => {
+      const width = map.getContainer().clientWidth;
+      const margin = 8;
+      for (const marker of choiceMarkersRef.current) {
+        const element = marker.getElement();
+        const half = element.offsetWidth / 2;
+        const x = map.project(marker.getLngLat()).x;
+        const shift = x - half < margin ? margin - (x - half) : x + half > width - margin ? width - margin - (x + half) : 0;
+        // Pas plus loin que la pointe ne peut suivre : elle reste dans la bulle.
+        const bounded = Math.max(-half + 12, Math.min(half - 12, shift));
+        marker.setOffset([bounded, 0]);
+        element.style.setProperty("--tip-shift", `${-bounded}px`);
+      }
+    };
+    keepInside();
+    map.on("moveend", keepInside);
+
     return () => {
+      map.off("moveend", keepInside);
       for (const marker of choiceMarkersRef.current) marker.remove();
       choiceMarkersRef.current = [];
     };

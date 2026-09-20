@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, memo } from "react";
-import { Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, X } from "lucide-react";
+import { Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
 import type { AutoSource, Theme } from "../hooks/useTheme";
 import { useI18n, useLangSetting, type Lang, type TranslationKey } from "../i18n";
 import type { LonLat } from "../types";
@@ -10,6 +10,7 @@ import { HistoryPanel, ModesSettings, navText, NavigationSettings } from "../nav
 import { HomeWorkSettings } from "./HomeWorkSettings";
 import { SourcesList } from "./SourcesList";
 import { useBackClose } from "../hooks/useBackClose";
+import { setStationsFirstEnabled, stationsFirstEnabled } from "../search/searchResults";
 
 // Les fenêtres du menu ne servent qu'à leur ouverture : chargées à la demande,
 // elles sortent du démarrage (la carte réduite, les contours, le téléchargement).
@@ -118,6 +119,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   const language = useLangSetting();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [stationsFirst, setStationsFirst] = useState(stationsFirstEnabled);
   // Les clés d'API ont leur propre fenêtre : longue, rarement ouverte, elle
   // noyait le thème et la langue au bas des paramètres.
   const [apiOpen, setApiOpen] = useState(false);
@@ -394,6 +396,29 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
               </div>
               {language.followSystem && <p className="settings-hint">{t("settings.language.hint")}</p>}
             </div>
+
+            {/* Refonte de la recherche (demande explicite) : réglable, actif par
+                défaut. Lu à chaque recherche, sans rien à propager. */}
+            <button
+              className="modes-row settings-switch-row"
+              onClick={() => {
+                setStationsFirstEnabled(!stationsFirst);
+                setStationsFirst(!stationsFirst);
+              }}
+              role="switch"
+              aria-checked={stationsFirst}
+            >
+              <span className="modes-row-text">
+                <span className="modes-row-label">
+                  <TrainFront size={16} />
+                  {t("settings.stationsFirst")}
+                </span>
+                <span className="modes-row-hint">{t("settings.stationsFirst.hint")}</span>
+              </span>
+              <span className={`toggle-switch ${stationsFirst ? "is-on" : ""}`} aria-hidden="true">
+                <span className="toggle-switch-knob" />
+              </span>
+            </button>
 
             <HomeWorkSettings />
             <NavigationSettings />

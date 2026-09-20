@@ -90,7 +90,12 @@ export function computeProgress(route: NavRoute, position: LonLat, from = 0): Na
     pathBearing: bearingAt(route, found.index),
     stepIndex,
     next: nextStep ? { step: nextStep, distanceMeters: Math.max(0, nextStep.atMeters - traveled) } : null,
-    arrived: remainingMeters <= ARRIVAL_METERS,
+    // Près de la fin du tracé **et** près du tracé. Sans la seconde condition,
+    // un relevé lointain — saut du GPS, position d'avant restée en mémoire —
+    // se projetait sur la fin du parcours et valait arrivée : le guidage
+    // s'achevait aussitôt, et l'historique gardait des « 0 min · 12 km »
+    // (17 septembre 2026).
+    arrived: remainingMeters <= ARRIVAL_METERS && found.offset <= OFF_ROUTE_METERS,
   };
 }
 

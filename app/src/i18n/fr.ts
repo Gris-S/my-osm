@@ -163,6 +163,11 @@ export const fr = {
   "apikeys.group.mapillary.hint": "Photos de rue et leur couverture sur la carte.",
   "apikeys.group.mapillary.link": "Créer un jeton gratuit sur mapillary.com",
   "apikeys.group.mapillary.apis": "Enregistrer une application, puis copier son « Client Token » (MLY|…).",
+  /* Mapillary est le seul service de la fenêtre qui appartienne à une
+     entreprise dont on cherche précisément à s'éloigner. Le dire là où la
+     clé se saisit, et pas ailleurs : c'est le moment où le choix se fait. */
+  "apikeys.group.mapillary.warning":
+    "Mapillary appartient à Meta (Facebook). Sans jeton, rien ne lui est envoyé ; avec un jeton, les zones de carte consultées lui parviennent, avec l’adresse IP de l’appareil.",
   "apikeys.mapillary": "Jeton",
 
   "apikeys.group.meteofrance": "Météo-France",
@@ -179,6 +184,9 @@ export const fr = {
   "search.brandHint": "Enseigne, dans la zone visible",
   "search.loading": "Recherche…",
   "search.recentBrand": "Enseigne",
+  "search.recent": "Recherche récente",
+  "settings.stationsFirst": "Stations en premier dans la recherche",
+  "settings.stationsFirst.hint": "Une station ou un arrêt dont le nom ressemble à ce que vous tapez passe en tête des résultats.",
   "search.web": "Chercher « {query} » sur le web",
   "search.webHint": "DuckDuckGo, dans l'application",
   "search.pastedPoint": "Point collé",
@@ -488,6 +496,9 @@ export const fr = {
   "journey.walk": "Marcher {minutes} min",
   "journey.walkTo": "Marcher {minutes} min jusqu'à {to}",
   "journey.board": "Monter à {name}",
+  /* Le temps de marche d'une correspondance, replié sur l'étape du
+     transport suivant : la marche elle-même ne fait plus une étape. */
+  "journey.transfer": "Correspondance {minutes} min",
   "journey.alight": "Descendre à {name}",
   "journey.stopover": "Étape : {name}",
   "journey.stepFallback": "Étape {index}",

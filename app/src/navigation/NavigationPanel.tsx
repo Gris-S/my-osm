@@ -42,13 +42,19 @@ export function NavigationPanel({ session }: { session: NavSession }) {
   if (!session.active) return null;
 
   const next = progress?.next ?? null;
-  const arrived = status === "arrived";
+  // « Arrivé » seulement si l'on est arrivé : un trajet interrompu passe aussi
+  // par l'état de fin (la fiche s'ouvre), et le bandeau annonçait l'arrivée
+  // derrière une fiche qui disait le contraire.
+  const arrived = status === "arrived" && (session.summary?.completed ?? true);
+  const stopped = status === "arrived" && !arrived;
 
   return (
     <>
       <div className="nav-banner" ref={bannerRef}>
         {arrived ? (
           <ArrivalBanner name={session.destinationName} />
+        ) : stopped ? (
+          <p className="nav-banner-waiting">{nav("trip.interrupted")}</p>
         ) : next ? (
           <ManeuverBanner
             distanceMeters={next.distanceMeters}
@@ -71,7 +77,7 @@ export function NavigationPanel({ session }: { session: NavSession }) {
         {/* Le recalcul se dit sans effacer l'instruction : tant qu'il n'a pas
             abouti, la précédente reste la meilleure indication disponible. */}
         {session.rerouting && <p className="nav-banner-note">{nav("nav.rerouting")}</p>}
-        {!session.rerouting && progress && progress.offsetMeters > OFF_ROUTE_METERS && !arrived && (
+        {!session.rerouting && progress && progress.offsetMeters > OFF_ROUTE_METERS && !arrived && !stopped && (
           <p className="nav-banner-note">{nav("nav.offRoute")}</p>
         )}
       </div>

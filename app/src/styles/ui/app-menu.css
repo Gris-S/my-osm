@@ -249,6 +249,28 @@
   color: var(--text-secondary);
 }
 
+/* L'avertissement d'un service : un encadré teinté, et non une ligne grise de
+   plus — il doit se distinguer des explications qui l'entourent sans crier au
+   danger, ce que le rouge ferait. L'icône garde sa taille (`flex-shrink`) quand
+   le texte passe à la ligne. */
+.apikey-warning {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 10px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--caution) 14%, transparent);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.apikey-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--caution);
+}
+
 .apikey-row + .apikey-row {
   margin-top: 12px;
   padding-top: 12px;

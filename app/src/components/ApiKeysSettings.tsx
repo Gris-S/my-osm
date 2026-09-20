@@ -46,7 +46,10 @@ import {
  * lien d'inscription se lisent ensemble, au-dessus du champ.
  *
  * `signup` mène là où l'on obtient la clé : sans lui, le champ demande quelque
- * chose sans dire où le trouver. `apis` nomme ce qu'il faut y chercher, tel que
+ * chose sans dire où le trouver. `warning` dit ce qu'il en coûte d'activer le
+ * service — à qui les requêtes parviennent — pour les rares cas où la réponse
+ * n'est pas anodine ; il s'affiche juste avant le champ, au moment où le choix
+ * se fait, et non dans une page d'aide que personne n'ouvre. `apis` nomme ce qu'il faut y chercher, tel que
  * le portail l'affiche — sur PRIM et chez Météo-France, un compte ne suffit
  * pas à savoir quelle API l'application interroge. Adresses relevées le
  * 17 septembre 2026 :
@@ -64,6 +67,7 @@ const GROUPS: {
   ids: ApiKeyId[];
   signup?: { url: string; label: TranslationKey };
   apis?: TranslationKey;
+  warning?: TranslationKey;
 }[] = [
   {
     title: "apikeys.group.tomtom",
@@ -84,6 +88,7 @@ const GROUPS: {
     ids: ["mapillary"],
     signup: { url: "https://www.mapillary.com/dashboard/developers", label: "apikeys.group.mapillary.link" },
     apis: "apikeys.group.mapillary.apis",
+    warning: "apikeys.group.mapillary.warning",
   },
   {
     title: "apikeys.group.meteofrance",
@@ -116,6 +121,12 @@ export function ApiKeysSettings() {
               </a>
             )}
             {group.apis && <p className="apikey-apis">{t(group.apis)}</p>}
+            {group.warning && (
+              <p className="apikey-warning">
+                <TriangleAlert size={13} />
+                <span>{t(group.warning)}</span>
+              </p>
+            )}
             {group.ids.map((id) => (
               <KeyRow key={id} id={id} />
             ))}

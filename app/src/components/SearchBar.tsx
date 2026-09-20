@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, X, MapPin, Store, Clock, Home, Briefcase, Globe, Crosshair } from "lucide-react";
-import type { Place } from "../types";
+import { Search, X, MapPin, Store, Clock, Home, Briefcase, Globe, Crosshair, Navigation, TrainFront } from "lucide-react";
+import type { LonLat, Place } from "../types";
+import { CONFIG } from "../config";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
 import { matchHistory, useSearchHistory, type SearchHistoryEntry } from "../hooks/useSearchHistory";
 import { HOME_WORK_ROLES, type HomeWork, type HomeWorkRole } from "../hooks/useHomeWork";
@@ -10,6 +11,9 @@ import { useI18n } from "../i18n";
 import { useBackClose } from "../hooks/useBackClose";
 import { openWebSearch } from "../services/webSearch";
 import { pointFromText } from "../services/webPlace";
+import { designatesSpecificPlace, groupStops, looksLikeStation, resultKind, stationsFirstEnabled, type SearchEntry } from "../search/searchResults";
+import { useStopBadges } from "../search/useStopBadges";
+import type { LineChip } from "../utils/markerImage";
 
 /**
  * Les mots qui désignent chaque rôle, en plus de son libellé affiché. On tape
@@ -55,9 +59,15 @@ interface SearchBarProps {
    * resterait « Rechercher dans cette zone » ne dirait plus ce qu'on cherche.
    */
   onClear?: () => void;
+  /**
+   * Autour d'où chercher : la position, ou le lieu ouvert. Sans lui, la
+   * recherche partait de Paris, où qu'on soit — « Bourbaki » proposait Bayonne,
+   * Béziers et Moscou avant l'arrêt d'à côté.
+   */
+  near?: LonLat;
 }
 
-export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, children, onOpenChange, onClear }: SearchBarProps) {
+export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, children, onOpenChange, onClear, near }: SearchBarProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -70,7 +80,7 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
     onOpenChange?.(open);
     return () => onOpenChange?.(false);
   }, [open, onOpenChange]);
-  const { results, loading } = usePlaceSearch(query);
+  const { results, loading } = usePlaceSearch(query, near);
   const { history, remember } = useSearchHistory();
   /**
    * Le rôle qu'on est en train de définir. Comme dans les champs d'itinéraire,
@@ -164,6 +174,44 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
       lon: at.lon,
     };
   }, [trimmed, t]);
+
+  /**
+   * Les résultats, arrêts d'un même nom réunis (voir `groupStops`). Les
+   * stations dont le nom ressemble à la saisie passent **tout en haut**, juste
+   * sous Domicile et Travail — réglable dans les paramètres.
+   */
+  const entries = useMemo(() => groupStops(results).slice(0, CONFIG.SEARCH_SHOWN_RESULTS), [results]);
+  const firstStations = useMemo(
+    () =>
+      stationsFirstEnabled() && trimmed
+        ? entries.filter((entry) => resultKind(entry.place) === "transit" && looksLikeStation(trimmed, entry.place.name))
+        : [],
+    [entries, trimmed]
+  );
+  const otherEntries = entries.filter((entry) => !firstStations.includes(entry));
+  // « Afficher tous les … » seulement pour ce qui se répète : pas pour une
+  // station, une rue, une adresse ou un lieu unique (voir `designatesSpecificPlace`).
+  const specific = useMemo(
+    () =>
+      designatesSpecificPlace(trimmed, entries, (name) =>
+        // Se répète : sur la carte (enseigne reconnue) ou parmi les commerces
+        // trouvés — les arrêts et les adresses ne comptent pas.
+        suggestions.some((brand) => normalizeBrand(brand) === normalizeBrand(name)) ||
+        results.filter((place) => resultKind(place) === "place" && normalizeBrand(place.name) === normalizeBrand(name))
+          .length >= 2
+      ),
+    [trimmed, entries, suggestions, results]
+  );
+  // Une recherche récente déjà présente parmi les résultats ne se répète pas.
+  const shownIds = useMemo(
+    () => new Set(loading ? [] : entries.flatMap((entry) => entry.members.map((member) => member.id))),
+    [entries, loading]
+  );
+  const recentEntries = useMemo(
+    () => recent.flatMap((entry): SearchEntry[] => (entry.kind === "place" ? [{ place: entry.place, members: [entry.place] }] : [])),
+    [recent]
+  );
+  const badges = useStopBadges(useMemo(() => [...recentEntries, ...entries], [recentEntries, entries]));
 
   function handleBrand(brand: string) {
     onSearchBrand(brand);
@@ -282,7 +330,9 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
                 className={`search-result is-shortcut ${place ? "" : "is-unset"}`}
                 onClick={() => handleShortcut(role, place)}
               >
-                <Icon size={16} className="search-result-icon" />
+                <ResultIconCell>
+                  <Icon size={17} />
+                </ResultIconCell>
                 {/* Le nom seul (demande explicite) : l'adresse se règle dans les
                     paramètres, et n'apprend rien de plus à qui veut rentrer. */}
                 <div className="search-result-text">
@@ -291,22 +341,37 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
               </button>
             );
           })}
-          {recent.map((entry) => (
+          {!loading &&
+            firstStations.map((entry) => (
+              <ResultRow key={entry.place.id} entry={entry} badges={badges} onSelect={handleSelect} />
+            ))}
+          {recent.filter((entry) => !(entry.kind === "place" && shownIds.has(entry.place.id))).map((entry) => (
             <button
               key={`${entry.kind}:${entry.label}`}
               className="search-result is-recent"
               onClick={() => handleRecent(entry)}
             >
-              <Clock size={16} className="search-result-icon" />
+              <ResultIconCell>
+                {entry.kind === "brand" ? (
+                  <Store size={17} />
+                ) : (
+                  <KindIcon entry={{ place: entry.place, members: [entry.place] }} badges={badges} />
+                )}
+              </ResultIconCell>
               <div className="search-result-text">
                 <div className="search-result-name">{entry.label}</div>
                 {entry.kind === "brand" && <div className="search-result-address">{t("search.recentBrand")}</div>}
               </div>
+              {/* Une recherche récente se distingue d'un résultat par cette
+                  horloge discrète : l'icône de gauche dit ce qu'elle désigne. */}
+              <Clock size={13} className="search-result-recent" aria-label={t("search.recent")} />
             </button>
           ))}
-          {!assigning && suggestions.map((brand) => (
+          {!assigning && !specific && suggestions.map((brand) => (
             <button key={brand} className="search-result is-brand" onClick={() => handleBrand(brand)}>
-              <Store size={16} className="search-result-icon" />
+              <ResultIconCell>
+                <Store size={17} />
+              </ResultIconCell>
               <div className="search-result-text">
                 <div className="search-result-name">{t("search.brandAll", { brand })}</div>
                 <div className="search-result-address">{t("search.brandHint")}</div>
@@ -315,7 +380,9 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
           ))}
           {pasted && (
             <button className="search-result is-brand" onClick={() => handleSelect(pasted)}>
-              <Crosshair size={16} className="search-result-icon" />
+              <ResultIconCell>
+                <Crosshair size={17} />
+              </ResultIconCell>
               <div className="search-result-text">
                 <div className="search-result-name">{pasted.name}</div>
                 <div className="search-result-address">{t("search.pastedPointHint")}</div>
@@ -324,20 +391,16 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
           )}
           {loading && <div className="search-result-loading">{t("search.loading")}</div>}
           {!loading &&
-            results.map((r) => (
-              <button key={r.id} className="search-result" onClick={() => handleSelect(r)}>
-                <MapPin size={16} className="search-result-icon" />
-                <div className="search-result-text">
-                  <div className="search-result-name">{r.name}</div>
-                  {r.address && <div className="search-result-address">{r.address}</div>}
-                </div>
-              </button>
+            otherEntries.map((entry) => (
+              <ResultRow key={entry.place.id} entry={entry} badges={badges} onSelect={handleSelect} />
             ))}
           {/* En dernier, dès deux lettres : on y va quand la carte n'a pas
               trouvé, et sans avoir à attendre la fin de sa recherche. */}
           {trimmed.length >= 2 && (
             <button className="search-result is-web" onClick={handleWeb}>
-              <Globe size={16} className="search-result-icon" />
+              <ResultIconCell>
+                <Globe size={17} />
+              </ResultIconCell>
               <div className="search-result-text">
                 <div className="search-result-name">{t("search.web", { query: trimmed })}</div>
                 <div className="search-result-address">{t("search.webHint")}</div>
@@ -349,5 +412,54 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
 
       {children}
     </div>
+  );
+}
+
+/** La colonne des pictogrammes, séparée du texte par un trait vertical. */
+function ResultIconCell({ children }: { children: React.ReactNode }) {
+  return <span className="search-result-icon">{children}</span>;
+}
+
+/**
+ * Ce que désigne un résultat : flèche pour une adresse, épingle pour un lieu,
+ * pastille de la ligne pour un arrêt qui n'en dessert qu'une — que le résultat
+ * réunisse un arrêt ou huit (voir `useStopBadges`) — et pictogramme de
+ * transport dès qu'il y en a plusieurs.
+ */
+function KindIcon({ entry, badges }: { entry: SearchEntry; badges: Map<string, LineChip> }) {
+  const kind = resultKind(entry.place);
+  if (kind === "address") return <Navigation size={16} />;
+  if (kind === "place") return <MapPin size={18} className="is-filled" />;
+  const badge = badges.get(entry.place.id);
+  if (badge) {
+    return (
+      <span className="search-line-badge" style={{ background: badge.color, color: badge.textColor }}>
+        {badge.label}
+      </span>
+    );
+  }
+  return <TrainFront size={17} className="is-transit" />;
+}
+
+function ResultRow({
+  entry,
+  badges,
+  onSelect,
+}: {
+  entry: SearchEntry;
+  badges: Map<string, LineChip>;
+  onSelect: (place: Place) => void;
+}) {
+  const { place } = entry;
+  return (
+    <button className="search-result" onClick={() => onSelect(place)}>
+      <ResultIconCell>
+        <KindIcon entry={entry} badges={badges} />
+      </ResultIconCell>
+      <div className="search-result-text">
+        <div className="search-result-name">{place.name}</div>
+        {place.address && <div className="search-result-address">{place.address}</div>}
+      </div>
+    </button>
   );
 }

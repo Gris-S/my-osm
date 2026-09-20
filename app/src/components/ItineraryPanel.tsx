@@ -140,6 +140,29 @@ function JourneyDetail({ journey, stopoverNames }: { journey: TransitJourney; st
     stopovers.set(legIndex, stopoverNames[rank] ?? t("journey.stepFallback", { index: rank + 1 }));
   });
 
+  /**
+   * Les marches **entre deux transports** ne s'affichent pas (demande
+   * explicite, 20 septembre 2026) : à une correspondance, on veut lire tout de
+   * suite le transport suivant. Dans le réseau comme dans la rue — sortir d'une
+   * station pour prendre un bus est fléché sur place, et la carte montre où il
+   * passe —, la marche est donc repliée sur l'étape qui suit, qui en porte la
+   * durée (« Correspondance 4 min »).
+   *
+   * **Rien n'est retiré du calcul** : les horaires de chaque étape viennent du
+   * réseau et comprennent déjà ce temps de marche, et le total « à pied » du
+   * résumé le compte toujours. Une marche où le parcours marque une étape
+   * voulue reste affichée : on ne masque pas un endroit où l'on a demandé à
+   * passer.
+   */
+  const foldedWalks = new Set<number>();
+  const transferBefore = new Map<number, number>();
+  journey.legs.forEach((leg, index) => {
+    if (leg.kind !== "walk" || stopovers.has(index)) return;
+    if (journey.legs[index - 1]?.kind !== "transit" || journey.legs[index + 1]?.kind !== "transit") return;
+    foldedWalks.add(index);
+    transferBefore.set(index + 1, leg.durationSeconds);
+  });
+
   /** La ligne d'escale à intercaler après une étape, s'il y en a une. */
   function stopoverRow(index: number, at: Date) {
     const name = stopovers.get(index);
@@ -162,7 +185,7 @@ function JourneyDetail({ journey, stopoverNames }: { journey: TransitJourney; st
   return (
     <ol className="journey-steps">
       {journey.legs.map((leg, index) =>
-        leg.kind === "walk" ? (
+        foldedWalks.has(index) ? null : leg.kind === "walk" ? (
           <Fragment key={index}>
             <li className="journey-step is-walk">
               <span className="journey-step-time">{formatClock(leg.departure)}</span>
@@ -193,6 +216,11 @@ function JourneyDetail({ journey, stopoverNames }: { journey: TransitJourney; st
                   <strong>{leg.from}</strong>
                   {tParts("journey.board")[1]}
                 </span>
+                {transferBefore.has(index) && (
+                  <span className="journey-step-transfer">
+                    {t("journey.transfer", { minutes: MINUTES(transferBefore.get(index) ?? 0) })}
+                  </span>
+                )}
                 <span className="journey-step-line">
                   <LegChip leg={leg} />
                   {leg.direction && (
@@ -277,13 +305,25 @@ function JourneyCard({
           </span>
         </div>
 
+        {/* Les marches de correspondance ne sont pas non plus des pastilles :
+            le résumé dirait « 111 › 5 min à pied › A » là où le détail, lui,
+            enchaîne les deux lignes (voir `JourneyDetail`). Restent l'accès et
+            la sortie, qui sont bien des trajets à faire soi-même, et le total à
+            pied, affiché juste dessous. */}
         <div className="journey-legs">
-          {journey.legs.map((leg, index) => (
-            <span key={index} className="journey-leg-slot">
-              {index > 0 && <ChevronRight size={12} className="journey-arrow" />}
-              <LegChip leg={leg} />
-            </span>
-          ))}
+          {journey.legs
+            .filter(
+              (leg, index) =>
+                leg.kind !== "walk" ||
+                journey.legs[index - 1]?.kind !== "transit" ||
+                journey.legs[index + 1]?.kind !== "transit"
+            )
+            .map((leg, index) => (
+              <span key={index} className="journey-leg-slot">
+                {index > 0 && <ChevronRight size={12} className="journey-arrow" />}
+                <LegChip leg={leg} />
+              </span>
+            ))}
         </div>
 
         <div className="journey-foot">

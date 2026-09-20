@@ -536,7 +536,7 @@ export default function App() {
     <div
       className={`app-shell ${editingStop !== null ? "is-picking" : ""} ${
         guiding && !choosingRoute ? "is-navigating" : ""
-      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${run.active ? "is-running" : ""}`}
+      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${searching ? "is-searching" : ""} ${run.active ? "is-running" : ""}`}
     >
       {/* **Pendant la navigation voiture, aucun calque** (demande explicite) :
           ni POI (commerces, parkings, transports…), ni signets, ni relief,
@@ -673,6 +673,7 @@ export default function App() {
               onRouteTo={handleRouteTo}
               onSearchBrand={runBrandSearch}
               onOpenChange={setSearching}
+              near={weatherCoords}
               // Vider la barre quitte la recherche d'enseigne et son bandeau.
               onClear={closeBrand}
             >

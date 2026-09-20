@@ -137,6 +137,8 @@ export const en: Dict = {
   "apikeys.group.mapillary.hint": "Street photos and their coverage on the map.",
   "apikeys.group.mapillary.link": "Create a free token at mapillary.com",
   "apikeys.group.mapillary.apis": "Register an application, then copy its “Client Token” (MLY|…).",
+  "apikeys.group.mapillary.warning":
+    "Mapillary is owned by Meta (Facebook). Without a token nothing is sent to it; with one, the map areas you browse reach it, along with the device’s IP address.",
   "apikeys.mapillary": "Token",
 
   "apikeys.group.meteofrance": "Météo-France",
@@ -152,6 +154,9 @@ export const en: Dict = {
   "search.brandHint": "Brand, within the visible area",
   "search.loading": "Searching…",
   "search.recentBrand": "Brand",
+  "search.recent": "Recent search",
+  "settings.stationsFirst": "Stations first in search",
+  "settings.stationsFirst.hint": "A station or stop whose name looks like what you type comes first in the results.",
   "search.web": "Search the web for “{query}”",
   "search.webHint": "DuckDuckGo, inside the app",
   "search.pastedPoint": "Pasted location",
@@ -437,6 +442,7 @@ export const en: Dict = {
   "journey.walk": "Walk {minutes} min",
   "journey.walkTo": "Walk {minutes} min to {to}",
   "journey.board": "Board at {name}",
+  "journey.transfer": "Transfer {minutes} min",
   "journey.alight": "Get off at {name}",
   "journey.stopover": "Stop: {name}",
   "journey.stepFallback": "Stop {index}",
