@@ -414,22 +414,20 @@
    (jaune #ffdd00, texte noir), fixes dans les deux thèmes — c'est une marque,
    on la reconnaît à sa couleur. Il n'occupe pas toute la largeur : c'est une
    proposition, pas une entrée de menu de plus. */
+/* La pastille prend la largeur des entrées du menu — celle de la plus large,
+   « Sources et licences » — et se cale à gauche comme elles : son icône tombe
+   sur la colonne des autres icônes. Elle ne décide donc pas de la largeur du
+   menu, elle la suit. */
 .app-menu-coffee {
-  /* À la largeur de son texte, et centré : une pastille pleine largeur pesait
-     autant qu'une entrée du menu, alors que c'est une proposition qu'on peut
-     ignorer. */
-  /* `flex` et non `inline-flex` : le panneau du menu est un bloc, et une
-     pastille en ligne s'y collait à gauche au lieu de se centrer. */
   display: flex;
-  width: fit-content;
   align-items: center;
-  gap: 6px;
-  margin: 8px auto 2px;
-  padding: 7px 14px;
+  gap: 10px;
+  margin: 8px 0 2px;
+  padding: 9px 12px;
   border-radius: var(--radius-pill);
   background: #ffdd00;
   color: #000;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -438,7 +436,15 @@
   background: #f5d400;
 }
 
+/* Les crédits **ne décident plus de la largeur du menu**. Le panneau se taille
+   sur son contenu (`width: max-content`), et ce pavé de texte l'étirait jusqu'à
+   la limite de l'écran alors que les entrées, elles, tiennent en bien moins
+   large. `width: 0` annule sa contribution à ce calcul ; `min-width: 100%` le
+   ramène ensuite à la largeur du panneau, où il se replie sur autant de lignes
+   qu'il lui faut. */
 .app-menu-credits {
+  width: 0;
+  min-width: 100%;
   margin-top: 4px;
   padding: 10px 14px 2px;
   border-top: 1px solid var(--hairline);
