@@ -1,0 +1,7 @@
+The main menu now carries a "Buy me a coffee" link. It is a plain link, not the
+button the service ships: that one loads a script from their CDN on every start,
+which would hand them your IP address without asking, would not work offline and
+would cost the app another anti-feature. Nothing leaves until you tap it.
+
+The menu panel is narrower too. The credits no longer stretch it to the edge of
+the screen, and the support link lines up with the other entries.
