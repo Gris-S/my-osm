@@ -27,10 +27,11 @@
 # 0.1.0-alpha.30, `fdroid scanner` passe aussi sur l'APK de la release.
 #
 # 0.1.0-alpha.54 et 0.1.0-alpha.58 ne changent rien à la chaîne de construction
-# décrite ici, et n'ont **pas** été repassées au `fdroid build` local : la
-# reproductibilité de la release vaut donc jusqu'à 0.1.0-alpha.30 comprise. Si
-# elle ne se reproduisait pas chez eux, F-Droid sauterait la version au lieu de
-# la signer lui-même.
+# décrite ici. 0.1.0-alpha.58 a été **reproduite sur leur CI** (pipeline
+# 2871285341 du fork, 22 septembre 2026) : « compared built binary to supplied
+# reference binary successfully », signataire 0537bb84… autorisé. Si une
+# version ne se reproduisait pas chez eux, F-Droid la sauterait au lieu de la
+# signer lui-même.
 #
 # `rewritemeta` retire ces commentaires : c'est **sa** sortie qui part dans
 # fdroiddata.
