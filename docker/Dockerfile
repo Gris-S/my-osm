@@ -32,16 +32,15 @@ COPY app/ ./
 # Elles se saisissent dans l'application (Menu › API) et restent dans le
 # navigateur de chacun. `MYOSM_DIAGNOSTICS=0` retire l'objet de diagnostic, et
 # fait casser la construction si une clé arrivait malgré tout.
-ENV OSM_TARGET=docker \
-    MYOSM_DIAGNOSTICS=0 \
-    VITE_TOMTOM_KEY= \
-    VITE_IDFM_API_KEY= \
-    VITE_MAPILLARY_TOKEN= \
-    VITE_METEOFRANCE_API_KEY=
-
+# Les clés sont vidées sur la ligne de commande et non par `ENV`, qui les
+# garderait dans la configuration de l'étape (et que l'analyse de Docker
+# signale, à juste titre, comme un endroit où ranger des secrets).
+#
 # Puis chaque fichier texte est compressé une fois pour toutes, à côté de
 # l'original : nginx sert le `.gz` sans recompresser (`gzip_static`).
-RUN npm run build \
+RUN OSM_TARGET=docker MYOSM_DIAGNOSTICS=0 \
+    VITE_TOMTOM_KEY= VITE_IDFM_API_KEY= VITE_MAPILLARY_TOKEN= VITE_METEOFRANCE_API_KEY= \
+    npm run build \
  && find dist -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \
       -o -name '*.svg' -o -name '*.json' -o -name '*.webmanifest' \) -size +1k \
       -exec gzip -9 -k -n {} +
