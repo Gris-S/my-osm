@@ -8,6 +8,9 @@
 services:
   my-osm:
     image: ghcr.io/gris-s/my-osm:test
+    # Retélécharge l'image à chaque déploiement : redéployer suffit à passer
+    # à la dernière version de test.
+    pull_policy: always
     container_name: my-osm
     restart: unless-stopped
     ports:
