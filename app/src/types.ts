@@ -25,6 +25,31 @@ export interface Place {
   rank?: number;
   phone?: string;
   website?: string;
+  /**
+   * Références Wikipédia du lieu, tirées de ses balises OSM : `wikidata`
+   * (« Q19675 ») et `wikipedia` (« fr:Musée du Louvre »). La fiche en tire le
+   * résumé et la photo (`services/wikipedia.ts`).
+   */
+  wikidata?: string;
+  wikipedia?: string;
+  /** Une ville ou un quartier touché sur la carte : son contour et ses chiffres. */
+  area?: AreaInfo;
+}
+
+/** Ce qu'on sait d'une ville ou d'un quartier (`services/areaInfo.ts`). */
+export interface AreaInfo {
+  /** Nature de l'étiquette touchée : city, town, village, suburb, quarter… */
+  kind: string;
+  population?: number;
+  populationYear?: string;
+  /** Surface en km², calculée sur le contour quand il est connu. */
+  areaKm2?: number;
+  county?: string;
+  state?: string;
+  country?: string;
+  postcode?: string;
+  /** Le contour, quand OSM en a un qui correspond au nom touché. */
+  outline?: GeoJSON.Polygon | GeoJSON.MultiPolygon;
 }
 
 /**

@@ -87,6 +87,12 @@
   margin-top: 4px;
 }
 
+/* Une case qui dépend de celle du dessus (les photos de Wikipédia) : en
+   retrait, pour qu'on lise la dépendance. */
+.download-check.is-nested {
+  margin-left: 26px;
+}
+
 .download-zoom {
   display: flex;
   flex-direction: column;

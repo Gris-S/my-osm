@@ -45,6 +45,8 @@ export function newRegion(params: {
   reliefMaxZoom: number | null;
   addresses: boolean;
   addressDepts: string[];
+  wiki?: boolean;
+  wikiPhotos?: boolean;
 }): OfflineRegion {
   return {
     id: `zone-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
@@ -186,6 +188,8 @@ export async function getOfflineDetails(id: string): Promise<PlaceDetails | null
       openingHours: stored.openingHours,
       phone: stored.phone,
       website: stored.website,
+      wikidata: stored.wikidata,
+      wikipedia: stored.wikipedia,
     };
   } catch {
     return null;

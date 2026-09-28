@@ -33,8 +33,9 @@ import type { SavedPlace as StoredPlace } from "../hooks/useBookmarks";
 // dossier, et se retire avec lui.
 import type { NavChoice, NavMapState, CarTraffic } from "../navigation";
 import { followConnectivity, installOfflineTiles, offlineTransformRequest } from "../services/offline/nativeTiles";
-import { POI_SOURCE_ID, POI_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween } from "./map/layers";
+import { POI_SOURCE_ID, POI_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
 import { subscribeCompass } from "../navigation/compass";
+import { useLatest } from "../hooks/useLatest";
 import { STOP_COLOR, pinElement, waypointPinElement, streetViewElement, dotElement, choiceBubbleElement, incidentElement, navArrowElement } from "./map/markers";
 import { NAV_GLIDE_MIN_MS, NAV_GLIDE_MAX_MS, NAV_GLIDE_JUMP_METERS, NAV_FRAME_MS, NAV_FRAME_SLACK_MS, NAV_PIXEL_RATIO_SHARE, NAV_CAMERA_EASE_MS, type NavCameraPose, type NavGlide, idleGlide, shortestTurn, lerp, easeInOut, samePose } from "./map/navGlide";
 
@@ -96,6 +97,14 @@ interface MapViewProps {
   onSelectPlace: (place: Place) => void;
   onPoiStatusChange: (status: PoiStatus) => void;
   onBackgroundClick: (lonlat: LonLat) => void;
+  /**
+   * Un clic sur le nom d'une ville ou d'un quartier (étiquette `place` des
+   * tuiles). `osmNode` est l'identifiant du nœud OSM ; la position est celle
+   * de l'étiquette, pas du clic.
+   */
+  onSelectArea?: (target: { osmNode: number; kind: string; name: string; lon: number; lat: number }) => void;
+  /** Le contour à surligner, celui de la ville ou du quartier ouvert. */
+  areaOutline?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
   /**
    * Largeur couverte à gauche par la colonne du grand écran (`useWideLayout`),
    * 0 ailleurs. La carte s'en écarte : un lieu choisi se centre dans ce qui
@@ -160,6 +169,8 @@ export const MapView = memo(function MapView({
   onSelectPlace,
   onPoiStatusChange,
   onBackgroundClick,
+  onSelectArea,
+  areaOutline = null,
   insetLeft = 0,
   savedPlaces,
   onSelectSaved,
@@ -185,6 +196,7 @@ export const MapView = memo(function MapView({
   // Le cap de la boussole, et l'angle continu où le cône a été tourné.
   const compassRef = useRef<number | null>(null);
   const coneAngleRef = useRef<number | null>(null);
+  const onSelectAreaRef = useLatest(onSelectArea);
   // Le décalage de la colonne du grand écran, lu par le vol vers un lieu.
   const insetLeftRef = useRef(insetLeft);
   insetLeftRef.current = insetLeft;
@@ -629,6 +641,29 @@ export const MapView = memo(function MapView({
           }
         } catch {
           // La couche peut disparaître pendant un changement de style.
+        }
+      }
+      // Le nom d'une ville ou d'un quartier : sa fiche, son contour. Pas pendant
+      // une question du panneau d'itinéraire : on y désigne un endroit.
+      if (!pickingRef.current && onSelectAreaRef.current) {
+        try {
+          const label = map
+            .queryRenderedFeatures(e.point, { layers: areaLabelLayers(map) })
+            .find((f) => AREA_LABEL_CLASSES.has(String(f.properties?.class)) && typeof f.id === "number" && f.id % 10 === 1);
+          if (label && label.geometry.type === "Point") {
+            const [lon, lat] = label.geometry.coordinates;
+            onSelectAreaRef.current({
+              // Identifiant de tuile = identifiant OSM × 10 + 1 pour un nœud.
+              osmNode: Math.floor(Number(label.id) / 10),
+              kind: String(label.properties.class),
+              name: String(label.properties.name ?? ""),
+              lon,
+              lat,
+            });
+            return;
+          }
+        } catch {
+          // Le style peut changer sous le clic.
         }
       }
       onBackgroundClickRef.current({ lon: e.lngLat.lng, lat: e.lngLat.lat });
@@ -1503,6 +1538,37 @@ export const MapView = memo(function MapView({
       padding: { ...map.getPadding(), left: insetLeftRef.current },
     });
   }, [flyTo]);
+
+  // Le contour de la ville ou du quartier ouvert, et le cadrage sur lui. Reposé
+  // après chaque changement de style, qui retire toutes nos sources.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => applyAreaOutline(map, areaOutline);
+    if (map.isStyleLoaded()) apply();
+    map.on("style.load", apply);
+    if (areaOutline) {
+      let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+      const rings = areaOutline.type === "Polygon" ? [areaOutline.coordinates] : areaOutline.coordinates;
+      for (const polygon of rings) {
+        for (const [lon, lat] of polygon[0]) {
+          west = Math.min(west, lon); east = Math.max(east, lon);
+          south = Math.min(south, lat); north = Math.max(north, lat);
+        }
+      }
+      map.fitBounds([[west, south], [east, north]], {
+        // La marge de la colonne du grand écran est déjà celle de la carte
+        // (`insetLeft`) : `fitBounds` s'y ajoute.
+        padding: { top: 90, bottom: 90, left: 60, right: 80 },
+        maxZoom: 15,
+        duration: 700,
+      });
+    }
+    return () => {
+      map.off("style.load", apply);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaOutline]);
 
   // Le décalage de la colonne du grand écran. Les autres marges de la caméra
   // (celle du guidage, en haut) sont gardées : seule la gauche change.

@@ -1,3 +1,4 @@
+import { nominatimTurn } from "../nominatim";
 import { CONFIG } from "../../config";
 import { areaBbox, areaContains, type Area, type AreaGeometry } from "./area";
 import type { Bbox } from "./tiles";
@@ -91,9 +92,6 @@ interface NominatimReverse {
   geojson?: { type: string; coordinates: unknown };
 }
 
-// Le service public de Nominatim n'accepte **qu'une requête par seconde** :
-// des touchers rapprochés attendent leur tour plutôt que de se faire bannir.
-let lastCallAt = 0;
 
 /**
  * Le contour sous le doigt, ou `null` s'il n'y a rien là (la mer). Lève en cas
@@ -106,10 +104,8 @@ export async function lookupBoundary(
   language: string,
   signal: AbortSignal,
 ): Promise<Boundary | null> {
-  const wait = lastCallAt + 1000 - Date.now();
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  if (signal.aborted) throw new DOMException("Annulé", "AbortError");
-  lastCallAt = Date.now();
+  // Une requête par seconde, partagée avec la fiche des villes (`nominatim.ts`).
+  await nominatimTurn(signal);
 
   const url = new URL(CONFIG.NOMINATIM_REVERSE_URL);
   for (const [key, value] of Object.entries({

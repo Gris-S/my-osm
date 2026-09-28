@@ -1991,6 +1991,50 @@ prise dépasse largement la barre dessinée (36 × 5 px ne se visent pas au doig
 et porte `touch-action: none`, sans quoi la WebView prend le geste pour un
 défilement. Un `pointercancel` ne ferme jamais.
 
+### Villes, quartiers et Wikipédia (28 septembre 2026)
+
+**Toucher le nom d'une ville ou d'un quartier ouvre sa fiche** (demande
+explicite) : contour surligné, chiffres, résumé Wikipédia, itinéraire.
+
+- **L'étiquette porte l'identifiant OSM du lieu** : les tuiles encodent
+  `id × 10 + 1` pour un nœud (`MapView`, couches `source-layer: place`, classes
+  `AREA_LABEL_CLASSES`). `services/areaInfo.ts` en tire deux questions à
+  Nominatim, sur le tour commun d'une par seconde (`services/nominatim.ts`,
+  partagé avec le choix des zones hors ligne) : `/lookup` du nœud (population
+  et son année, Wikidata, département, région) et `/reverse` au point de
+  l'étiquette pour le contour.
+- **Un contour n'est retenu que s'il désigne le lieu** (même Wikidata, ou nom
+  qui se recoupe, `sameArea`). Mesuré : au point de « Le Marais », Nominatim
+  rend « Quartier des Archives ». Pas de contour vaut mieux qu'un faux.
+- La surface est calculée sur le contour (`areaKm2`) : Saint-Maur-des-Fossés
+  11,2 km² pour 11,25 officiels. Le tout est gardé trente jours sur l'appareil.
+- **Wikipédia, sur le modèle d'OsmAnd** (`services/wikipedia.ts`,
+  `components/PlaceWiki.tsx`) : tout lieu qui porte `wikidata` ou `wikipedia`
+  (ville, quartier, musée, monument, gare) montre résumé et photo. Le titre se
+  cherche dans la langue de l'interface par Wikidata (« Louvre » en anglais,
+  « Musée du Louvre » en français). **Un identifiant Wikidata inconnu fait
+  refuser tout le lot** (`no-such-entity`) : il est retiré et le lot redemandé
+  (testé). Ordre de lecture : zone téléchargée, cache de trente jours, réseau.
+  Les photos vues sont gardées un mois par le Service Worker.
+- **Dans les zones hors ligne**, deux cases : « Wikipédia » (résumés, ~1 Ko par
+  lieu) et « Photos Wikipédia » (vignettes 320 px, 23 à 31 Ko mesurés). La
+  passe vient après les lieux, dont elle reprend les références (seulement
+  `tourism`, `historic` et `place` : le Wikidata d'une chaîne est celui de la
+  marque). Magasin `wiki` de la base hors ligne (version 3). Reprise mensuelle
+  sans toucher aux tuiles (`refreshStaleWiki`, lancé par `useFreshness`). Le
+  nombre de photos n'est pas compté d'avance : Overpass saturé rendait le
+  comptage peu fiable (504 mesuré), l'interface donne le poids par photo.
+- **Dans la fiche, deux blocs seulement rétrécissent** quand la place manque :
+  les passages et le résumé, celui-ci d'abord (`flex-shrink: 1000`, trois lignes
+  au moins). Et **deux blocs frères ne portent jamais la même `key`** : la clé
+  du résumé copiait celle des passages, et React les dupliquait à chaque rendu.
+
+**Un clic dans le vide pose le repère et ouvre la fiche tout de suite**, le nom
+suit (`handleBackgroundClick`). Ils attendaient le géocodage inverse : Photon a
+mis 3,9 s (mesuré). `reverseGeocode` lance la BAN si Photon n'a rien dit en
+600 ms (`REVERSE_GEOCODE_HEDGE_MS`), la première réponse utile gagne, abandon à
+6 s (testé, `tests/reverseGeocode.test.ts`).
+
 ### Lieux enregistrés (`hooks/useBookmarks.ts`)
 
 Même patron que les autres réglages persistés : clés `osm-local:bookmarks` et

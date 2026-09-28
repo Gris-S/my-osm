@@ -238,29 +238,69 @@ export async function searchPlaces(query: string, near = CONFIG.DEFAULT_CENTER, 
 }
 
 /** Géocodage inverse : coordonnées -> adresse la plus proche. */
+/**
+ * Le lieu le plus proche d'un point, pour nommer un clic sur la carte.
+ *
+ * **Photon d'abord, la BAN en relais — pas en série.** L'instance publique de
+ * Photon répond d'ordinaire en une centaine de millisecondes, mais pas
+ * toujours : mesuré le 28 septembre 2026, 3,9 s pour un clic, pendant
+ * lesquelles rien ne s'affichait. La BAN est donc lancée à son tour si Photon
+ * n'a rien dit au bout de `REVERSE_GEOCODE_HEDGE_MS` (ou tout de suite s'il
+ * échoue), et la première réponse utile l'emporte. Photon reste préféré quand
+ * il répond à temps : il connaît les commerces, la BAN seulement les adresses.
+ * Au-delà de `REVERSE_GEOCODE_TIMEOUT_MS`, on renonce : `null`.
+ */
 export async function reverseGeocode(lon: number, lat: number): Promise<Place | null> {
-  const url = new URL(CONFIG.PHOTON_REVERSE_URL);
-  url.searchParams.set("lon", String(lon));
-  url.searchParams.set("lat", String(lat));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CONFIG.REVERSE_GEOCODE_TIMEOUT_MS);
+  const { signal } = controller;
 
-  try {
-    const res = await fetch(url.toString());
+  const photon = (async () => {
+    const url = new URL(CONFIG.PHOTON_REVERSE_URL);
+    url.searchParams.set("lon", String(lon));
+    url.searchParams.set("lat", String(lat));
+    const res = await fetch(url.toString(), { signal });
     if (!res.ok) throw new Error(`Géocodage inverse échoué (${res.status})`);
     const data: PhotonResponse = await res.json();
     return data.features[0] ? toPlace(data.features[0]) : null;
-  } catch {
-    // Même repli que pour la recherche : l'adresse la plus proche vaut mieux
-    // que « Position sélectionnée ».
-    try {
-      const banUrl = new URL(CONFIG.BAN_REVERSE_URL);
-      banUrl.searchParams.set("lon", String(lon));
-      banUrl.searchParams.set("lat", String(lat));
-      const res = await fetch(banUrl);
-      if (!res.ok) return null;
-      const data = (await res.json()) as { features?: BanFeature[] };
-      return data.features?.[0] ? banToPlace(data.features[0]) : null;
-    } catch {
-      return null;
-    }
+  })();
+
+  const ban = async () => {
+    const url = new URL(CONFIG.BAN_REVERSE_URL);
+    url.searchParams.set("lon", String(lon));
+    url.searchParams.set("lat", String(lat));
+    const res = await fetch(url, { signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { features?: BanFeature[] };
+    return data.features?.[0] ? banToPlace(data.features[0]) : null;
+  };
+
+  try {
+    return await new Promise<Place | null>((resolve) => {
+      let pending = 1;
+      let banStarted = false;
+      const settle = (place: Place | null) => {
+        if (place) {
+          resolve(place);
+          return;
+        }
+        pending -= 1;
+        if (!banStarted) startBan();
+        else if (pending === 0) resolve(null);
+      };
+      const startBan = () => {
+        if (banStarted) return;
+        banStarted = true;
+        pending += 1;
+        ban().then(settle, () => settle(null));
+      };
+      photon.then(settle, () => settle(null));
+      setTimeout(startBan, CONFIG.REVERSE_GEOCODE_HEDGE_MS);
+      signal.addEventListener("abort", () => resolve(null));
+    });
+  } finally {
+    clearTimeout(timer);
+    // La réponse est donnée : ce qui reste en vol ne sert plus.
+    controller.abort();
   }
 }

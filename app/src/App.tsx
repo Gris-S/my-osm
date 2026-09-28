@@ -34,7 +34,9 @@ import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarEta,
 import { CONFIG } from "./config";
 import type { LonLat, Place, RouteStop } from "./types";
 import "./App.css";
-import { t } from "./i18n";
+import { currentLang, t } from "./i18n";
+import { lookupArea } from "./services/areaInfo";
+import { getOfflineDetails } from "./services/offline";
 import { useHomeWork } from "./hooks/useHomeWork";
 import { useFreshnessWatch } from "./hooks/useFreshness";
 import { useStreetPhoto } from "./hooks/useStreetPhoto";
@@ -289,15 +291,63 @@ export default function App() {
   }
 
   async function handleBackgroundClick(lonlat: LonLat) {
-    const place = await placeAtPoint(lonlat);
     // Une question ouverte attend une réponse : le clic la donne, au lieu
-    // d'ouvrir une fiche.
-    if (answerStopPicker(place)) return;
+    // d'ouvrir une fiche. Elle attend le nom de l'endroit, qui sera écrit dans
+    // le champ.
+    if (editingStop !== null) {
+      answerStopPicker(await placeAtPoint(lonlat));
+      return;
+    }
     // Sur le panneau des transports, la carte ne sert qu'à regarder le trajet :
     // une fiche s'y ouvrait par-dessus le détail (constaté sur appareil).
     if (transitPanelOpenRef.current) return;
-    setSelectedPlace(place);
+    // Le repère et la fiche **tout de suite**, le nom quand il arrive. Ils
+    // attendaient le géocodage inverse, qui a pris jusqu'à 3,9 s (mesuré sur
+    // la version Docker) : on cliquait, et rien ne se passait.
+    const pin: Place = { id: `pin/${lonlat.lon},${lonlat.lat}`, name: t("place.picked"), group: null, ...lonlat };
+    setSelectedPlace(pin);
+    const named = await placeAtPoint(lonlat);
+    // Seulement si la fiche montre encore ce point : on a pu fermer, ou
+    // cliquer ailleurs, entre-temps.
+    setSelectedPlace((current) => (current?.id === pin.id ? named : current));
   }
+
+  /**
+   * Le nom d'une ville ou d'un quartier touché sur la carte : la fiche s'ouvre
+   * tout de suite sous ce nom, puis se complète — chiffres, contour surligné,
+   * résumé Wikipédia (`services/areaInfo.ts`). Hors ligne, Nominatim ne répond
+   * pas : les références Wikipédia sont alors reprises de la zone téléchargée,
+   * qui a gardé le nœud du lieu.
+   */
+  const areaLookupRef = useRef<AbortController | null>(null);
+  function handleSelectArea(target: { osmNode: number; kind: string; name: string; lon: number; lat: number }) {
+    if (transitPanelOpenRef.current) return;
+    closeBrand();
+    areaLookupRef.current?.abort();
+    const controller = new AbortController();
+    areaLookupRef.current = controller;
+    const id = `area/${target.osmNode}`;
+    const base: Place = { id, name: target.name, group: null, lon: target.lon, lat: target.lat, area: { kind: target.kind } };
+    setSelectedPlace(base);
+    const stillOpen = (current: Place | null) => current?.id === id;
+    lookupArea(target, currentLang(), controller.signal)
+      .then((found) => {
+        setSelectedPlace((current) =>
+          stillOpen(current) ? { ...base, area: found.area, wikidata: found.wikidata, wikipedia: found.wikipedia } : current
+        );
+      })
+      .catch(async () => {
+        if (controller.signal.aborted) return;
+        const stored = await getOfflineDetails(`node/${target.osmNode}`);
+        if (!stored?.wikidata && !stored?.wikipedia) return;
+        setSelectedPlace((current) => (stillOpen(current) ? { ...base, wikidata: stored.wikidata, wikipedia: stored.wikipedia } : current));
+      });
+  }
+  const selectAreaRef = useLatest(handleSelectArea);
+  const handleMapSelectArea = useCallback(
+    (target: { osmNode: number; kind: string; name: string; lon: number; lat: number }) => selectAreaRef.current(target),
+    [selectAreaRef]
+  );
 
   /**
    * La même chose, mais **stable d'un rendu à l'autre** : `MapView` est
@@ -610,6 +660,8 @@ export default function App() {
         onMapError={setMapError}
         onAttributionChange={setCredits}
         onBackgroundClick={handleMapBackgroundClick}
+        onSelectArea={handleMapSelectArea}
+        areaOutline={sheetPlace && !searching ? (sheetPlace.area?.outline ?? null) : null}
         insetLeft={wide && ((sheetPlace && !searching && !transitPanelOpen) || (itineraryOpen && !guiding)) ? WIDE_COLUMN_PX : 0}
       />
 
@@ -880,5 +932,7 @@ function withDetails(place: Place, details: PlaceDetails | undefined): Place {
     openingHours: details.openingHours ?? place.openingHours,
     phone: details.phone ?? place.phone,
     website: details.website ?? place.website,
+    wikidata: details.wikidata ?? place.wikidata,
+    wikipedia: details.wikipedia ?? place.wikipedia,
   };
 }

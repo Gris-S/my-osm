@@ -21,7 +21,7 @@ import { matchesBrand, normalizeBrand } from "./geocode";
 // (`{ elements: [{ tags }] }`), d'où un seul décodage.
 // ---------------------------------------------------------------------------
 
-export type PlaceDetails = Pick<Place, "address" | "openingHours" | "phone" | "website">;
+export type PlaceDetails = Pick<Place, "address" | "openingHours" | "phone" | "website" | "wikidata" | "wikipedia">;
 
 interface OsmElement {
   type?: "node" | "way" | "relation";
@@ -220,6 +220,8 @@ function detailsFromTags(tags: Record<string, string>): PlaceDetails {
     openingHours: tags.opening_hours,
     phone: tags.phone ?? tags["contact:phone"],
     website: tags.website ?? tags["contact:website"],
+    wikidata: tags.wikidata,
+    wikipedia: tags.wikipedia,
   };
 }
 

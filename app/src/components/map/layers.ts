@@ -994,3 +994,55 @@ export function distanceBetween(a: { lon: number; lat: number }, b: { lon: numbe
   const lat = ((a.lat + b.lat) / 2) * toRad;
   return Math.hypot(dLon * Math.cos(lat), dLat) * 6371000;
 }
+
+// ---------------------------------------------------------------------------
+// Le contour d'une ville ou d'un quartier touché sur la carte
+// (`services/areaInfo.ts`) : un voile léger dedans, un trait franc au bord.
+// Posé sous les étiquettes, pour que les noms restent lisibles.
+// ---------------------------------------------------------------------------
+
+export const AREA_SOURCE_ID = "area-outline-source";
+const AREA_FILL_ID = "area-outline-fill";
+const AREA_LINE_ID = "area-outline-line";
+const AREA_COLOR = "#007AFF";
+
+/** Classes d'étiquette `place` dont un clic ouvre la fiche d'une ville ou d'un quartier. */
+export const AREA_LABEL_CLASSES = new Set(["city", "town", "village", "hamlet", "municipality", "suburb", "borough", "quarter", "neighbourhood"]);
+
+/** Les couches d'étiquettes de lieux habités du style en cours (ni pays, ni régions). */
+export function areaLabelLayers(map: MLMap): string[] {
+  return (map.getStyle()?.layers ?? [])
+    .filter((layer) => "source-layer" in layer && layer["source-layer"] === "place" && !/country|state|continent/.test(layer.id))
+    .map((layer) => layer.id);
+}
+
+/** Pose, remplace ou retire le contour. À rappeler après chaque changement de style. */
+export function applyAreaOutline(map: MLMap, outline: GeoJSON.Polygon | GeoJSON.MultiPolygon | null) {
+  const data: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: outline ? [{ type: "Feature", geometry: outline, properties: {} }] : [],
+  };
+  const source = map.getSource(AREA_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+  if (source) {
+    source.setData(data);
+    return;
+  }
+  if (!outline) return;
+  map.addSource(AREA_SOURCE_ID, { type: "geojson", data });
+  const beforeId = firstSymbolLayer(map);
+  map.addLayer({ id: AREA_FILL_ID, type: "fill", source: AREA_SOURCE_ID, paint: { "fill-color": AREA_COLOR, "fill-opacity": 0.08 } }, beforeId);
+  map.addLayer(
+    {
+      id: AREA_LINE_ID,
+      type: "line",
+      source: AREA_SOURCE_ID,
+      layout: { "line-join": "round" },
+      paint: { "line-color": AREA_COLOR, "line-width": 2.5, "line-opacity": 0.9 },
+    },
+    beforeId
+  );
+}
+
+function firstSymbolLayer(map: MLMap): string | undefined {
+  return map.getStyle()?.layers?.find((layer) => layer.type === "symbol")?.id;
+}

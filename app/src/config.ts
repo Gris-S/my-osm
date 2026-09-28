@@ -200,6 +200,14 @@ export const CONFIG = {
     // Mesuré, champs inutiles écartés : 258 octets par adresse (340 sans le
     // tri). Sert à annoncer un poids exact, le comptage `hits` étant gratuit.
     BYTES_PER_ADDRESS: 258,
+    // Wikipédia dans une zone : vignettes de 320 px, de 23 à 31 Ko en moyenne
+    // selon les lots (mesuré sur douze lieux de Paris, 11 à 41 Ko pièce) ; un
+    // résumé en texte, environ 1 Ko.
+    WIKI_PHOTO_BYTES: 28_000,
+    WIKI_TEXT_BYTES: 1_000,
+    WIKI_PHOTO_WIDTH: 320,
+    /** Les résumés d'une zone sont repris au-delà de ce délai. */
+    WIKI_REFRESH_MS: 30 * 24 * 60 * 60 * 1000,
 
   },
 
@@ -304,6 +312,21 @@ export const CONFIG = {
   // géocodeur d'OpenStreetMap ; son service public n'accepte **qu'une requête
   // par seconde**, et le module s'y tient.
   NOMINATIM_REVERSE_URL: "https://nominatim.openstreetmap.org/reverse",
+  // La fiche d'une ville ou d'un quartier touché sur la carte
+  // (`services/areaInfo.ts`) : le lieu par son identifiant OSM (population,
+  // Wikidata, département), vérifié le 28 septembre 2026.
+  NOMINATIM_LOOKUP_URL: "https://nominatim.openstreetmap.org/lookup",
+
+  // Wikipédia et Wikidata (`services/wikipedia.ts`), sans clé, origine croisée
+  // autorisée (vérifié le 28 septembre 2026). `{lang}` est la langue de
+  // l'interface. Le résumé d'une page (texte d'introduction et vignette), la
+  // même chose par lots de vingt pour les zones hors ligne, et le titre d'un
+  // objet Wikidata dans chaque langue.
+  WIKIPEDIA_SUMMARY_URL: "https://{lang}.wikipedia.org/api/rest_v1/page/summary/",
+  WIKIPEDIA_API_URL: "https://{lang}.wikipedia.org/w/api.php",
+  WIKIDATA_API_URL: "https://www.wikidata.org/w/api.php",
+  /** Un résumé gardé sur l'appareil est revérifié au-delà de ce délai. */
+  WIKIPEDIA_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
 
   // Repli quand Photon ne répond pas — ce qui arrive : l'instance publique est
   // tombée en cours de développement, et la recherche avec elle. La Base
@@ -313,6 +336,10 @@ export const CONFIG = {
   // remplacement.
   BAN_URL: "https://api-adresse.data.gouv.fr/search/",
   BAN_REVERSE_URL: "https://api-adresse.data.gouv.fr/reverse/",
+  // Nommer un clic sur la carte (`reverseGeocode`) : la BAN est lancée si
+  // Photon n'a pas répondu dans ce délai, et l'on renonce au-delà du second.
+  REVERSE_GEOCODE_HEDGE_MS: 600,
+  REVERSE_GEOCODE_TIMEOUT_MS: 6000,
 
   // Nombre maximal de lieux ramenés par une recherche d'enseigne (« tous les
   // Burger King »), en une seule requête Overpass. Au-delà, la carte serait de

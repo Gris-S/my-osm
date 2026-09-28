@@ -126,6 +126,10 @@ function DownloadPanelContent({ center, onClose }: Props) {
   // `null`, le chiffre affiché n'est qu'un ordre de grandeur — et il le dit.
   const [density, setDensity] = useState<number | null>(null);
   const [addresses, setAddresses] = useState(true);
+  // Wikipédia pris avec la zone, comme dans OsmAnd : les résumés, et à part
+  // les photos (demande explicite : deux cases, la seconde a son poids).
+  const [wiki, setWiki] = useState(true);
+  const [wikiPhotos, setWikiPhotos] = useState(false);
   // Nombre **exact** d'adresses sous la sélection. Le comptage WFS est
   // gratuit — une requête, une demi-seconde — donc contrairement aux tuiles,
   // il n'y a rien à estimer ici.
@@ -329,6 +333,8 @@ function DownloadPanelContent({ center, onClose }: Props) {
       reliefMaxZoom: relief ? reliefZoom : null,
       addresses: addresses && detail !== "map" && !!addrCount,
       addressDepts: [],
+      wiki: wiki && detail !== "map",
+      wikiPhotos: wiki && wikiPhotos && detail !== "map",
     });
     setName("");
     setSelection(null);
@@ -431,6 +437,23 @@ function DownloadPanelContent({ center, onClose }: Props) {
                             count: addrCount.toLocaleString(locale),
                             size: formatBytes(estimate.addr),
                           })}
+                  </span>
+                )}
+
+                <label className="download-check">
+                  <input type="checkbox" checked={wiki} onChange={(e) => setWiki(e.target.checked)} />
+                  {t("download.wiki")}
+                </label>
+                {wiki && <span className="settings-hint">{t("download.wikiHint")}</span>}
+                {wiki && (
+                  <label className="download-check is-nested">
+                    <input type="checkbox" checked={wikiPhotos} onChange={(e) => setWikiPhotos(e.target.checked)} />
+                    {t("download.wikiPhotos")}
+                  </label>
+                )}
+                {wiki && wikiPhotos && (
+                  <span className="settings-hint">
+                    {t("download.wikiPhotosHint", { size: formatBytes(CONFIG.OFFLINE.WIKI_PHOTO_BYTES) })}
                   </span>
                 )}
               </>
@@ -649,6 +672,7 @@ function DownloadPanelContent({ center, onClose }: Props) {
                         {formatBytes(region.bytes)}
                         {region.placesCount > 0 && ` · ${tp("download.places", region.placesCount)}`}
                         {region.satelliteMaxZoom !== null && ` · ${t("download.metaSatellite")}`}
+                        {region.wiki && ` · ${t("download.metaWiki")}`}
                         {region.reliefMaxZoom !== null && ` · ${t("download.metaRelief")}`}
                         {stale && ` · ${t("download.metaStale")}`}
                       </span>

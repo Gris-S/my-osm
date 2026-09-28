@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { checkFreshness, isCheckDue, listRegions, type Freshness } from "../services/offline";
+import { refreshStaleWiki } from "../services/offline/wiki";
 
 // ---------------------------------------------------------------------------
 // La vérification de fraîcheur des zones hors ligne, hors de la fenêtre.
@@ -58,6 +59,9 @@ export function runFreshnessCheck(): Promise<Freshness> {
 }
 
 async function checkIfDue() {
+  // Les résumés Wikipédia des zones ont leur propre échéance, mensuelle : ils
+  // se reprennent sans attendre la vérification des tuiles.
+  void refreshStaleWiki();
   if (!navigator.onLine || inFlight) return;
   try {
     if (!isCheckDue(await listRegions())) return;

@@ -8,6 +8,8 @@ import { canUseSystemShare, shareViaSystem } from "../utils/share";
 import { computeOpenState, hoursComment, weeklyHours } from "../utils/openingHours";
 import { isTransitStop } from "../services/idfm";
 import { TransitDepartures } from "./TransitDepartures";
+import { AreaFacts, WikiCard } from "./PlaceWiki";
+import { areaKindLabel } from "../services/areaInfo";
 import { useI18n } from "../i18n";
 import { useBackClose } from "../hooks/useBackClose";
 
@@ -393,8 +395,11 @@ export function PlaceSheet({
 
       <div className="sheet-header">
         <h2 className="sheet-title">{place.name}</h2>
-        <div className="sheet-subtitle">{groupLabel}</div>
+        <div className="sheet-subtitle">{place.area ? t(areaKindLabel(place.area.kind)) : groupLabel}</div>
       </div>
+
+      {/* Une ville ou un quartier touché sur la carte : ses chiffres. */}
+      {place.area && <AreaFacts area={place.area} />}
 
       {/* Dans une gare ou à un arrêt, l'horaire qui compte est celui du
           prochain passage : il passe donc avant tout le reste. */}
@@ -434,6 +439,12 @@ export function PlaceSheet({
         </button>
         <ShareAction place={place} />
       </div>
+
+      {/* Le résumé Wikipédia, pour tout lieu qui a un article : ville, quartier,
+          musée, monument. Rien s'il n'en a pas. */}
+      {/* Une clé à part : la même que celle des passages, au même niveau,
+          faisait dupliquer ces derniers à chaque rendu (constaté). */}
+      <WikiCard key={`wiki:${place.id}`} place={place} />
 
       <div className="sheet-info">
         {place.phone && (

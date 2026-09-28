@@ -89,3 +89,113 @@
   font-size: 14px;
   color: var(--text-secondary);
 }
+
+/* Dans la colonne de la fiche, **deux blocs seulement** rétrécissent et
+   défilent sur eux-mêmes quand la place manque : la liste des passages et le
+   résumé Wikipédia. Tout le reste garde sa hauteur — sans cette règle, l'encart
+   des horaires s'écrasait à mi-hauteur sous un long résumé (constaté). */
+.sheet > * {
+  flex-shrink: 0;
+}
+
+.sheet > .departures {
+  flex-shrink: 1;
+  min-height: 0;
+}
+
+/* Le résumé cède la place **avant** les passages — sur une gare, le prochain
+   train compte plus que l'histoire du bâtiment —, sans descendre sous trois
+   lignes, où il défile. */
+.sheet > .wiki-card {
+  flex-shrink: 1000;
+  min-height: 96px;
+}
+
+/* Chiffres d'une ville ou d'un quartier (`PlaceWiki.tsx`) : une grille à deux
+   colonnes, libellé discret à gauche, valeur à droite. */
+.area-facts {
+  margin: 10px 0 4px;
+  display: grid;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.area-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.area-fact dt {
+  color: var(--text-secondary);
+}
+
+.area-fact dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Le résumé Wikipédia : la photo, trois ou quatre lignes, le lien. Il défile
+   sur lui-même plutôt que de pousser la fiche hors de l'écran — même règle que
+   la liste des passages (`.departures`). */
+.wiki-card {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.wiki-photo {
+  display: block;
+  width: 100%;
+  max-height: 170px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: var(--hairline);
+}
+
+.wiki-extract {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wiki-link {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.wiki-lang {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--hairline);
+  color: var(--text-secondary);
+}
+
+.wiki-credit {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}

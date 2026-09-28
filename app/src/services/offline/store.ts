@@ -75,6 +75,16 @@ export interface OfflineRegion {
   tilesTotal: number;
   placesCount: number;
   addressCount: number;
+  /**
+   * Résumés Wikipédia des lieux de la zone (villes, quartiers, musées,
+   * monuments), et leurs photos — deux cases séparées. Absents des zones
+   * d'avant.
+   */
+  wiki?: boolean;
+  wikiPhotos?: boolean;
+  wikiCount?: number;
+  /** Dernière prise des résumés : ils sont repris au-delà d'un mois. */
+  wikiAt?: number;
   status: "pending" | "downloading" | "ready" | "paused" | "error";
   /**
    * Qui a interrompu. Distinction indispensable : seules les pauses décidées
@@ -121,10 +131,28 @@ export interface StoredPlaceDetails {
   openingHours?: string;
   phone?: string;
   website?: string;
+  /** Références Wikipédia : la fiche en tire le résumé, pris avec la zone. */
+  wikidata?: string;
+  wikipedia?: string;
+}
+
+/**
+ * Le résumé Wikipédia d'un lieu, pris avec une zone (`offline/wiki.ts`). La
+ * clé est celle de `wikiKey` : langue et référence. `summary` vaut `null`
+ * pour un lieu dont l'article n'existe pas dans cette langue — ce qui se
+ * garde aussi, pour ne pas le redemander.
+ */
+export interface StoredWiki {
+  key: string;
+  region: string;
+  summary: { title: string; extract: string; thumbnail?: string; url: string; lang: string } | null;
+  /** La vignette elle-même, quand la zone a pris les photos. */
+  photo?: Blob;
 }
 
 const DB_NAME = "osm-local-hors-ligne";
-const DB_VERSION = 2;
+// 3 : magasin `wiki` (résumés Wikipédia des zones), 28 septembre 2026.
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -145,6 +173,10 @@ function openDb(): Promise<IDBDatabase> {
         // `multiEntry` indexe chaque mot séparément : c'est lui qui rend la
         // recherche par préfixe possible sans parcourir tout le magasin.
         s.createIndex("terms", "terms", { multiEntry: true });
+      }
+      if (!db.objectStoreNames.contains("wiki")) {
+        const s = db.createObjectStore("wiki", { keyPath: "key" });
+        s.createIndex("region", "region");
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -235,6 +267,41 @@ export async function getStoredPlace(id: string): Promise<StoredPlaceDetails | u
   return run(s, s.get(id) as IDBRequest<StoredPlaceDetails | undefined>);
 }
 
+export async function putWiki(items: StoredWiki[]): Promise<void> {
+  if (!items.length) return;
+  const t = await tx(["wiki"], "readwrite");
+  const s = t.objectStore("wiki");
+  for (const item of items) s.put(item);
+  await new Promise<void>((res, rej) => {
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+
+export async function getWiki(key: string): Promise<StoredWiki | undefined> {
+  const t = await tx(["wiki"], "readonly");
+  const s = t.objectStore("wiki");
+  return run(s, s.get(key) as IDBRequest<StoredWiki | undefined>);
+}
+
+/** Les références Wikipédia des lieux d'une zone, pour en reprendre les résumés. */
+export async function wikiRefsOfRegion(regionId: string): Promise<{ wikidata?: string; wikipedia?: string }[]> {
+  const t = await tx(["places"], "readonly");
+  const index = t.objectStore("places").index("region");
+  return new Promise((resolve, reject) => {
+    const refs: { wikidata?: string; wikipedia?: string }[] = [];
+    const req = index.openCursor(IDBKeyRange.only(regionId));
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) return resolve(refs);
+      const place = cursor.value as StoredPlaceDetails;
+      if (place.wikidata || place.wikipedia) refs.push({ wikidata: place.wikidata, wikipedia: place.wikipedia });
+      cursor.continue();
+    };
+  });
+}
+
 export async function putSearchEntries(items: SearchEntry[]): Promise<void> {
   if (!items.length) return;
   const t = await tx(["search"], "readwrite");
@@ -283,7 +350,7 @@ export async function searchEntries(words: string[], limit: number): Promise<Sea
 // --- Suppression -----------------------------------------------------------
 
 async function deleteByRegion(
-  storeName: "places" | "search",
+  storeName: "places" | "search" | "wiki",
   regionId: string,
 ): Promise<void> {
   const t = await tx([storeName], "readwrite");
@@ -310,6 +377,7 @@ async function deleteByRegion(
 export async function deleteRegion(id: string, keep: Set<string>): Promise<void> {
   await deleteByRegion("places", id);
   await deleteByRegion("search", id);
+  await deleteByRegion("wiki", id);
 
   await (await tileStore()).prune(keep);
 

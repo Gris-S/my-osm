@@ -30,10 +30,12 @@ import {
 import { footprintChunks, footprintTiles, type Bbox, type Tile } from "./tiles";
 import { downloadAddresses } from "./addresses";
 import { anySignal } from "../../utils/signals";
-import { currentLocale, t } from "../../i18n";
+import { currentLang, currentLocale, t } from "../../i18n";
+import { downloadWiki } from "./wiki";
+import type { WikiRef } from "../wikipedia";
 
 export interface Progress {
-  phase: "style" | "tiles" | "places" | "addresses" | "done";
+  phase: "style" | "tiles" | "places" | "wiki" | "addresses" | "done";
   done: number;
   total: number;
   bytes: number;
@@ -186,7 +188,10 @@ interface OverpassElement {
 
 function overpassQuery([w, s, e, n]: Bbox): string {
   const box = `${s},${w},${n},${e}`;
-  return `[out:json][timeout:120];(nwr["shop"](${box});nwr["amenity"](${box});nwr["tourism"](${box});nwr["leisure"](${box});nwr["healthcare"](${box});nwr["office"](${box});nwr["public_transport"="station"](${box}););out center tags;`;
+  // `historic` et les lieux habités qui ont un article : ce sont eux que la
+  // passe Wikipédia résume (monuments, villes, quartiers). Un lieu habité sans
+  // article n'apporte rien ici — la carte porte déjà son nom.
+  return `[out:json][timeout:120];(nwr["shop"](${box});nwr["amenity"](${box});nwr["tourism"](${box});nwr["leisure"](${box});nwr["healthcare"](${box});nwr["office"](${box});nwr["public_transport"="station"](${box});nwr["historic"](${box});node["place"~"^(city|town|village|hamlet|suburb|borough|quarter|neighbourhood)$"]["wikidata"](${box}););out center tags;`;
 }
 
 /**
@@ -200,6 +205,11 @@ function overpassQuery([w, s, e, n]: Bbox): string {
 function harvest(elements: OverpassElement[], regionId: string) {
   const places: StoredPlaceDetails[] = [];
   const entries: SearchEntry[] = [];
+  // Les lieux qui ont un article, pour la passe Wikipédia : seulement ceux
+  // qu'on visite pour eux-mêmes — tourisme, patrimoine, lieux habités. Une
+  // chaîne de restaurants porte souvent un Wikidata : c'est celui de la
+  // marque, pas du lieu.
+  const wiki: WikiRef[] = [];
 
   for (const el of elements) {
     const tags = el.tags;
@@ -213,7 +223,10 @@ function harvest(elements: OverpassElement[], regionId: string) {
       .filter(Boolean)
       .join(" ");
 
-    if (tags.opening_hours || tags.phone || tags["contact:phone"] || tags.website || address) {
+    const hasWiki = !!(tags.wikidata || tags.wikipedia) && !!(tags.tourism || tags.historic || tags.place);
+    if (hasWiki) wiki.push({ wikidata: tags.wikidata, wikipedia: tags.wikipedia });
+
+    if (tags.opening_hours || tags.phone || tags["contact:phone"] || tags.website || address || hasWiki) {
       places.push({
         id,
         region: regionId,
@@ -221,8 +234,13 @@ function harvest(elements: OverpassElement[], regionId: string) {
         openingHours: tags.opening_hours,
         phone: tags.phone ?? tags["contact:phone"],
         website: tags.website ?? tags["contact:website"],
+        wikidata: hasWiki ? tags.wikidata : undefined,
+        wikipedia: hasWiki ? tags.wikipedia : undefined,
       });
     }
+    // Un lieu habité n'entre pas dans la recherche par ce chemin : le
+    // géocodeur le connaît, et il doublerait les adresses.
+    if (tags.place) continue;
 
     // Un lieu sans nom n'a rien à faire dans une recherche par texte.
     const name = tags.name;
@@ -239,7 +257,7 @@ function harvest(elements: OverpassElement[], regionId: string) {
       terms: termsOf(name, tags["addr:street"], tags["addr:city"]),
     });
   }
-  return { places, entries };
+  return { places, entries, wiki };
 }
 
 // --- L'orchestration -------------------------------------------------------
@@ -378,6 +396,7 @@ export function downloadRegion(
       if (region.detail !== "map") {
         const chunks = footprintChunks(region);
         let places = 0;
+        const wikiRefs: WikiRef[] = [];
         report({ phase: "places", done: 0, total: chunks.length, label: t("progress.places") });
 
         for (const [i, chunk] of chunks.entries()) {
@@ -390,7 +409,8 @@ export function downloadRegion(
             });
             if (res.ok) {
               const data = (await res.json()) as { elements: OverpassElement[] };
-              const { places: p, entries } = harvest(data.elements, region.id);
+              const { places: p, entries, wiki } = harvest(data.elements, region.id);
+              wikiRefs.push(...wiki);
               await putPlaces(p);
               await putSearchEntries(entries);
               places += entries.length;
@@ -405,6 +425,24 @@ export function downloadRegion(
           await new Promise((r) => setTimeout(r, CONFIG.OFFLINE.OVERPASS_PAUSE_MS));
         }
         region.placesCount = places;
+
+        // --- Wikipédia -------------------------------------------------------
+        // Après les lieux, dont elle reprend les références. Interrompue, elle
+        // laisse une zone utilisable : la fiche retombe sur Wikipédia en ligne.
+        if (region.wiki) {
+          report({ phase: "wiki", done: 0, total: 1, label: t("progress.wiki", { done: 0, total: "…" }) });
+          try {
+            const got = await downloadWiki(region, wikiRefs, currentLang(), signal, (d, all) =>
+              report({ done: d, total: all, label: t("progress.wiki", { done: d.toLocaleString(currentLocale()), total: all.toLocaleString(currentLocale()) }) })
+            );
+            region.wikiCount = got.count;
+            region.wikiAt = Date.now();
+            bytes += got.bytes;
+          } catch (err) {
+            if (signal.aborted) return void (await save("paused"));
+            if (isQuotaError(err)) throw new StorageWriteError("storage-full", err);
+          }
+        }
       }
 
       // --- Adresses ---------------------------------------------------------

@@ -120,6 +120,15 @@ registerRoute(
   cacheFirst("couverture-mapillary", 120, WEEK),
 );
 
+// Photos de Wikipédia vues dans une fiche : gardées un mois, comme OsmAnd
+// garde les images qu'on a regardées. Ce sont des vignettes (20 à 40 Ko), et
+// une photo ne se périme pas. Le texte des résumés, lui, a son propre cache
+// (`services/wikipedia.ts`), et les zones peuvent prendre les deux d'avance.
+registerRoute(
+  ({ url }) => url.origin === "https://thumb.wikimedia.org" || url.origin === "https://upload.wikimedia.org",
+  cacheFirst("photos-wikipedia", 400, MONTH),
+);
+
 // Ce qui n'est **pas** mis en cache mérite d'être dit : les horaires de
 // transport, la météo, la qualité de l'air, les vigilances, les itinéraires et
 // les résultats de recherche passent tous par le réseau à chaque fois. Leurs
