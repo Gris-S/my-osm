@@ -20,6 +20,26 @@
   width: 344px;
 }
 
+/* Pendant la saisie, la recherche garde la largeur de la colonne, et le
+   burger reste là. Sur téléphone elle prend tout l'écran (`search.css`) ; ici
+   elle s'étirait sur 1 400 px pour des résultats de deux mots (constaté). */
+.is-wide .app-shell.is-searching .search-wrap {
+  left: 72px;
+  right: auto;
+  width: 344px;
+}
+
+.is-wide .app-shell.is-searching .app-menu {
+  visibility: visible;
+}
+
+/* Le menu du burger se déplie dans la colonne, là où est la fiche : elle
+   s'efface le temps qu'il est ouvert, et revient à sa fermeture (constaté :
+   les deux se superposaient). */
+.is-wide .app-shell:has(.app-menu-panel) .sheet {
+  visibility: hidden;
+}
+
 /* La fiche du lieu, sous la recherche : une carte flottante de la hauteur de
    son contenu, qui défile au-delà de celle de l'écran. */
 .is-wide .sheet {

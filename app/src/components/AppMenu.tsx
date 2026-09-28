@@ -248,17 +248,21 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
               <History size={17} />
               {navText("menu.history")}
             </button>
-            <button
-              className="app-menu-item"
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false);
-                setModesOpen(true);
-              }}
-            >
-              <ToggleRight size={17} />
-              {navText("menu.modes")}
-            </button>
+            {/* « Modes » règle surtout la course, absente de la version Docker :
+                l'entrée n'y a pas d'objet (demande explicite). */}
+            {__RUN_MODE__ && (
+              <button
+                className="app-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setModesOpen(true);
+                }}
+              >
+                <ToggleRight size={17} />
+                {navText("menu.modes")}
+              </button>
+            )}
             <button
               className="app-menu-item"
               role="menuitem"
