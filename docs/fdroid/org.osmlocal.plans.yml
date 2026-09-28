@@ -31,7 +31,8 @@
 # 2871285341 du fork, 22 septembre 2026) : « compared built binary to supplied
 # reference binary successfully », signataire 0537bb84… autorisé. Si une
 # version ne se reproduisait pas chez eux, F-Droid la sauterait au lieu de la
-# signer lui-même.
+# signer lui-même. 0.1.0-alpha.59 ne touche pas non plus à la chaîne : scanner
+# passé sur l'APK de la release, reproductibilité pas encore repassée.
 #
 # `rewritemeta` retire ces commentaires : c'est **sa** sortie qui part dans
 # fdroiddata.
@@ -71,11 +72,11 @@ Repo: https://github.com/Gris-S/my-osm.git
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.58
-    versionCode: 1000058
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.58, pas le tag :
+  - versionName: 0.1.0-alpha.59
+    versionCode: 1000059
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.59, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: 9548b2bfd64af41960e95640423e20701cd828c0
+    commit: 83a5fd39328d704323f4e6454887f15b99c6a8d6
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -152,5 +153,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.58
-CurrentVersionCode: 1000058
+CurrentVersion: 0.1.0-alpha.59
+CurrentVersionCode: 1000059
