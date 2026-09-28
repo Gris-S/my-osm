@@ -19,6 +19,8 @@
 // changement sans rien protéger de plus. Ce sont les scripts qui comptent.
 // ---------------------------------------------------------------------------
 
+// La version Docker envoie la même politique en en-tête HTTP
+// (`docker/security-headers.conf`) : une règle changée ici se change là-bas.
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",

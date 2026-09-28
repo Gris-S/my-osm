@@ -19,6 +19,7 @@ export const en: Dict = {
   "mapStatus.offlineGap": "Offline — this area has not been downloaded",
 
   "geo.unsupported": "Location is not available on this device.",
+  "geo.insecure": "Location unavailable: the browser only provides it over HTTPS or on localhost.",
   "geo.denied": "Location denied — allow it in your phone's settings.",
   "geo.unavailable": "Position unavailable right now.",
   "geo.timeout": "No position after ten seconds — check that location is on, and allowed for MY OSM in your phone's settings.",
@@ -476,6 +477,7 @@ export const en: Dict = {
   "attribution.photos": "Photos © Mapillary contributors",
 
   "download.title": "Downloads",
+  "download.insecure": "Offline maps need a secure address: open MY OSM over HTTPS, or on localhost from the machine that hosts it. On an http:// address of your network, the browser does not allow saving an area.",
   "download.pickArea": "Choose an area",
   "download.tap.country": "Tap a country to pick it. Zoom in to target a region.",
   "download.tap.region": "Tap a region. Zoom out for a country, zoom in for a department.",

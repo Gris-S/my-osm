@@ -604,6 +604,8 @@ export const CONFIG = {
   // (`vite.config.ts`). L'APK n'a pas de serveur : il les appelle directement,
   // par le natif (`services/native.ts`). Les deux listes doivent rester
   // d'accord — un relais ajouté là-bas s'ajoute ici.
+  // Le même relais existe dans `vite.config.ts` (développement) et dans
+  // `docker/myosm.conf.template` (version Docker) : les trois restent d'accord.
   RELAY_TARGETS: {
     "/api/traffic/events":
       "https://tipi.bison-fute.gouv.fr/bison-fute-ouvert/publicationsDIR/Evenementiel-DIR/grt/RRN/content.xml",

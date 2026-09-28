@@ -42,6 +42,7 @@ import { useBrandSearch } from "./hooks/useBrandSearch";
 import { useItinerary } from "./hooks/useItinerary";
 import { useIncomingLinks } from "./hooks/useIncomingLinks";
 import { useLatest } from "./hooks/useLatest";
+import { useWideLayout, WIDE_COLUMN_PX } from "./hooks/useWideLayout";
 import { openWebSearch } from "./services/webSearch";
 
 /** Ce que la carte reçoit à la place des calques pendant la navigation voiture. */
@@ -435,6 +436,13 @@ export default function App() {
   // prochains passages, et aucun nombre fixe ne couvre les deux (la moitié des
   // boutons passait dessous sur téléphone).
   const [sheetHeight, setSheetHeight] = useState(0);
+  /**
+   * Grand écran (`useWideLayout`) : la fiche et l'itinéraire vivent dans une
+   * colonne à gauche. La colonne de boutons de droite n'a donc plus à monter
+   * au-dessus de la fiche, ni à s'effacer pendant une recherche — il y a la
+   * place pour tout.
+   */
+  const wide = useWideLayout();
   // La dernière panne signalée par MapLibre. Elle est **affichée**, et non
   // seulement journalisée : sur un téléphone il n'y a pas de console, et une
   // carte grise sans explication est indiagnosticable.
@@ -489,7 +497,7 @@ export default function App() {
   // il est là — mesuré par le module (`useNavDockClearance`). Le 96 d'avant
   // n'est plus qu'un repli, le temps de la première mesure.
   const navDockClearance = useNavDockClearance();
-  const locateButtonOffset = sheetHeight
+  const locateButtonOffset = sheetHeight && !wide
     ? Math.min(sheetHeight + 16, ceiling)
     : guiding
       ? navDockClearance
@@ -602,6 +610,7 @@ export default function App() {
         onMapError={setMapError}
         onAttributionChange={setCredits}
         onBackgroundClick={handleMapBackgroundClick}
+        insetLeft={wide && ((sheetPlace && !searching && !transitPanelOpen) || (itineraryOpen && !guiding)) ? WIDE_COLUMN_PX : 0}
       />
 
       {/* À pied et en transports, l'itinéraire est ouvert mais les menus restent :
@@ -627,7 +636,7 @@ export default function App() {
               seule : la barre de recherche vit dans ce même bloc, la masquer
               avec le reste la ferait disparaître au moment où l'on tape
               dedans. */}
-          {!searching && (
+          {(!searching || wide) && (
           <div className="map-dock">
             <WeatherCard coords={weatherCoords} placeName={selectedPlace?.name ?? null} />
             <CompassButton bearing={mapBearing} onClick={requestNorth} />
@@ -649,7 +658,7 @@ export default function App() {
               d'enseigne** (demande explicite) : les effacer faisait disparaître
               la moitié des boutons au moment où l'on explore la carte. Ils ne
               s'effacent que pendant la saisie, quand le clavier ampute l'écran. */}
-          {!searching && (
+          {(!searching || wide) && (
             <BookmarksMenu
               bookmarks={bookmarks}
               onOpenPlace={openSaved}
@@ -657,7 +666,7 @@ export default function App() {
               covered={mapOptionsOpen || filterMenuOpen}
             />
           )}
-          {!searching && (
+          {(!searching || wide) && (
             <FilterMenu
               open={filterMenuOpen}
               onOpenChange={setFilterMenuOpen}
@@ -740,13 +749,14 @@ export default function App() {
       <NavigationPanel session={navigation} />
       <CarNavigationPanel session={carNav} />
       <TransitNavigationPanel session={transitNav} />
-      <RunPanel session={run} />
+      {__RUN_MODE__ && <RunPanel session={run} />}
 
       {/* Le bouton de course, sous le burger : seulement quand rien d'autre
           n'occupe l'écran — ni navigation, ni itinéraire, ni saisie. Il reste
           pendant une recherche d'enseigne : la pastille de celle-ci est bornée
           en largeur pour ne jamais passer dessous (`brand-search.css`). */}
-      {runModeEnabled && !guiding && !itineraryOpen && !photoExpanded && !searching && (
+      {/* Pas de mode course dans la version Docker (`__RUN_MODE__`). */}
+      {__RUN_MODE__ && runModeEnabled && !guiding && !itineraryOpen && !photoExpanded && !searching && (
         <RunButton
           onStart={() => {
             setSelectedPlace(null);
@@ -776,11 +786,11 @@ export default function App() {
       {/* Ni position ni calques sur le panneau des transports : il occupe toute
           la hauteur, et les deux boutons se posaient sur le détail du trajet.
           En voiture et à pied, le panneau est court et les laisse libres. */}
-      {!photoExpanded && !carGuiding && !searching && !transitPanelOpen && (
+      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen)) && (
         <LocateButton onClick={handleLocate} loading={geolocation.loading} offsetBottom={locateButtonOffset} />
       )}
 
-      {!photoExpanded && !carGuiding && !searching && !transitPanelOpen && (
+      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen)) && (
       <MapOptionsMenu
         open={mapOptionsOpen}
         onOpenChange={setMapOptionsOpen}

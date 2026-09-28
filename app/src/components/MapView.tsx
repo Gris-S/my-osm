@@ -96,6 +96,12 @@ interface MapViewProps {
   onSelectPlace: (place: Place) => void;
   onPoiStatusChange: (status: PoiStatus) => void;
   onBackgroundClick: (lonlat: LonLat) => void;
+  /**
+   * Largeur couverte à gauche par la colonne du grand écran (`useWideLayout`),
+   * 0 ailleurs. La carte s'en écarte : un lieu choisi se centre dans ce qui
+   * reste visible, pas sous la fiche.
+   */
+  insetLeft?: number;
   /** Lieux enregistrés des dossiers allumés, à la couleur de leur dossier. */
   savedPlaces: SavedPlace[];
   onSelectSaved: (place: SavedPlace) => void;
@@ -154,6 +160,7 @@ export const MapView = memo(function MapView({
   onSelectPlace,
   onPoiStatusChange,
   onBackgroundClick,
+  insetLeft = 0,
   savedPlaces,
   onSelectSaved,
   onMapError,
@@ -178,6 +185,9 @@ export const MapView = memo(function MapView({
   // Le cap de la boussole, et l'angle continu où le cône a été tourné.
   const compassRef = useRef<number | null>(null);
   const coneAngleRef = useRef<number | null>(null);
+  // Le décalage de la colonne du grand écran, lu par le vol vers un lieu.
+  const insetLeftRef = useRef(insetLeft);
+  insetLeftRef.current = insetLeft;
   const choiceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const choicesRef = useRef<NavChoice[] | null>(null);
   choicesRef.current = navigation?.choices ?? null;
@@ -1486,8 +1496,35 @@ export const MapView = memo(function MapView({
       return;
     }
     if (navMarkerRef.current) onNavigationPanRef.current();
-    map.flyTo({ center: [flyTo.lon, flyTo.lat], zoom: flyTo.zoom ?? 16, essential: true });
+    map.flyTo({
+      center: [flyTo.lon, flyTo.lat],
+      zoom: flyTo.zoom ?? 16,
+      essential: true,
+      padding: { ...map.getPadding(), left: insetLeftRef.current },
+    });
   }, [flyTo]);
+
+  // Le décalage de la colonne du grand écran. Les autres marges de la caméra
+  // (celle du guidage, en haut) sont gardées : seule la gauche change.
+  //
+  // **Jamais pendant un mouvement** : choisir un lieu ouvre la colonne et lance
+  // le vol vers lui dans le même rendu, et un `easeTo` l'aurait interrompu à
+  // mi-chemin (constaté). Le vol emporte donc le décalage avec lui (voir
+  // l'effet `flyTo`), et celui-ci n'est rattrapé qu'à l'arrêt de la carte.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const sync = () => {
+      const target = insetLeftRef.current;
+      if (map.isMoving() || map.getPadding().left === target) return;
+      map.easeTo({ padding: { ...map.getPadding(), left: target }, duration: 300 });
+    };
+    sync();
+    map.on("moveend", sync);
+    return () => {
+      map.off("moveend", sync);
+    };
+  }, [insetLeft]);
 
   // Remise au nord. **Le seul cap est remis**, pas l'inclinaison : en 3D, se
   // réorienter ne veut pas dire renoncer au relief qu'on est en train de

@@ -6,6 +6,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   define: {
     __DIAGNOSTICS__: "true",
+    __TARGET__: JSON.stringify("web"),
+    __RUN_MODE__: "true",
     __APP_VERSION__: JSON.stringify("test"),
   },
   test: {

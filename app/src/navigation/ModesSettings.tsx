@@ -30,13 +30,16 @@ export function ModesSettings() {
 
   return (
     <div className="modes-list">
-      <ModeRow
-        icon={Activity}
-        label="modes.run"
-        hint="modes.run.hint"
-        checked={runMode}
-        onChange={setRunModeEnabled}
-      />
+      {/* La version Docker n'a pas de mode course (`__RUN_MODE__`). */}
+      {__RUN_MODE__ && (
+        <ModeRow
+          icon={Activity}
+          label="modes.run"
+          hint="modes.run.hint"
+          checked={runMode}
+          onChange={setRunModeEnabled}
+        />
+      )}
       <ModeRow
         icon={Footprints}
         label="modes.walkSummary"
@@ -44,13 +47,15 @@ export function ModesSettings() {
         checked={walkSummary}
         onChange={setWalkSummaryEnabled}
       />
-      <ModeRow
-        icon={Flag}
-        label="modes.runSummary"
-        hint="modes.runSummary.hint"
-        checked={runSummary}
-        onChange={setRunSummaryEnabled}
-      />
+      {__RUN_MODE__ && (
+        <ModeRow
+          icon={Flag}
+          label="modes.runSummary"
+          hint="modes.runSummary.hint"
+          checked={runSummary}
+          onChange={setRunSummaryEnabled}
+        />
+      )}
     </div>
   );
 }

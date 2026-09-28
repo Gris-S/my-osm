@@ -1,0 +1,39 @@
+# MY OSM — version Docker.
+#
+#   docker compose -f docker/compose.yaml up -d      → http://localhost:8080
+#
+# `:test` est la version à vérifier, construite depuis la branche
+# `docker-test`. Ce n'est pas une release.
+
+services:
+  my-osm:
+    image: ghcr.io/gris-s/my-osm:test
+    container_name: my-osm
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+    # Durcissement : aucun droit dont nginx n'a pas besoin.
+    # - système de fichiers en lecture seule, /tmp en mémoire pour la
+    #   configuration engendrée, les fichiers temporaires et le cache du relais ;
+    # - aucune capacité Linux (nginx tourne sous l'utilisateur 101, port 8080) ;
+    # - pas d'élévation de privilèges ;
+    # - mémoire et nombre de processus bornés.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    pids_limit: 64
+
+    # Aussi dans l'image (HEALTHCHECK), mais certains formats d'image l'ignorent :
+    # le redire ici garantit que `docker ps` montre l'état de santé.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3

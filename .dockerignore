@@ -1,0 +1,18 @@
+# Construction de l'image Docker (docker/Dockerfile) : **liste blanche**.
+#
+# Tout est exclu, puis seul ce que la construction lit est admis. Une liste
+# noire finirait par laisser passer ce qu'on n'a pas pensé à y mettre — et
+# `app/.env.local` porte les clés d'API personnelles : il ne doit jamais
+# entrer dans le contexte de construction, donc jamais dans une couche.
+*
+
+!app/
+!docker/
+
+app/node_modules/
+app/dist/
+app/.env
+app/.env.*
+app/**/*.local
+app/notes/
+app/tests/

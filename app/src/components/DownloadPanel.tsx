@@ -63,7 +63,45 @@ const FAILURE_TEXT = {
   moved: "download.failureMoved",
 } as const;
 
-export function DownloadPanel({ center, onClose }: Props) {
+/**
+ * La fenêtre « Téléchargement ».
+ *
+ * Hors contexte sûr — la version Docker ouverte en `http://` depuis un autre
+ * appareil du réseau —, le navigateur ne donne ni OPFS, ni Cache Storage, ni
+ * Service Worker : aucune zone ne pourrait être enregistrée. La fenêtre le dit
+ * au lieu de proposer un téléchargement voué à l'échec.
+ */
+export function DownloadPanel(props: Props) {
+  return window.isSecureContext ? <DownloadPanelContent {...props} /> : <InsecureNotice onClose={props.onClose} />;
+}
+
+function InsecureNotice({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+  useBackClose(true, onClose);
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="settings-dialog download-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="download-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="settings-head">
+          <h2 className="settings-title" id="download-title">
+            {t("download.title")}
+          </h2>
+          <button className="settings-close" onClick={onClose} aria-label={t("sheet.close")}>
+            <X size={18} />
+          </button>
+        </div>
+        <p className="settings-hint">{t("download.insecure")}</p>
+      </div>
+    </div>
+  );
+}
+
+function DownloadPanelContent({ center, onClose }: Props) {
   const { t, tp, locale } = useI18n();
   const mapNode = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);

@@ -71,6 +71,13 @@ export function useGeolocation() {
       setState((s) => ({ ...s, error: t("geo.unsupported") }));
       return;
     }
+    // Le navigateur refuse la position hors contexte sûr (version Docker ouverte
+    // en http:// depuis le réseau) et répond « refusé » : dire pourquoi, plutôt
+    // que de renvoyer aux réglages du téléphone, qui n'y peuvent rien.
+    if (!window.isSecureContext) {
+      setState((s) => ({ ...s, error: t("geo.insecure") }));
+      return;
+    }
     setState((s) => ({ ...s, loading: true, error: null }));
     navigator.geolocation.getCurrentPosition(
       (pos) => {

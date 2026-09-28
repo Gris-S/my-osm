@@ -1,0 +1,64 @@
+/* -------------------------------------------------------------------------
+   Grand écran : une colonne à gauche, la carte pour le reste.
+
+   Activée par la classe `is-wide` que pose `hooks/useWideLayout.ts` — jamais
+   dans l'APK, et seulement au-delà de 1024 × 560. Rien ici ne s'applique au
+   téléphone : chaque règle commence par `.is-wide`.
+
+   La colonne fait 400 px, à 16 px du bord : le burger et la recherche sur la
+   première ligne, puis la fiche du lieu dessous ; l'itinéraire, qui efface la
+   recherche, prend toute la hauteur. La carte s'en écarte d'autant
+   (`WIDE_COLUMN_PX`, 432 px), pour qu'un lieu choisi ne se centre pas dessous.
+   ------------------------------------------------------------------------- */
+
+/* Première ligne : le burger (16 → 60 px), puis la recherche jusqu'au bord
+   droit de la colonne (416 px). */
+.is-wide .search-wrap {
+  left: 72px;
+  right: auto;
+  transform: none;
+  width: 344px;
+}
+
+/* La fiche du lieu, sous la recherche : une carte flottante de la hauteur de
+   son contenu, qui défile au-delà de celle de l'écran. */
+.is-wide .sheet {
+  left: 16px;
+  right: auto;
+  top: 76px;
+  bottom: auto;
+  width: 400px;
+  max-width: none;
+  margin: 0;
+  max-height: calc(100% - 92px);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float);
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+/* La poignée sert à glisser la fiche vers le bas, au doigt. À la souris, la
+   croix suffit, et une poignée qui ne se glisse pas tromperait. */
+.is-wide .sheet-grab {
+  display: none;
+}
+
+/* L'itinéraire, en haut de la colonne : le bloc du haut (burger, recherche,
+   météo) s'efface pendant qu'il est ouvert, la place est libre. */
+.is-wide .itinerary-panel {
+  left: 16px;
+  transform: none;
+  width: 400px;
+}
+
+/* Le bouton de course (version web ; absent de Docker) quitte la colonne,
+   où il se posait sur la fiche : il passe au bout de la ligne du haut. */
+.is-wide .run-button {
+  top: max(16px, env(safe-area-inset-top));
+  left: 428px;
+}
+
+/* Le bandeau d'une recherche d'enseigne suit la barre, dans la colonne. */
+.is-wide .brand-banner {
+  max-width: 344px;
+}

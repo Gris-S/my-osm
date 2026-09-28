@@ -47,3 +47,5 @@
    elle se pose par-dessus tout le reste, et retirer cette ligne suffit à la
    décrocher de l'application. */
 @import "./navigation/navigation.css";
+/* En dernier : le grand écran réécrit la place de ce qui précède. */
+@import "./styles/ui/wide.css";

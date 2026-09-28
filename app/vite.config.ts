@@ -12,8 +12,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // trafic routier français qui coche toutes ces cases. Le serveur de
 // développement fait donc l'intermédiaire.
 //
-// En production web, il faudrait un relais équivalent : une règle de reverse
-// proxy d'une ligne devant l'application. Voir `CONFIG.TRAFFIC_EVENTS_URL`, qui
+// En production web, il faut un relais équivalent : c'est ce que fait l'image
+// Docker (`docker/myosm.conf.template`). Voir `CONFIG.TRAFFIC_EVENTS_URL`, qui
 // est **relatif** pour cette raison. **L'APK, lui, n'a pas besoin de relais** :
 // `services/native.ts` appelle l'adresse réelle par le natif (`CapacitorHttp`),
 // d'après `CONFIG.RELAY_TARGETS` — à tenir d'accord avec ce fichier.
@@ -46,6 +46,16 @@ const PROXY = { ...TRAFFIC_PROXY }
  * (`transformRequest`) et les sert depuis le même OPFS, zone d'abord.
  */
 const FOR_APK = process.env.OSM_TARGET === 'apk'
+
+/**
+ * Pour quoi l'on construit : l'APK, le site web ordinaire, ou l'image Docker
+ * (`../docker`). La version Docker est le site web **sans le mode course**
+ * (demande explicite, 28 septembre 2026) : on ne court pas avec un ordinateur.
+ * Tout ce qui diffère entre les trois se lit dans `__TARGET__`, jamais dans une
+ * variable d'environnement lue au hasard du code.
+ */
+const TARGET: 'apk' | 'web' | 'docker' =
+  process.env.OSM_TARGET === 'apk' ? 'apk' : process.env.OSM_TARGET === 'docker' ? 'docker' : 'web'
 
 /**
  * Les clés d'API, et le garde-fou qui les tient hors de la version à partager.
@@ -102,6 +112,10 @@ export default defineConfig({
     // partout sauf dans la version release (`npm run apk:release`, qui passe
     // `MYOSM_DIAGNOSTICS=0`). `outils/journal.sh` en dépend en debug.
     __DIAGNOSTICS__: JSON.stringify(process.env.MYOSM_DIAGNOSTICS !== '0'),
+    __TARGET__: JSON.stringify(TARGET),
+    // Le mode course, absent de la version Docker. Une constante : le code du
+    // bouton et du bandeau n'est alors jamais rendu.
+    __RUN_MODE__: JSON.stringify(TARGET !== 'docker'),
   },
   plugins: [
     react(),

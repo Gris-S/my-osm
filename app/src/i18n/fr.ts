@@ -35,6 +35,7 @@ export const fr = {
 
   // Géolocalisation du navigateur (`hooks/useGeolocation.ts`)
   "geo.unsupported": "Géolocalisation non disponible sur cet appareil.",
+  "geo.insecure": "Position indisponible : le navigateur ne la donne qu'en HTTPS ou sur localhost.",
   "geo.denied": "Géolocalisation refusée — autorisez-la dans les réglages du téléphone.",
   "geo.unavailable": "Position indisponible pour le moment.",
   "geo.timeout":
@@ -541,6 +542,7 @@ export const fr = {
 
   // Fenêtre « Téléchargement »
   "download.title": "Téléchargement",
+  "download.insecure": "Les cartes hors ligne demandent une adresse sûre : ouvrez MY OSM en HTTPS, ou sur localhost depuis la machine qui l'héberge. Sur une adresse http:// du réseau, le navigateur ne permet pas d'enregistrer de zone.",
   "download.pickArea": "Choisir une zone",
   "download.tap.country": "Touchez un pays pour le choisir. Zoomez pour viser une région.",
   "download.tap.region": "Touchez une région. Dézoomez pour un pays, zoomez pour un département.",

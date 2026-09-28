@@ -1,0 +1,101 @@
+# ---------------------------------------------------------------------------
+# Le site MY OSM. Modèle lu par l'entrée de l'image nginx au démarrage :
+# `${NGINX_LOCAL_RESOLVERS}` y est remplacé par les serveurs DNS du conteneur
+# (`NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1`, dans le Dockerfile), les variables
+# propres à nginx ($uri…) restent telles quelles.
+#
+# Pourquoi un résolveur : le relais du trafic nomme son serveur par une
+# variable, résolue à la requête. Nommé en dur, il serait résolu au démarrage,
+# et un conteneur démarré sans réseau refuserait de se lancer.
+# ---------------------------------------------------------------------------
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=300s ipv6=off;
+    resolver_timeout 5s;
+
+    # Sonde de santé du conteneur (HEALTHCHECK du Dockerfile).
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Relais vers Bison Futé, qui n'autorise pas l'origine croisée : le même
+    # que celui du serveur de développement (`app/vite.config.ts`) et que
+    # `CONFIG.RELAY_TARGETS` dans l'APK — les trois doivent rester d'accord.
+    #
+    # Une seule adresse, en lecture seule. Rien de ce qu'envoie le navigateur
+    # ne part chez Bison Futé (ni cookie, ni adresse IP, ni en-tête) : la
+    # requête est refaite de toutes pièces.
+    location = /api/traffic/events {
+        limit_except GET { deny all; }
+        limit_req zone=relay burst=5 nodelay;
+
+        set $bison_fute "https://tipi.bison-fute.gouv.fr";
+        proxy_pass $bison_fute/bison-fute-ouvert/publicationsDIR/Evenementiel-DIR/grt/RRN/content.xml;
+        proxy_http_version 1.1;
+        proxy_pass_request_headers off;
+        proxy_pass_request_body off;
+        proxy_set_header Host tipi.bison-fute.gouv.fr;
+        proxy_set_header Accept "application/xml, text/xml";
+        proxy_set_header Accept-Encoding "gzip";
+        proxy_set_header User-Agent "MY-OSM (+https://github.com/Gris-S/my-osm)";
+        proxy_set_header Connection "";
+
+        proxy_ssl_server_name on;
+        proxy_ssl_name tipi.bison-fute.gouv.fr;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
+
+        proxy_cache relay_cache;
+        proxy_cache_key "bison-fute-events";
+        proxy_cache_valid 200 3m;
+        proxy_cache_lock on;
+        proxy_cache_use_stale error timeout updating;
+        proxy_ignore_headers Set-Cookie Cache-Control Expires;
+        proxy_hide_header Set-Cookie;
+
+        include /etc/nginx/myosm/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Toute autre adresse de /api/ n'existe pas : sans cette règle, elle
+    # rendrait la page de l'application avec un 200, et un service mal
+    # configuré passerait pour une réponse.
+    location /api/ {
+        return 404;
+    }
+
+    # Fichiers dont le nom porte une empreinte : ils ne changent jamais.
+    location /assets/ {
+        include /etc/nginx/myosm/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Le Service Worker et la page doivent être relus à chaque visite, sans quoi
+    # une nouvelle version ne serait jamais vue.
+    location = /sw.js {
+        include /etc/nginx/myosm/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Fichiers cachés (.git, .env…) : jamais servis, même s'il en traînait un.
+    location ~ /\. {
+        return 404;
+    }
+
+    location / {
+        include /etc/nginx/myosm/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}
