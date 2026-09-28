@@ -1,0 +1,9 @@
+Tap the name of a town or neighbourhood on the map: its outline is highlighted,
+with population, area, density, region, and directions.
+
+Places with a Wikipedia article (towns, museums, monuments, stations) show its
+summary and photo, in your language when it exists. Offline areas can take
+them along, photos optional, refreshed monthly.
+
+Tapping an empty spot on the map now places the pin at once; the address
+follows.
