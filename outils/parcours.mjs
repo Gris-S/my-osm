@@ -1827,18 +1827,21 @@ const SCENARIOS = [
       await dodo(1500);
       await etat("guidage, bandeau le plus haut");
 
-      // La fiche de la gare d'arrivée, ouverte pendant le guidage.
+      // La fiche de la gare d'arrivée, ouverte pendant le guidage. Chercher par
+      // `name` : un arrêt qui porte ses pastilles de ligne a une étiquette vide.
       await js(`(()=>{const m=window.__myosm.map;m.jumpTo({center:[2.3736,48.8443],zoom:16.5});return true})()`);
       await dodo(3000);
       const ouverte = await js(`(()=>{const m=window.__myosm.map;const f=m.queryRenderedFeatures({layers:['poi-layer']})
-        .find((x)=>/Gare de Lyon/.test(x.properties.label||''));if(!f)return false;
+        .find((x)=>/Gare de Lyon/.test(x.properties.name||x.properties.label||''));if(!f)return false;
         const p=m.project(f.geometry.coordinates);m.fire('click',{point:p,lngLat:m.unproject(p),originalEvent:new MouseEvent('click')});return true})()`);
       if (ouverte && (await attendre(".sheet", 8000))) {
         await dodo(2000);
         await etat("guidage avec la fiche d'une gare");
         capture("28-guidage-fiche");
       } else {
-        verifier("la fiche d'une gare s'ouvre pendant le guidage", false, "marqueur introuvable");
+        // Deux causes, deux messages : un marqueur absent tient à la carte, une
+        // fiche qui ne s'ouvre pas tient à l'application.
+        verifier("la fiche d'une gare s'ouvre pendant le guidage", false, ouverte ? "marqueur touché, fiche absente" : "marqueur introuvable");
       }
       await js("(()=>{const c=document.querySelector('.sheet-close');if(c)c.click();return true})()");
       await dodo(500);

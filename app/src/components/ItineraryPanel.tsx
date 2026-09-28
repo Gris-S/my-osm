@@ -714,6 +714,10 @@ export function ItineraryPanel({
         ))}
       </div>
 
+      {/* Seul ce qui suit défile : départ, arrivée, modes et croix restent en
+          haut. Faire tout monter d'un bloc emportait la croix avec le reste,
+          et l'on ne savait plus d'où à où menait le trajet qu'on lisait. */}
+      <div className="itinerary-body">
       {!ready && !geolocating && (
         <div className="itinerary-status">{t("itinerary.needOrigin")}</div>
       )}
@@ -774,6 +778,7 @@ export function ItineraryPanel({
           <StartNavigationButton mode={mode} onStart={onStartNavigation} />
         </div>
       )}
+      </div>
     </div>
   );
 }

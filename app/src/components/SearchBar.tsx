@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, MapPin, Store, Clock, Home, Briefcase, Globe, Crosshair, Navigation, TrainFront } from "lucide-react";
 import type { LonLat, Place } from "../types";
 import { CONFIG } from "../config";
@@ -96,6 +96,22 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
     setAssigning(null);
     (document.activeElement as HTMLElement | null)?.blur();
   });
+  // Toucher ailleurs — la carte surtout — referme aussi la liste. Sans cela,
+  // fermer le clavier la laissait ouverte : l'application se croyait toujours
+  // en recherche et gardait cachée la fiche du lieu qu'on venait de toucher
+  // (constaté sur appareil).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (wrapRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+      setAssigning(null);
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open]);
   useBackClose(!open && Boolean(children), () => {
     setQuery("");
     onClear?.();
@@ -278,7 +294,7 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
   }
 
   return (
-    <div className="search-wrap">
+    <div className="search-wrap" ref={wrapRef}>
       <div className="search-pill">
         <Search size={18} className="search-icon" />
         <input

@@ -1,0 +1,6 @@
+Opening hours that run past midnight (09:00-04:00) are read correctly: bars and
+late shops no longer show as closed all evening.
+
+Tapping the map after a search now opens the place again. The transit panel
+keeps its origin, destination and close button in view while the journeys
+scroll, and tapping the map behind it no longer opens a place card on top.

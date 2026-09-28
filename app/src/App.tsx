@@ -292,6 +292,9 @@ export default function App() {
     // Une question ouverte attend une réponse : le clic la donne, au lieu
     // d'ouvrir une fiche.
     if (answerStopPicker(place)) return;
+    // Sur le panneau des transports, la carte ne sert qu'à regarder le trajet :
+    // une fiche s'y ouvrait par-dessus le détail (constaté sur appareil).
+    if (transitPanelOpenRef.current) return;
     setSelectedPlace(place);
   }
 
@@ -318,6 +321,13 @@ export default function App() {
       lon: saved.lon,
       lat: saved.lat,
     });
+  }
+
+  /** Un lieu touché **sur la carte** : ignoré sous le panneau des transports. */
+  function handleSelectFromMap(place: Place) {
+    if (answerStopPicker(place)) return;
+    if (transitPanelOpenRef.current) return;
+    handleSelectFromSearchOrMap(place);
   }
 
   function handleSelectFromSearchOrMap(place: Place) {
@@ -365,6 +375,7 @@ export default function App() {
   const carGuiding = carNav.active && !choosingRoute;
   /** Le panneau d'itinéraire des transports, qui prend toute la hauteur. */
   const transitPanelOpen = itineraryOpen && !guiding && routeMode === "transit";
+  const transitPanelOpenRef = useLatest(transitPanelOpen);
 
   function handleStartItinerary() {
     if (!selectedPlace) return;
@@ -551,7 +562,9 @@ export default function App() {
         onBrandStale={handleBrandStale}
         onViewportChange={handleViewportChange}
         savedPlaces={carGuiding ? NOTHING_ON_MAP : bookmarks.visiblePlaces}
-        onSelectSaved={handleOpenSaved}
+        onSelectSaved={(saved) => {
+          if (!transitPanelOpenRef.current) handleOpenSaved(saved);
+        }}
         selectedPlace={selectedPlace}
         // Pendant le guidage, la flèche orientée remplace le point de position :
         // c'est la direction de marche qui compte, et deux repères superposés
@@ -584,7 +597,7 @@ export default function App() {
         flyTo={flyTarget}
         northRequest={northRequest}
         onBearingChange={setMapBearing}
-        onSelectPlace={handleSelectFromSearchOrMap}
+        onSelectPlace={handleSelectFromMap}
         onPoiStatusChange={setPoiStatus}
         onMapError={setMapError}
         onAttributionChange={setCredits}
@@ -789,7 +802,7 @@ export default function App() {
           basse de l'écran et recouvrait la liste des résultats : on n'en voyait
           qu'un seul, sous le clavier. Elle n'est pas fermée pour autant — le
           lieu reste sélectionné, et refermer la recherche la ramène. */}
-      {sheetPlace && !photoExpanded && !searching && (
+      {sheetPlace && !photoExpanded && !searching && !transitPanelOpen && (
         <PlaceSheet
           place={sheetPlace}
           detailsStatus={sheetStatus}

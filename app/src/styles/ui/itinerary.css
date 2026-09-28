@@ -14,19 +14,36 @@
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-float);
   padding: 16px 18px;
-  /* Le détail d'un trajet dépasse vite la hauteur de l'écran : c'est le
-     panneau entier qui descend, d'un seul tenant, plutôt qu'une liste
-     enfermée dans son propre cadre. La barre de défilement est masquée — la
-     molette et le doigt suffisent, et un ascenseur dans une carte flottante
-     alourdirait la surface. */
+  /* Le détail d'un trajet dépasse vite la hauteur de l'écran. L'en-tête —
+     départ, arrivée, modes, croix — reste en place et seul le corps défile
+     (`.itinerary-body`) : quand tout le panneau montait d'un bloc, la croix
+     partait avec (constaté sur appareil, demande explicite). */
   max-height: calc(100vh - 32px); /* repli si `dvh` n'est pas connu */
   max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - 16px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* L'en-tête garde sa hauteur : c'est au corps de céder la place. */
+.itinerary-panel > :not(.itinerary-body) {
+  flex-shrink: 0;
+}
+
+/* Le corps défile jusqu'aux bords du panneau (marges négatives), et sa barre
+   de défilement est masquée — le doigt suffit, et un ascenseur dans une carte
+   flottante alourdirait la surface. */
+.itinerary-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 -18px -16px;
+  padding: 0 18px 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
-.itinerary-panel::-webkit-scrollbar {
+.itinerary-body::-webkit-scrollbar {
   display: none;
 }
 

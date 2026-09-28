@@ -59,7 +59,8 @@ function parseTime(raw: string | undefined): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(raw.trim());
   if (!m) return null;
   const minutes = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  return minutes > 24 * 60 ? null : minutes;
+  // La syntaxe OSM admet « 26:00 » pour 2 h du matin le lendemain.
+  return minutes > 48 * 60 ? null : minutes;
 }
 
 function parseDayToken(token: string): number[] | null {
@@ -101,8 +102,10 @@ function parseRanges(rest: string): TimeRange[] | null {
     const [from, to] = part.split("-").map((s) => s.trim());
     const f = parseTime(from);
     const t = parseTime(to);
-    if (f === null || t === null) return null;
-    ranges.push([f, t]);
+    if (f === null || t === null || f >= 24 * 60) return null;
+    // « 09:00-04:00 » enjambe minuit : la fin appartient au lendemain. Lue
+    // telle quelle, la plage serait vide et le lieu toujours « fermé ».
+    ranges.push([f, t <= f ? t + 24 * 60 : t]);
   }
   return ranges.length ? ranges : null;
 }
@@ -255,6 +258,8 @@ function ruleForDay(rules: DayRule[], day: number): DayRule | undefined {
 }
 
 function formatMinutes(total: number): string {
+  // Une fin après minuit (plage qui enjambe la nuit) s'affiche à l'heure du lendemain.
+  if (total > 24 * 60) total -= 24 * 60;
   const h = Math.floor(total / 60)
     .toString()
     .padStart(2, "0");
@@ -361,15 +366,25 @@ export function computeOpenState(value: string | undefined, at: Date = new Date(
   // Horaire du jour illisible : on ne tranche pas entre ouvert et fermé.
   if (parsed.unknownDays.includes(day)) return null;
 
-  const todayRule = ruleForDay(parsed.rules, day);
-  if (todayRule) {
-    for (const [from, to] of todayRule.ranges) {
-      if (minutes >= from && minutes < to) {
-        // « ferme à 24:00 » se dirait mal d'un lieu ouvert en continu.
-        const detail =
-          from === 0 && to >= 24 * 60 ? t("hours.allDay") : t("hours.closesAt", { time: formatMinutes(to) });
-        return { isOpen: true, status: t("hours.open"), detail };
-      }
+  // Une plage d'hier qui enjambe minuit (« Ve 09:00-04:00 ») couvre encore le
+  // début de la nuit : samedi à 2 h, on la regarde décalée de 24 h. Un jour
+  // d'hier illisible ne tranche rien ici, la règle du jour prend le relais.
+  const yesterday = (day + 6) % 7;
+  const candidates: TimeRange[] = [];
+  if (!parsed.unknownDays.includes(yesterday)) {
+    for (const [from, to] of ruleForDay(parsed.rules, yesterday)?.ranges ?? []) {
+      if (to > 24 * 60) candidates.push([from - 24 * 60, to - 24 * 60]);
+    }
+  }
+  for (const [from, to] of ruleForDay(parsed.rules, day)?.ranges ?? []) {
+    candidates.push([from, to]);
+  }
+  for (const [from, to] of candidates) {
+    if (minutes >= from && minutes < to) {
+      // « ferme à 24:00 » se dirait mal d'un lieu ouvert en continu.
+      const detail =
+        from === 0 && to >= 24 * 60 ? t("hours.allDay") : t("hours.closesAt", { time: formatMinutes(to) });
+      return { isOpen: true, status: t("hours.open"), detail };
     }
   }
 
