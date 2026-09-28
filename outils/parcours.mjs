@@ -345,7 +345,7 @@ const lire = (cle) => js(`localStorage.getItem(${JSON.stringify(cle)})`);
  * sur la base des cartes hors ligne, et rend son résultat.
  */
 const surLesZones = (corps) =>
-  js(`(async()=>{const db=await new Promise((ok,ko)=>{const r=indexedDB.open('osm-local-hors-ligne',2);
+  js(`(async()=>{const db=await new Promise((ok,ko)=>{const r=indexedDB.open('osm-local-hors-ligne');
     r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
     const fait=await (${corps})(db);db.close();return fait})()`);
 
