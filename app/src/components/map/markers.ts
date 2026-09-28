@@ -150,8 +150,19 @@ export function navArrowElement(large: boolean): HTMLDivElement {
   const el = document.createElement("div");
   el.className = large ? "nav-marker is-large" : "nav-marker";
   el.dataset.large = String(large);
+  // Le cône de la boussole (`navigation/compass.ts`), sous la flèche : caché
+  // tant que le capteur n'a rien dit, et tourné par la carte elle-même.
   el.innerHTML = `
-    <svg width="${size}" height="${size}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <svg class="nav-cone" width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="nav-cone-fade" cx="70" cy="70" r="70" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#007AFF" stop-opacity="0.45"/>
+          <stop offset="1" stop-color="#007AFF" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <path d="M70 70 L29.9 12.7 A70 70 0 0 1 110.1 12.7 Z" fill="url(#nav-cone-fade)"/>
+    </svg>
+    <svg class="nav-arrow" width="${size}" height="${size}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       <circle cx="20" cy="20" r="15" fill="#007AFF" fill-opacity="0.18"/>
       <path d="M20 6 L30 30 L20 24.5 L10 30 Z" fill="#007AFF" stroke="#ffffff" stroke-width="2.2"
             stroke-linejoin="round"/>

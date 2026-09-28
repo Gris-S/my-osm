@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat } from "../types";
 import type { TransitJourney, TransitLine } from "../transport/journeyView";
-import { distance } from "./geo";
 import { bestExit, type StationExit } from "./exits";
 import {
   buildTransitSteps,
   connectionTo,
   exitWanted,
   remainingStops,
+  resyncStep,
   scheduledStep,
+  type ResyncMemory,
   type TransitStep,
 } from "./transitSteps";
 import { useNavPosition } from "./useNavPosition";
@@ -49,8 +50,8 @@ const TICK_MS = 1000;
  */
 const SIMULATION_RATE = 20;
 
-/** En deçà de cette distance d'un arrêt, le GPS confirme qu'on y est. */
-const CONFIRM_METERS = 90;
+/** Au-delà de cette incertitude, un relevé ne sert pas au recalage. */
+const MAX_ACCURACY_METERS = 60;
 
 /**
  * Les modes dont les stations ont des sorties. Un arrêt de bus ou de tramway
@@ -179,26 +180,29 @@ export function useTransitNavigation(): TransitNavSession {
     simulatedRef.current = 0;
   }, []);
 
-  // Recalage par le GPS. Il ne sert qu'à **confirmer** un arrêt : dès qu'un
-  // relevé nous place sur le lieu d'une action, c'est celle-là qui est en
-  // cours, quel que soit ce que dit l'horaire ou le décalage manuel. Il ne fait
-  // jamais reculer de plus d'une action — deux stations proches se
-  // confondraient sur une ligne qui revient sur ses pas.
+  // Recalage par le GPS : voir `resyncStep` (`transitSteps.ts`). Près de
+  // l'action en cours, un relevé suffit ; plus loin dans le trajet — on a pris
+  // une autre ligne et l'on rejoint le plan en route —, il faut une preuve,
+  // que `resyncRef` porte d'un relevé à l'autre. Un relevé trop imprécis ne
+  // prouve rien : il est ignoré.
+  const resyncRef = useRef<ResyncMemory | null>(null);
   useEffect(() => {
-    if (!active || !fix || !steps.length) return;
-    const here = { lon: fix.lon, lat: fix.lat };
-    const around = [indexRef.current - 1, indexRef.current, indexRef.current + 1];
-    for (const candidate of around) {
-      const step = steps[candidate];
-      if (!step?.coord) continue;
-      if (distance(here, step.coord) > CONFIRM_METERS) continue;
-      // On est au lieu de cette action : la marche vers un arrêt et la descente
-      // à un arrêt sont **finies** dès qu'on y est, l'action suivante commence.
-      const reached = step.kind === "walk" || step.kind === "alight" ? candidate + 1 : candidate;
-      if (reached !== indexRef.current) goTo(Math.min(reached, steps.length - 1));
-      return;
-    }
-  }, [fix, active, steps, goTo]);
+    resyncRef.current = null;
+  }, [journey]);
+  useEffect(() => {
+    if (!active || !fix || !steps.length || !journey) return;
+    if (fix.accuracy > MAX_ACCURACY_METERS) return;
+    const { index: target, memory } = resyncStep(
+      steps,
+      journey.legs,
+      { lon: fix.lon, lat: fix.lat },
+      indexRef.current,
+      Date.now(),
+      resyncRef.current
+    );
+    resyncRef.current = memory;
+    if (target !== null) goTo(target);
+  }, [fix, active, steps, journey, goTo]);
 
   // La sortie à prendre, cherchée pour la descente en cours ou imminente. Un
   // appel de plus au réseau : il n'est fait qu'au moment où l'indication va
@@ -242,16 +246,25 @@ export function useTransitNavigation(): TransitNavSession {
   // Le cadrage : l'étape en cours, et non la position. Sous terre il n'y a pas
   // de position, et voir le tronçon qu'on parcourt vaut mieux qu'une carte
   // figée là où le signal s'est perdu.
+  // Le sens de marche n'existe qu'en mouvement : à l'arrêt, sur un quai, la
+  // flèche garde le dernier connu au lieu de pointer plein nord. Où l'on
+  // regarde, c'est le cône de la boussole qui le dit.
+  const lastHeadingRef = useRef(0);
+  if (fix?.heading !== null && fix?.heading !== undefined && Number.isFinite(fix.heading)) {
+    lastHeadingRef.current = fix.heading;
+  }
+
   const map: NavMapState | null = useMemo(() => {
     if (!active) return null;
     const box = frameFor(leg?.geometry?.coordinates, current?.coord);
     return {
       position: fix ? { lon: fix.lon, lat: fix.lat } : null,
-      heading: fix?.heading ?? 0,
+      heading: lastHeadingRef.current,
       camera: null,
       // Le trajet a été retenu dans le panneau : il n'y a plus rien à comparer.
       choices: null,
       boldRoute: false,
+      compass: true,
       frame: box ? { bbox: box, token: `${journey?.id}:${index}` } : null,
     };
     // Le cadrage ne se refait qu'au changement d'action : le recalculer à

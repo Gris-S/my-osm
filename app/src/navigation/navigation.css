@@ -511,6 +511,27 @@
   z-index: 2;
 }
 
+.nav-marker .nav-arrow {
+  position: relative;
+  display: block;
+}
+
+/* Le cône de la boussole : centré sur la flèche, dessous, et tourné par la
+   carte (`MapView`) de l'écart entre la boussole et la flèche. Sa transition
+   courte gomme ce que le lissage du capteur laisse de saccades. */
+.nav-cone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -70px 0 0 -70px;
+  display: none;
+  transition: transform 120ms linear;
+}
+
+.nav-marker.has-cone .nav-cone {
+  display: block;
+}
+
 /* Repère d'incident sur le parcours voiture — travaux, fermeture, accident.
    Une pastille franche, cerclée de blanc, qui se lit d'un coup d'œil sur le
    trait coloré : orange pour ce qui gêne, rouge pour ce qui arrête. */
@@ -545,7 +566,7 @@
 
 /* La grande flèche de la voiture se détache du trait bleu épais par une ombre,
    à la manière de Waze. */
-.nav-marker.is-large svg {
+.nav-marker.is-large .nav-arrow {
   display: block;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }

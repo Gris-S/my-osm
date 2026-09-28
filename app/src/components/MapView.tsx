@@ -34,6 +34,7 @@ import type { SavedPlace as StoredPlace } from "../hooks/useBookmarks";
 import type { NavChoice, NavMapState, CarTraffic } from "../navigation";
 import { followConnectivity, installOfflineTiles, offlineTransformRequest } from "../services/offline/nativeTiles";
 import { POI_SOURCE_ID, POI_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween } from "./map/layers";
+import { subscribeCompass } from "../navigation/compass";
 import { STOP_COLOR, pinElement, waypointPinElement, streetViewElement, dotElement, choiceBubbleElement, incidentElement, navArrowElement } from "./map/markers";
 import { NAV_GLIDE_MIN_MS, NAV_GLIDE_MAX_MS, NAV_GLIDE_JUMP_METERS, NAV_FRAME_MS, NAV_FRAME_SLACK_MS, NAV_PIXEL_RATIO_SHARE, NAV_CAMERA_EASE_MS, type NavCameraPose, type NavGlide, idleGlide, shortestTurn, lerp, easeInOut, samePose } from "./map/navGlide";
 
@@ -174,6 +175,9 @@ export const MapView = memo(function MapView({
   const navMarkerRef = useRef<maplibregl.Marker | null>(null);
   // Le glissement en cours de la flèche et de la caméra (voir `NavGlide`).
   const navGlideRef = useRef<NavGlide>(idleGlide());
+  // Le cap de la boussole, et l'angle continu où le cône a été tourné.
+  const compassRef = useRef<number | null>(null);
+  const coneAngleRef = useRef<number | null>(null);
   const choiceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const choicesRef = useRef<NavChoice[] | null>(null);
   choicesRef.current = navigation?.choices ?? null;
@@ -1014,6 +1018,29 @@ export const MapView = memo(function MapView({
 
   // Navigation guidée : le repère du marcheur, et la caméra qui le suit.
   //
+  /**
+   * Tourne le cône de la boussole. Il vit dans l'élément de la flèche, qui
+   * tourne déjà du cap de la marche : le cône ne tourne donc que de l'écart
+   * entre les deux. Appelé à chaque relevé du capteur **et** à chaque rotation
+   * de la flèche — sans quoi, téléphone immobile, le capteur se tait et le
+   * cône suivrait la flèche au lieu de rester sur la boussole.
+   */
+  function syncNavCone() {
+    const marker = navMarkerRef.current;
+    const heading = compassRef.current;
+    if (!marker || heading === null) return;
+    const cone = marker.getElement().querySelector<SVGElement>(".nav-cone");
+    if (!cone) return;
+    marker.getElement().classList.add("has-cone");
+    // Un angle continu plutôt que ramené à 0–360 : la transition CSS ferait
+    // sinon un tour complet en passant par le nord.
+    const target = heading - marker.getRotation();
+    const previous = coneAngleRef.current;
+    const angle = previous === null ? target : previous + shortestTurn(previous, target);
+    coneAngleRef.current = angle;
+    cone.style.transform = `rotate(${angle}deg)`;
+  }
+
   /** Interrompt le glissement en cours, et oublie le relevé précédent. */
   function stopNavGlide() {
     cancelAnimationFrame(navGlideRef.current.frame);
@@ -1043,6 +1070,7 @@ export const MapView = memo(function MapView({
     const { arrowFrom: a, arrowTo: b } = glide;
     if (a && b) {
       marker.setLngLat([lerp(a.lng, b.lng, t), lerp(a.lat, b.lat, t)]).setRotation(a.bearing + shortestTurn(a.bearing, b.bearing) * t);
+      syncNavCone();
     }
 
     let tc = 1;
@@ -1084,6 +1112,7 @@ export const MapView = memo(function MapView({
     if (sameTarget && glide.frame !== 0) return true;
     if (sameTarget) {
       marker.setRotation(bearing);
+      syncNavCone();
       return false;
     }
 
@@ -1095,6 +1124,7 @@ export const MapView = memo(function MapView({
     if (from.distanceTo(new maplibregl.LngLat(to[0], to[1])) > NAV_GLIDE_JUMP_METERS) {
       navGlideRef.current = idleGlide(now, to);
       marker.setLngLat(to).setRotation(bearing);
+      syncNavCone();
       return false;
     }
 
@@ -1247,6 +1277,8 @@ export const MapView = memo(function MapView({
         .setLngLat(lngLat)
         .addTo(map)
         .setRotation(navigation.heading);
+      coneAngleRef.current = null;
+      syncNavCone();
       navGlideRef.current = idleGlide(performance.now(), lngLat);
     } else {
       gliding = glideNavArrow(navMarkerRef.current, lngLat, navigation.heading);
@@ -1289,6 +1321,24 @@ export const MapView = memo(function MapView({
       else easeNavCamera(map, pose);
     }
   }, [navigation]);
+
+  // La boussole, écoutée seulement quand la navigation montre le cône.
+  const wantsCompass = navigation?.compass === true;
+  useEffect(() => {
+    if (!wantsCompass) return;
+    const unsubscribe = subscribeCompass((heading) => {
+      compassRef.current = heading;
+      syncNavCone();
+    });
+    return () => {
+      unsubscribe();
+      compassRef.current = null;
+      coneAngleRef.current = null;
+      navMarkerRef.current?.getElement().classList.remove("has-cone");
+    };
+    // `syncNavCone` ne lit que des refs : il n'a pas à relancer l'abonnement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsCompass]);
 
   // Le tracé d'une course (`navigation.trace`), dessiné tel qu'il arrive.
   //

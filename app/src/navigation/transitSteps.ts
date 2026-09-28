@@ -1,4 +1,5 @@
 import type { LonLat } from "../types";
+import { distance } from "./geo";
 import type { TransitJourney, TransitLeg, TransitLine } from "../transport/journeyView";
 
 // ---------------------------------------------------------------------------
@@ -205,4 +206,122 @@ export function connectionTo(steps: TransitStep[], index: number, legs: TransitL
   if (alight?.kind !== "alight" || !enclosed(alight.line) || exitWanted(steps, index, legs)) return null;
   const next = steps.slice(index + 1).find((step) => step.kind === "board" || step.kind === "arrive");
   return next?.kind === "board" && enclosed(next.line) ? (next.line ?? null) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Le recalage par le GPS.
+//
+// Le plan dit « T1, puis T2 » ; on a pris T4, et l'on se retrouve dans T2
+// (demande explicite, 28 septembre 2026). Le guidage doit alors se remettre à
+// T2 au lieu de rester sur T1. Le GPS reconnaît pour cela deux choses : le
+// lieu d'une action (un arrêt de montée ou de descente), et les arrêts
+// **intermédiaires** d'une ligne du trajet — y passer, c'est être dedans.
+//
+// Près de l'action en cours — celle d'avant ou celle d'après —, le relevé
+// suffit, comme avant. **Plus loin, il faut une preuve**, parce qu'un trajet
+// repasse souvent près de ses propres arrêts : la marche du début longe le bus
+// de la fin. La preuve est l'une de ces deux :
+//
+//   - **rester** près d'un arrêt du trajet : on l'attend ;
+//   - **passer deux arrêts successifs** d'une même ligne, dans son sens : on
+//     est dedans.
+//
+// Jamais plus d'une action en arrière : deux stations proches se
+// confondraient sur une ligne qui revient sur ses pas.
+// ---------------------------------------------------------------------------
+
+/** En deçà de cette distance du lieu d'une action voisine, on y est. */
+export const CONFIRM_METERS = 90;
+/** Plus serré pour une action lointaine : il faut être à l'arrêt, pas à côté. */
+export const FAR_METERS = 40;
+/** Temps passé près d'un arrêt lointain avant de s'y recaler. */
+export const DWELL_MS = 30_000;
+/** Combien de temps un arrêt passé attend le suivant de la même ligne. */
+export const RIDE_MEMORY_MS = 10 * 60_000;
+
+/** Ce que le recalage retient d'un relevé à l'autre, en attendant sa preuve. */
+export interface ResyncMemory {
+  /** L'action où l'on se recalerait. */
+  target: number;
+  /** Depuis quand on est près de ce lieu. */
+  since: number;
+  /** Arrêt intermédiaire reconnu : sa ligne (rang d'étape) et son rang. */
+  ride?: { leg: number; order: number };
+}
+
+interface Match {
+  target: number;
+  meters: number;
+  ride?: { leg: number; order: number };
+}
+
+/** Les lieux du trajet où se trouve `here`, de la première action à la dernière. */
+function matchesAt(steps: TransitStep[], legs: TransitLeg[], here: LonLat, from: number, radius: number): Match[] {
+  const found: Match[] = [];
+  for (let i = Math.max(0, from); i < steps.length; i++) {
+    const step = steps[i];
+    if (step.coord) {
+      const meters = distance(here, step.coord);
+      // Être au lieu d'une marche ou d'une descente, c'est l'avoir **finie** :
+      // l'action suivante commence.
+      if (meters <= radius) {
+        found.push({ target: step.kind === "walk" || step.kind === "alight" ? Math.min(i + 1, steps.length - 1) : i, meters });
+      }
+    }
+    // Les arrêts intermédiaires d'une ligne : on roule vers sa descente.
+    const stops = step.kind === "alight" ? legs[step.legIndex]?.stops : undefined;
+    if (stops && stops.length > 2) {
+      for (let order = 1; order < stops.length - 1; order++) {
+        const meters = distance(here, stops[order]);
+        if (meters <= radius) found.push({ target: i, meters, ride: { leg: step.legIndex, order } });
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * L'action où recaler le guidage d'après un relevé, ou `index: null` pour ne
+ * rien changer. `memory` se repasse d'un relevé à l'autre : c'est elle qui
+ * porte la preuve en cours.
+ */
+export function resyncStep(
+  steps: TransitStep[],
+  legs: TransitLeg[],
+  here: LonLat,
+  current: number,
+  now: number,
+  memory: ResyncMemory | null
+): { index: number | null; memory: ResyncMemory | null } {
+  // Près du plan : le relevé suffit.
+  const near = matchesAt(steps, legs, here, current - 1, CONFIRM_METERS).filter((match) => match.target <= current + 1);
+  if (near.length) {
+    const target = near[0].target;
+    return { index: target === current ? null : target, memory: null };
+  }
+
+  // Plus loin : la première action reconnue, preuve à l'appui.
+  const match = matchesAt(steps, legs, here, current + 2, FAR_METERS).find((m) => m.target > current + 1);
+  if (!match) {
+    // Entre deux arrêts d'une ligne, on n'est près d'aucun : l'arrêt passé
+    // reste en mémoire, le temps d'atteindre le suivant. L'attente, elle,
+    // s'arrête quand on quitte le lieu.
+    const keep = memory?.ride && now - memory.since < RIDE_MEMORY_MS;
+    return { index: null, memory: keep ? memory : null };
+  }
+
+  // Deux arrêts de la même ligne, dans son sens : on est dedans.
+  const before = memory?.ride;
+  if (match.ride && before && before.leg === match.ride.leg && match.ride.order > before.order) {
+    return { index: match.target, memory: null };
+  }
+  // Resté au même lieu assez longtemps : on y attend.
+  const sameSpot =
+    memory !== null &&
+    memory.target === match.target &&
+    (match.ride ? memory.ride?.order === match.ride.order : !memory.ride);
+  if (sameSpot && now - memory.since >= DWELL_MS) {
+    return { index: match.target, memory: null };
+  }
+  return { index: null, memory: { target: match.target, since: sameSpot ? memory.since : now, ride: match.ride } };
 }

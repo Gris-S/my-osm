@@ -1,0 +1,6 @@
+Walking and transit navigation now show a compass cone under the arrow: it
+points where your phone is facing, while the arrow keeps your walking direction.
+
+Transit navigation catches up with you when you take another line: pass two
+stops of a later line in your journey, or wait at one of its stops, and the
+guidance moves there instead of staying on the line you skipped.

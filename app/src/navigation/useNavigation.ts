@@ -203,6 +203,12 @@ export interface NavMapState {
    */
   largeArrow?: boolean;
   /**
+   * Montre le cône de la boussole sous la flèche : où le téléphone est tourné
+   * (`compass.ts`). À pied et en transports ; pas en voiture, où l'on regarde
+   * la route et non le téléphone.
+   */
+  compass?: boolean;
+  /**
    * Le trafic sur le parcours suivi — tronçons colorés et repères d'incident —
    * pendant une navigation **voiture**. Absent ailleurs.
    */
@@ -588,6 +594,7 @@ export function useNavigation(): NavSession {
     return {
       position: { lon: fix.lon, lat: fix.lat },
       heading,
+      compass: true,
       camera: follow
         ? { center, bearing: heading, pitch: NAV_PITCH, zoom, paddingTop: paddingTop() }
         : null,

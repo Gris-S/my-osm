@@ -28,6 +28,7 @@ marqué d'un commentaire qui nomme ce dossier.
 | `progress.ts` | Où l'on en est sur ce tracé : avancement, écart, manœuvre à venir. |
 | `elevation.ts` | Le profil du dénivelé, lu dans les tuiles d'altitude déjà utilisées par le relief. |
 | `useNavPosition.ts` | `watchPosition` : le suivi continu de la position. |
+| `compass.ts` | La boussole du téléphone, pour le cône sous la flèche (à pied et en transports) ; hors de React, la carte s'y abonne. |
 | `useNavigation.ts` | La session de navigation : elle assemble tout ce qui précède. |
 | `NavigationPanel.tsx` | Le bandeau de manœuvre, la barre du bas et le détail dépliable. |
 | `ElevationProfile.tsx` | Le graphe du dénivelé. |
@@ -44,7 +45,7 @@ marqué d'un commentaire qui nomme ce dossier.
 | `tripCard.ts` | Le bloc du détail redessiné en image. |
 | `tripShare.ts` | La capture de carte hors écran et le partage. |
 | `settings.ts` | Les deux réglages persistés : cadrage de la caméra, conservation. |
-| `transitSteps.ts` | Un trajet en transports découpé en actions. |
+| `transitSteps.ts` | Un trajet en transports découpé en actions, et le recalage par le GPS (`resyncStep`). |
 | `useTransitNavigation.ts` | La session de guidage en transports. |
 | `TransitNavigationPanel.tsx` | Le bandeau et la liste de la suite du trajet. |
 | `exits.ts` | Par quelle sortie quitter une station. |
