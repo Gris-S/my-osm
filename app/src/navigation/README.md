@@ -25,6 +25,8 @@ marqué d'un commentaire qui nomme ce dossier.
 | --- | --- |
 | `geo.ts` | Distances, caps, projection d'un point sur un segment. |
 | `route.ts` | L'appel à OSRM avec `steps=true` (à pied) ou à `services/bikeRouting.ts` (à vélo : Valhalla, BRouter en secours), et le trajet mis en forme (`NavRoute`). |
+| `bikeChoice.ts` | Le choix à vélo : plus rapide ou plus sûr, les bulles, et le vert des pistes (`useCycleways`). |
+| `BikeRouteChoice.tsx` | La barre du bas pendant le choix à vélo, sur le modèle de la voiture. |
 | `progress.ts` | Où l'on en est sur ce tracé : avancement, écart, manœuvre à venir. |
 | `elevation.ts` | Le profil du dénivelé, lu dans les tuiles d'altitude déjà utilisées par le relief. |
 | `useNavPosition.ts` | `watchPosition` : le suivi continu de la position. |

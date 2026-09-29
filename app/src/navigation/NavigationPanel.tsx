@@ -1,3 +1,4 @@
+import { BikeRouteChoice } from "./BikeRouteChoice";
 import { useEffect, useState } from "react";
 import { ChevronDown, Crosshair, Footprints, LoaderCircle, Mountain, Play, Square, X } from "lucide-react";
 import { formatDistance } from "../utils/format";
@@ -40,6 +41,8 @@ export function NavigationPanel({ session }: { session: NavSession }) {
   const { progress, route, status } = session;
 
   if (!session.active) return null;
+  // À vélo, avant de partir : le choix se fait sur la carte (`BikeRouteChoice`).
+  if (status === "choosing") return <BikeRouteChoice session={session} />;
 
   const next = progress?.next ?? null;
   // « Arrivé » seulement si l'on est arrivé : un trajet interrompu passe aussi
@@ -77,9 +80,6 @@ export function NavigationPanel({ session }: { session: NavSession }) {
         {/* Le recalcul se dit sans effacer l'instruction : tant qu'il n'a pas
             abouti, la précédente reste la meilleure indication disponible. */}
         {session.rerouting && <p className="nav-banner-note">{nav("nav.rerouting")}</p>}
-        {/* Le secours BRouter du vélo se dit pendant tout le guidage : ses
-            consignes n'ont pas de noms de rues, et c'est la seule explication. */}
-        {session.route?.source === "brouter" && <p className="nav-banner-note">{nav("bike.fallback")}</p>}
         {!session.rerouting && progress && progress.offsetMeters > OFF_ROUTE_METERS && !arrived && !stopped && (
           <p className="nav-banner-note">{nav("nav.offRoute")}</p>
         )}

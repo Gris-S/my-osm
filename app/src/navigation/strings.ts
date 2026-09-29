@@ -25,9 +25,12 @@ const fr = {
   "nav.start": "Démarrer",
   "nav.startAria": "Démarrer la navigation à pied",
   "bike.startAria": "Démarrer la navigation à vélo",
-  "bike.fallback": "Itinéraire de secours (BRouter) : consignes sans noms de rues.",
   "bike.shareTitle": "Trajet à vélo",
   "bike.errorNoRoute": "Aucun itinéraire à vélo entre ces points.",
+  "bike.fast": "Plus rapide",
+  "bike.safe": "Plus sûr",
+  "bike.fastAndSafe": "Rapide et sûr",
+  "bike.share": "{percent} % sur pistes",
 
   // Bandeau de manœuvre et barre du bas
   // Les trois chiffres de la barre du bas ne portent pas de libellé à l'écran —
@@ -360,9 +363,12 @@ const en: NavDict = {
   "nav.start": "Start",
   "nav.startAria": "Start walking navigation",
   "bike.startAria": "Start cycling navigation",
-  "bike.fallback": "Backup route (BRouter): directions without street names.",
   "bike.shareTitle": "Cycling trip",
   "bike.errorNoRoute": "No cycling route between these points.",
+  "bike.fast": "Fastest",
+  "bike.safe": "Safest",
+  "bike.fastAndSafe": "Fast and safe",
+  "bike.share": "{percent}% on bike lanes",
 
   "nav.remaining": "Time remaining",
   "nav.arrival": "Arrival time",

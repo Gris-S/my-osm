@@ -460,19 +460,6 @@ export const fr = {
   "route.driving": "Voiture",
   "route.walking": "À pied",
   "route.cycling": "Vélo",
-  "bike.section": "Vélo",
-  "bike.avoidTraffic": "Circulation",
-  "bike.avoidTraffic.low": "Plus direct",
-  "bike.avoidTraffic.high": "Pistes cyclables d'abord",
-  "bike.avoidHills": "Côtes",
-  "bike.avoidHills.low": "Peu importe",
-  "bike.avoidHills.high": "Le plus plat",
-  "bike.electric": "Vélo électrique",
-  "bike.electric.hint": "Vitesse de croisière de 22 km/h, et les côtes comptent trois fois moins.",
-  "bike.safety": "Priorité sécurité",
-  "bike.safety.hint": "Le moins de circulation possible, quitte à allonger le trajet. Remplace le curseur Circulation.",
-  "bike.fallback": "Secours BRouter",
-  "bike.fallback.hint": "Si Valhalla ne répond pas, calculer avec BRouter — toujours signalé. Désactivé, l'itinéraire échoue plutôt que de changer de moteur.",
   "route.transit": "Transports en commun",
   "itinerary.close": "Fermer l'itinéraire",
   "itinerary.from": "De",
@@ -500,8 +487,6 @@ export const fr = {
   "itinerary.noTransit": "Aucun trajet en transports pour ce parcours.",
   "itinerary.noTransitSteps": "Aucun trajet en transports desservant toutes les étapes.",
   "itinerary.transitNote": "Horaires {source}, au départ de l'heure du calcul.",
-  "itinerary.bikeFallback":
-    "Itinéraire de secours (BRouter) : Valhalla ne répond pas. Consignes sans noms de rues ; côtes et vélo électrique non pris en compte.",
   "itinerary.singleRoute": "Un seul parcours est proposé : chaque étape est enchaînée au plus tôt.",
 
   // Trajet en transports : résumé et frise

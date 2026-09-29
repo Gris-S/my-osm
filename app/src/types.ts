@@ -111,10 +111,4 @@ export interface RouteResult {
   distanceMeters: number | null;
   durationSeconds: number;
   segments: RouteSegment[];
-  /**
-   * Le moteur qui a calculé un itinéraire **à vélo** : `brouter` quand Valhalla
-   * n'a pas répondu. Le panneau l'annonce — un secours ne passe jamais en
-   * silence (voir `services/bikeRouting.ts`).
-   */
-  source?: import("./services/bikeRouting").BikeSource;
 }

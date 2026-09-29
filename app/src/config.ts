@@ -575,10 +575,13 @@ export const CONFIG = {
   // - OSRM `routed-bike` de la FOSSGIS, écarté : profil vélo figé, le plus
   //   sommaire des trois.
   //
-  // Le passage au secours n'est **jamais silencieux** : le résultat porte sa
-  // source et le panneau l'annonce ; un réglage l'interdit (`bikeSettings.ts`).
+  // Le secours est **silencieux** et sans réglage (décision de l'utilisateur,
+  // 29 septembre 2026) : il ne se voit que dans la console.
   BIKE_ROUTING: {
     VALHALLA_URL: "https://valhalla1.openstreetmap.de/route",
+    // Les tronçons parcourus et leur aménagement cyclable, pour colorer en
+    // vert pistes et bandes (`fetchCycleways`). Même serveur, même règle.
+    TRACE_ATTRIBUTES_URL: "https://valhalla1.openstreetmap.de/trace_attributes",
     BROUTER_URL: "https://brouter.de/brouter",
     CLIENT_ID: "my-osm",
   } as const,

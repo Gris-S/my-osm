@@ -408,7 +408,7 @@ export default function App() {
    * de bandeau de manœuvre en haut — la mise en page qui descend les menus sous
    * ce bandeau n'a donc rien à décaler (voir `src/navigation/`).
    */
-  const choosingRoute = carNav.status === "choosing";
+  const choosingRoute = carNav.status === "choosing" || navigation.status === "choosing";
 
   /**
    * Vrai pendant un guidage **voiture**, une fois l'itinéraire retenu.
@@ -474,13 +474,15 @@ export default function App() {
     }
     // Les deux extrémités sont nommées : ce sont elles qui titrent le trajet
     // dans l'historique, longtemps après que le parcours a disparu.
-    // À pied comme à vélo, le même guidage — le mode ne change que le moteur
-    // d'itinéraire et ce que la fiche de fin compte.
-    navigation.start(
-      routePoints,
-      { from: stopName(stops[0]), to: stopName(stops[stops.length - 1]) },
-      routeMode === "cycling" ? "cycling" : "walking"
-    );
+    const names = { from: stopName(stops[0]), to: stopName(stops[stops.length - 1]) };
+    // À vélo, comme en voiture, « Démarrer » ouvre d'abord le **choix** — plus
+    // rapide ou plus sûr, sur la carte — puis la navigation, qui est celle de
+    // la marche (voir `src/navigation/bikeChoice.ts`).
+    if (routeMode === "cycling") {
+      navigation.choose(routePoints, names);
+      return;
+    }
+    navigation.start(routePoints, names, "walking");
   }
 
   // Hauteur libérée sous la colonne de boutons de droite. Pendant le guidage,
@@ -647,7 +649,12 @@ export default function App() {
         // quand TomTom en prenait 2,76 — deux routes différentes, pas deux
         // estimations de la même. Montrer l'une en annonçant la durée de
         // l'autre était l'incohérence la plus gênante des deux.
-        route={navigation.mapRoute ?? carNav.mapRoute ?? (carNav.active ? null : (carEta?.result ?? route))}
+        route={
+          navigation.mapRoute ??
+          carNav.mapRoute ??
+          // Pendant un choix (voiture ou vélo), seules les propositions sont tracées.
+          (carNav.active || navigation.status === "choosing" ? null : (carEta?.result ?? route))
+        }
         navigation={navigation.map ?? carNav.map ?? transitNav.map ?? run.map}
         onNavigationPan={carNav.active ? carNav.notifyPan : run.active ? run.notifyPan : navigation.notifyPan}
         theme={theme}

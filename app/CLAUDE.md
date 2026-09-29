@@ -643,52 +643,62 @@ Points à connaître sur le calcul lui-même :
 monde entier, sans clé. Trois services comparés en direct ce jour-là (détail et
 sources dans le commentaire de `CONFIG.BIKE_ROUTING`) :
 
-- **Valhalla de la FOSSGIS** (`valhalla1.openstreetmap.de/route`), **retenu** :
-  tuiles reconstruites environ tous les deux jours, profil `bicycle` réglable,
-  noms de rues, et `format: "osrm"` qui rend **la forme que le guidage à pied
-  lit déjà** — aucun nouveau lecteur de manœuvres. Règle d'usage : 1 appel/s
-  par utilisateur, en-tête `X-Client-Id: my-osm` (préflight vérifié : l'en-tête
-  est autorisé en origine croisée). Une réponse **400** veut dire « pas de
-  chemin » (`DistanceExceeded` mesuré sur Paris → New York), pas une panne.
+- **Valhalla de la FOSSGIS** (`valhalla1.openstreetmap.de`), **retenu** :
+  tuiles reconstruites environ tous les deux jours, profil `bicycle`, noms de
+  rues, et `format: "osrm"` qui rend **la forme que le guidage à pied lit
+  déjà**. Règle d'usage : 1 appel/s par utilisateur, en-tête
+  `X-Client-Id: my-osm` (autorisé en origine croisée, vérifié). Une réponse
+  **400** veut dire « pas de chemin », pas une panne.
 - **BRouter** (`brouter.de/brouter`), **secours** : consignes sans noms de rues
-  (`voicehints` : `[point, commande, sortie, distance, angle]`, lu dans
-  `FormatJson.java`/`VoiceHint.java`), aucune règle d'usage publiée. **Les
-  paramètres de profil (`profile:xxx=`) répondent 500 sur ce serveur** : seuls
-  les profils nommés servent (`trekking`, `safety`). Il rend aussi un 500 quand
-  il ne trouve pas de chemin.
+  (`voicehints`, lu dans `FormatJson.java`/`VoiceHint.java`), aucune règle
+  d'usage publiée. **Les paramètres de profil (`profile:xxx=`) répondent 500**
+  sur ce serveur : seuls les profils nommés servent (`fastbike`, `safety`).
 - OSRM `routed-bike` de la FOSSGIS, **écarté** : profil figé, le plus sommaire.
+
+Décisions de l'utilisateur, à ne pas défaire :
+
+- **Aucun réglage vélo** (la section « Vélo » des paramètres a existé une
+  version, puis a été retirée à sa demande).
+- **Le secours BRouter est silencieux** : ni avertissement ni interrupteur
+  (« tu le gardes mais tu le dis pas »). Il ne se voit que dans la console. Il
+  n'est tenté que sur panne (réseau, 5xx, 429), **jamais sur un 400**.
+- **Au départ, un choix comme en voiture** : « Plus rapide » (`use_roads` 1,
+  BRouter `fastbike`) et « Plus sûr » (`use_roads` 0, BRouter `safety`), sur la
+  carte, une bulle par parcours, un toucher pour voir et un second pour partir
+  (`navigation/bikeChoice.ts`, `BikeRouteChoice.tsx`, statut `choosing` de
+  `useNavigation`).
+- **Pistes et bandes en vert** (`#34C759`, `CYCLEWAY_COLOR`) sur les
+  propositions et pendant la navigation vélo.
 
 Points à connaître :
 
-- **Un seul appel pour le panneau et le guidage** : `services/bikeRouting.ts`
-  ramène les deux moteurs à la forme d'OSRM `steps=true` ; `services/routing.ts`
-  (panneau) et `navigation/route.ts` (guidage, `getNavRoute(…, "cycling")`) le
-  lisent. BRouter rend un tracé unique : il est recoupé au point le plus proche
-  de chaque étape pour que le guidage retrouve ses arrivées intermédiaires.
-- **Le secours n'est jamais silencieux** (règle de l'utilisateur) : le résultat
-  porte `source`, le panneau affiche `itinerary.bikeFallback` et le bandeau de
-  navigation `bike.fallback`. Le réglage « Secours BRouter » l'interdit. Il
-  n'est tenté que sur panne (réseau, 5xx, 429), **jamais sur un 400** : un autre
-  moteur ne trouverait pas de chemin non plus. Testé (`tests/bikeRouting.test.ts`).
-- **Un appel par seconde au plus**, tous moteurs confondus (`politeSlot`) : les
-  appels attendent leur créneau au lieu d'être refusés. Les curseurs des
-  paramètres ne s'appliquent qu'une demi-seconde après le dernier mouvement,
-  sans quoi chaque cran relancerait un calcul.
-- **Réglages** (`services/bikeSettings.ts`, magasin de module, clé
-  `osm-local:bike-settings`, section « Vélo » des paramètres) : circulation
-  (`use_roads = 1 − avoidTraffic`, défaut 0,75), côtes (`use_hills`), vélo
-  électrique (22 km/h, côtes au tiers), priorité sécurité (`use_roads` 0 ;
-  BRouter `safety`), secours autorisé. Hors de `src/navigation/` parce que le
-  panneau en dépend. `useItinerary` recalcule quand ils changent.
-  **Effet mesuré** (`trace_attributes`, part du trajet sur piste, bande
-  cyclable, chemin ou voie calme) : Nation → Opéra **21 %** à `use_roads` 1,
-  **80 %** au défaut, **94 %** à 0, pour 5,8 km dans les trois cas ;
-  Part-Dieu → Villeurbanne ≈ 73 % partout (le direct y est déjà cyclable).
+- **Quand les deux profils suivent les mêmes rues, un seul parcours, « Rapide
+  et sûr », et c'est le plus sûr qu'on garde** (`fetchBikeOptions`,
+  `sameLine` : 95 % des points à moins de 30 m, dans les deux sens). En ville,
+  le plus sûr diffère souvent par un détail invisible sur la carte : il roule
+  sur la piste qui longe la chaussée. Mesuré sur Nation → Opéra : 5,82 km sur la
+  chaussée (0 % de vert) contre 5,84 km sur la piste (79 %). Garder le plus
+  rapide, première version, affichait 0 % sur un boulevard aménagé.
+- **Le panneau montre la première proposition**, par la même fonction : sa
+  durée est toujours celle de la première bulle. Les réponses sont en cache deux
+  minutes (`fetchBikeRoute`) : « Démarrer » ne rappelle pas les moteurs.
+- **Le vert vient de `trace_attributes`** (`fetchCycleways`) : pour chaque
+  tronçon, `use` et `cycle_lane`. Vert : `use: cycleway`, `cycle_lane:
+  dedicated` (bande) ou `separated` (piste le long d'une route). Reste bleu :
+  route, voie partagée (`shared`), trottoir. `shape_match: "map_snap"`, pour
+  qu'un tracé de secours BRouter se colore aussi. Un appel de plus par parcours ;
+  le tracé s'affiche d'abord, le vert suit ; un échec laisse le tracé bleu. Le
+  vert passe par la couche du trafic voiture (`route-traffic`, niveau
+  `cycleway`), qui colorait déjà des morceaux de tracé.
+- **Un appel par seconde au plus**, tous moteurs confondus (`politeSlot`).
 - **La navigation vélo est la session à pied** (`useNavigation`, `mode:
-  "cycling"`) : même tracé, même recalcul. Ni podomètre ni pas : le trajet
-  s'enregistre en `kind: "ride"`, et la fiche, l'historique et l'image de
-  partage montrent le **dénivelé** à la place des pas. La fiche de fin suit le
-  réglage « Résumé après une marche ».
+  "cycling"`) ; un trajet retenu au choix part sans recalcul, et les recalculs
+  gardent son profil. Ni podomètre ni pas : le trajet s'enregistre en
+  `kind: "ride"`, et la fiche, l'historique et l'image de partage montrent le
+  **dénivelé** à la place des pas.
+- **Mesuré le 29 septembre 2026** : Montparnasse → Gare de l'Est, deux
+  parcours (20 min, 54 % de vert ; 21 min, 59 %) ; Vincennes → Montreuil, un
+  seul, 1 % — il n'y a presque pas d'aménagement sur ce trajet.
 
 ### Navigation guidée à pied (`src/navigation/`)
 

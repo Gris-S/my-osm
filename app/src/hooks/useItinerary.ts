@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONFIG, type TravelMode } from "../config";
 import { getRoute } from "../services/routing";
-import { useBikeSettings } from "../services/bikeSettings";
 import { journeyToRoute, type TransitJourney } from "../transport/journeyView";
 import { loadJourneys } from "../transport/journeys";
 import { isTransitStop } from "../services/idfm";
@@ -171,10 +170,6 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   // Renommer une étape ou remplacer un lieu par un autre au même point ne doit
   // pas coûter un appel — en transports, il est prélevé sur un quota.
   const routeKey = routePoints?.map((p) => `${p.lon},${p.lat}`).join(";") ?? null;
-  // À vélo, les réglages font partie de la demande : les changer dans les
-  // paramètres recalcule le parcours affiché. Ailleurs, ils ne comptent pas.
-  const bike = useBikeSettings();
-  const bikeKey = routeMode === "cycling" ? JSON.stringify(bike) : "";
 
   // Calcule / recalcule l'itinéraire quand le parcours ou le mode changent. En
   // transports, c'est la source de la région qui répond, sur les horaires du moment (voir
@@ -223,7 +218,7 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeKey, routeMode, bikeKey]);
+  }, [routeKey, routeMode]);
 
   // Trajet en transports retenu, et tracé qui en découle : un tronçon par
   // étape, à la couleur de la ligne. Mémorisé, faute de quoi la carte

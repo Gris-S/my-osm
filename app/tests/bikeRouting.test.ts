@@ -1,41 +1,97 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  BikeRouteError,
   brouterProfile,
   brouterToOsrm,
+  clearBikeRouteCache,
+  cyclewaysFromAttributes,
   fetchBikeRoute,
+  sameLine,
   valhallaCosting,
 } from "../src/services/bikeRouting";
-import { DEFAULT_BIKE_SETTINGS, setBikeSettings } from "../src/services/bikeSettings";
 import { getNavRoute } from "../src/navigation/route";
+import { getBikeProposals } from "../src/navigation/bikeChoice";
 
 // L'itinéraire à vélo : les réglages traduits pour Valhalla, la réponse de
 // BRouter ramenée à la forme d'OSRM, et surtout la règle du secours — qui ne
 // doit servir que quand Valhalla est en panne, et jamais en silence.
 
-describe("réglages vélo → Valhalla", () => {
-  it("inverse les curseurs : éviter la circulation = peu de route", () => {
-    const c = valhallaCosting({ ...DEFAULT_BIKE_SETTINGS, avoidTraffic: 0.75, avoidHills: 0.5 });
-    expect(c).toEqual({ bicycle_type: "hybrid", use_roads: 0.25, use_hills: 0.5 });
+describe("profils vélo", () => {
+  it("plus rapide : la route ne gêne pas ; plus sûr : pistes d'abord", () => {
+    expect(valhallaCosting("fast")).toEqual({ bicycle_type: "hybrid", use_roads: 1, use_hills: 0.5 });
+    expect(valhallaCosting("safe")).toEqual({ bicycle_type: "hybrid", use_roads: 0, use_hills: 0.5 });
   });
 
-  it("la sécurité force use_roads à 0, quel que soit le curseur", () => {
-    const c = valhallaCosting({ ...DEFAULT_BIKE_SETTINGS, avoidTraffic: 0.1, safety: true });
-    expect(c.use_roads).toBe(0);
-  });
-
-  it("le VAE roule à 22 km/h et craint trois fois moins les côtes", () => {
-    const c = valhallaCosting({ ...DEFAULT_BIKE_SETTINGS, avoidHills: 0.9, electric: true });
-    expect(c.cycling_speed).toBe(22);
-    expect(c.use_hills).toBe(0.7);
-  });
-
-  it("BRouter : profil safety pour la sécurité ou une circulation très évitée", () => {
-    expect(brouterProfile({ ...DEFAULT_BIKE_SETTINGS })).toBe("trekking");
-    expect(brouterProfile({ ...DEFAULT_BIKE_SETTINGS, safety: true })).toBe("safety");
-    expect(brouterProfile({ ...DEFAULT_BIKE_SETTINGS, avoidTraffic: 0.9 })).toBe("safety");
+  it("BRouter : fastbike et safety, les seuls profils nommés que son serveur accepte", () => {
+    expect(brouterProfile("fast")).toBe("fastbike");
+    expect(brouterProfile("safe")).toBe("safety");
   });
 });
+
+describe("pistes et bandes en vert", () => {
+  // Quatre points alignés vers l'est, encodés comme Valhalla les rend (précision 6).
+  const shape = encode([
+    [2.35, 48.85],
+    [2.351, 48.85],
+    [2.352, 48.85],
+    [2.353, 48.85],
+  ]);
+
+  it("piste, bande et piste séparée passent en vert ; route et voie partagée non", () => {
+    const green = cyclewaysFromAttributes({
+      shape,
+      edges: [
+        { use: "road", cycle_lane: "none", begin_shape_index: 0, end_shape_index: 1 },
+        { use: "road", cycle_lane: "dedicated", begin_shape_index: 1, end_shape_index: 2 },
+        { use: "cycleway", cycle_lane: "shared", begin_shape_index: 2, end_shape_index: 3 },
+      ],
+    });
+    // Deux tronçons verts qui se suivent ne font qu'une portion.
+    expect(green.segments).toHaveLength(1);
+    expect(green.segments[0].coordinates).toHaveLength(3);
+    expect(green.share).toBeCloseTo(2 / 3, 2);
+  });
+
+  it("une voie partagée coupe la portion verte", () => {
+    const green = cyclewaysFromAttributes({
+      shape,
+      edges: [
+        { use: "cycleway", begin_shape_index: 0, end_shape_index: 1 },
+        { use: "road", cycle_lane: "shared", begin_shape_index: 1, end_shape_index: 2 },
+        { use: "road", cycle_lane: "separated", begin_shape_index: 2, end_shape_index: 3 },
+      ],
+    });
+    expect(green.segments).toHaveLength(2);
+  });
+
+  it("une réponse vide ne rend rien, sans lever", () => {
+    expect(cyclewaysFromAttributes({})).toEqual({ segments: [], share: 0 });
+  });
+});
+
+/** Encodage de polyligne (algorithme de Google), pour fabriquer une réponse. */
+function encode(points: Array<[number, number]>, precision = 6): string {
+  const factor = 10 ** precision;
+  let out = "";
+  let lat = 0;
+  let lon = 0;
+  const put = (value: number) => {
+    let v = value < 0 ? ~(value << 1) : value << 1;
+    while (v >= 0x20) {
+      out += String.fromCharCode((0x20 | (v & 0x1f)) + 63);
+      v >>= 5;
+    }
+    out += String.fromCharCode(v + 63);
+  };
+  for (const [x, y] of points) {
+    const ly = Math.round(y * factor);
+    const lx = Math.round(x * factor);
+    put(ly - lat);
+    put(lx - lon);
+    lat = ly;
+    lon = lx;
+  }
+  return out;
+}
 
 /** Un tracé droit vers l'est, un point tous les ~73 m à Paris. */
 function line(n: number): Array<[number, number, number]> {
@@ -143,7 +199,7 @@ describe("le secours BRouter", () => {
 
   /** Le calcul, horloge avancée : les appels sont espacés d'une seconde. */
   async function run() {
-    const pending = fetchBikeRoute(points);
+    const pending = fetchBikeRoute(points, "fast");
     pending.catch(() => {});
     await vi.runAllTimersAsync();
     return pending;
@@ -152,7 +208,7 @@ describe("le secours BRouter", () => {
   beforeEach(() => {
     calls = [];
     vi.useFakeTimers();
-    setBikeSettings({ ...DEFAULT_BIKE_SETTINGS });
+    clearBikeRouteCache();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -166,7 +222,7 @@ describe("le secours BRouter", () => {
     expect(calls).toEqual(["valhalla"]);
   });
 
-  it("Valhalla en panne : BRouter répond, et le résultat le dit", async () => {
+  it("Valhalla en panne : BRouter répond (en silence pour l'utilisateur)", async () => {
     serve(() => new Response("oops", { status: 503 }));
     const result = await run();
     expect(result.source).toBe("brouter");
@@ -185,17 +241,28 @@ describe("le secours BRouter", () => {
     expect((await run()).source).toBe("brouter");
   });
 
-  it("secours interdit : l'erreur remonte, BRouter n'est pas appelé", async () => {
-    setBikeSettings({ allowFallback: false });
-    serve(() => new Response("oops", { status: 503 }));
-    await expect(run()).rejects.toBeInstanceOf(BikeRouteError);
-    expect(calls).toEqual(["valhalla"]);
-  });
-
   it("pas de chemin (400) : pas de secours — un autre moteur n'en trouverait pas", async () => {
     serve(() => new Response(JSON.stringify({ code: "DistanceExceeded" }), { status: 400 }));
     await expect(run()).rejects.toMatchObject({ reason: "noRoute" });
     expect(calls).toEqual(["valhalla"]);
+  });
+
+  it("le même parcours redemandé sort du cache : un seul appel", async () => {
+    serve(() => new Response(JSON.stringify(valhallaOk)));
+    await run();
+    await run();
+    expect(calls).toEqual(["valhalla"]);
+  });
+
+  it("deux profils au même tracé ne font qu'une proposition", async () => {
+    serve(() => new Response(JSON.stringify(valhallaOk)));
+    const pending = getBikeProposals(points);
+    await vi.runAllTimersAsync();
+    const proposals = await pending;
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].merged).toBe(true);
+    // Les mêmes rues : on garde le plus sûr, celui qui roule sur la piste.
+    expect(proposals[0].profile).toBe("safe");
   });
 
   it("le guidage lit la réponse de secours comme celle de Valhalla", async () => {
@@ -208,5 +275,18 @@ describe("le secours BRouter", () => {
     expect(route.steps[0].maneuver.type).toBe("depart");
     expect(route.steps.at(-1)?.maneuver.type).toBe("arrive");
     expect(route.distanceMeters).toBeGreaterThan(0);
+  });
+});
+
+describe("deux tracés, les mêmes rues", () => {
+  const straight = line(20).map(([lon, lat]) => [lon, lat]);
+
+  it("une piste le long de la chaussée, à une dizaine de mètres, suit les mêmes rues", () => {
+    expect(sameLine(straight, line(20).map(([lon, lat]) => [lon, lat + 0.0001]))).toBe(true);
+  });
+
+  it("un détour de 500 m en fait un autre parcours", () => {
+    const detour = line(20).map(([lon, lat], i) => [lon, i > 5 && i < 15 ? lat + 0.005 : lat]);
+    expect(sameLine(straight, detour)).toBe(false);
   });
 });

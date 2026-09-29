@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat, RouteResult } from "../types";
 import { getNavRoute, type NavMode, type NavRoute } from "./route";
+import { cyclewaySegments, getBikeProposals, proposalDetail, useCycleways, type BikeProposal } from "./bikeChoice";
+import { bubbleAnchors } from "./car/proposals";
+import { durationLabel } from "./car/carLabels";
 import { computeProgress, pathUpTo, rerouteRetryDelayMs, OFF_ROUTE_FIXES, OFF_ROUTE_METERS, REROUTE_MIN_GAP_MS, type NavProgress } from "./progress";
 import type { CarTraffic, TrafficSegment } from "./car/carTraffic";
 import { useNavPosition, type NavFix } from "./useNavPosition";
@@ -122,7 +125,7 @@ function zoomFor(distanceMeters: number, lat: number): number {
  */
 const HEADING_MIN_SPEED = 1;
 
-export type NavStatus = "idle" | "computing" | "running" | "arrived" | "error";
+export type NavStatus = "idle" | "choosing" | "computing" | "running" | "arrived" | "error";
 
 /** Ce que la carte doit faire pendant le guidage. */
 export interface NavCamera {
@@ -252,7 +255,19 @@ export interface NavSession {
    * figurer dans la fiche de fin et dans l'historique, où « Ma position » ne
    * voudrait plus rien dire six mois après.
    */
-  start: (points: LonLat[], names?: { from?: string | null; to?: string | null }, mode?: NavMode) => void;
+  start: (
+    points: LonLat[],
+    names?: { from?: string | null; to?: string | null },
+    mode?: NavMode,
+    initial?: NavRoute
+  ) => void;
+  /**
+   * À vélo, « Démarrer » n'ouvre pas la navigation mais le **choix** : plus
+   * rapide ou plus sûr, sur la carte, comme en voiture (`bikeChoice.ts`).
+   */
+  choose: (points: LonLat[], names?: { from?: string | null; to?: string | null }) => void;
+  /** Le nombre de propositions, `null` tant qu'on les cherche. */
+  choiceCount: number | null;
   /**
    * Clôt le trajet : la fiche de fin s'ouvre et le trajet part à l'historique.
    * Appelée par le bouton « Terminer » comme par l'arrivée.
@@ -273,6 +288,10 @@ export interface NavSession {
 interface Request {
   points: LonLat[];
   mode: NavMode;
+  /** À vélo : le profil retenu au choix, que les recalculs gardent. */
+  profile?: BikeProposal["profile"];
+  /** Le trajet est déjà là (retenu au choix) : rien à demander. */
+  preset?: boolean;
   /** Vrai quand la demande fait suite à un écart, et non à un départ. */
   reroute: boolean;
 }
@@ -283,6 +302,13 @@ export function useNavigation(): NavSession {
   // pas ni la fiche d'une marche ne s'y appliquent.
   const [mode, setMode] = useState<NavMode>("walking");
   const modeRef = useLatest(mode);
+  // Le choix à vélo : le parcours demandé, ses propositions, celle qu'on
+  // regarde. `choice` porte aussi les noms, repris tels quels au départ.
+  const [choice, setChoice] = useState<{ points: LonLat[]; names: { from?: string | null; to?: string | null } } | null>(
+    null
+  );
+  const [proposals, setProposals] = useState<BikeProposal[] | null>(null);
+  const [highlighted, setHighlighted] = useState<BikeProposal["profile"] | null>(null);
   // Les deux extrémités, sous le nom qu'elles porteront dans l'historique. Un
   // état et non une ref : le bandeau d'arrivée les affiche, et l'adresse d'un
   // point de départ n'arrive qu'après le géocodage inverse.
@@ -359,32 +385,62 @@ export function useNavigation(): NavSession {
   useWakeLock(running);
 
   const start = useCallback(
-    (points: LonLat[], given?: { from?: string | null; to?: string | null }, navMode: NavMode = "walking") => {
+    (
+      points: LonLat[],
+      given?: { from?: string | null; to?: string | null },
+      navMode: NavMode = "walking",
+      initial?: NavRoute
+    ) => {
       if (points.length < 2) return;
       setActive(true);
       setMode(navMode);
+      setChoice(null);
+      setProposals(null);
+      setHighlighted(null);
       setNames({ from: given?.from ?? "", to: given?.to ?? "" });
       endpointsRef.current = { from: points[0], to: points[points.length - 1] };
       setSessionId((current) => current + 1);
       setFollow(true);
       setSimulating(false);
       setProgress(null);
-      setRoute(null);
+      // Un trajet retenu au choix part tout de suite : le recalculer serait un
+      // appel de plus pour rien, et une seconde d'attente au moment de partir.
+      setRoute(initial ?? null);
       setError(null);
       setSummary(null);
-      setStatus("computing");
+      setStatus(initial ? "running" : "computing");
+      rerouteFailuresRef.current = rerouteRetryAtRef.current = rerouteGapUntilRef.current = 0;
       indexRef.current = 0;
       offRouteRef.current = 0;
       targetsRef.current = points.slice(1);
       coveredRef.current = emptyCovered();
       startedAtRef.current = Date.now();
-      setRequest({ points, mode: navMode, reroute: false });
+      setRequest({ points, mode: navMode, profile: initial?.profile, reroute: false, preset: !!initial });
     },
     []
   );
 
+  const choose = useCallback((points: LonLat[], given?: { from?: string | null; to?: string | null }) => {
+    if (points.length < 2) return;
+    setActive(true);
+    setMode("cycling");
+    setNames({ from: given?.from ?? "", to: given?.to ?? "" });
+    setRequest(null);
+    setRoute(null);
+    setProgress(null);
+    setSummary(null);
+    setError(null);
+    setProposals(null);
+    setHighlighted(null);
+    setStatus("choosing");
+    setChoice({ points, names: given ?? {} });
+  }, []);
+
   const stop = useCallback(() => {
     setActive(false);
+    setChoice(null);
+    setProposals(null);
+    setHighlighted(null);
     setSimulating(false);
     setRequest(null);
     setRoute(null);
@@ -454,12 +510,12 @@ export function useNavigation(): NavSession {
   // trajet **que s'il aboutit** : la réponse d'OSRM peut manquer, et perdre le
   // guidage en cours parce qu'un recalcul a échoué serait le pire moment.
   useEffect(() => {
-    if (!request) return;
+    if (!request || request.preset) return;
     const controller = new AbortController();
     let cancelled = false;
     if (!request.reroute) rerouteFailuresRef.current = rerouteRetryAtRef.current = 0;
 
-    getNavRoute(request.points, controller.signal, request.mode)
+    getNavRoute(request.points, controller.signal, request.mode, request.profile)
       .then((next) => {
         if (cancelled) return;
         setRoute(next);
@@ -533,7 +589,12 @@ export function useNavigation(): NavSession {
         // sa portion de tracé, ses mètres et le temps qu'il annonçait pour eux.
         // Le nouveau repartira de zéro, et l'historique additionnera les deux.
         coveredRef.current = merge(coveredRef.current, route, next);
-        setRequest({ points: [{ lon: fix.lon, lat: fix.lat }, ...remaining], mode: modeRef.current, reroute: true });
+        setRequest({
+          points: [{ lon: fix.lon, lat: fix.lat }, ...remaining],
+          mode: modeRef.current,
+          profile: route.profile,
+          reroute: true,
+        });
       }
     } else {
       offRouteRef.current = 0;
@@ -582,7 +643,77 @@ export function useNavigation(): NavSession {
   }, [sessionId, namesRef]);
 
 
+  // Les propositions à vélo, cherchées quand le choix s'ouvre. Un choix annulé
+  // ou remplacé abandonne sa réponse.
+  useEffect(() => {
+    if (!choice) return;
+    const controller = new AbortController();
+    getBikeProposals(choice.points, controller.signal)
+      .then((found) => setProposals(found))
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        setError(e instanceof Error ? e.message : navText("bike.errorNoRoute"));
+      });
+    return () => controller.abort();
+  }, [choice]);
+
+  // Le vert des pistes et bandes : sur les propositions pendant le choix, sur
+  // le trajet suivi pendant la navigation à vélo.
+  const greenRoutes = useMemo(
+    () =>
+      status === "choosing"
+        ? (proposals ?? []).map((p) => p.route)
+        : mode === "cycling" && route
+          ? [route]
+          : [],
+    [status, proposals, mode, route]
+  );
+  const greens = useCycleways(greenRoutes);
+
+  const choices: NavChoice[] | null = useMemo(() => {
+    if (status !== "choosing" || !proposals?.length || !choice) return null;
+    const anchors = bubbleAnchors(proposals.map((p) => p.route.points));
+    const front = highlighted ?? proposals[0].profile;
+    return proposals.map((proposal, index) => ({
+      id: proposal.profile,
+      geometry: proposal.route.result.segments[0].geometry,
+      traffic: cyclewaySegments(greens.get(proposal.route)),
+      at: anchors[index],
+      title: durationLabel(proposal.route.durationSeconds),
+      detail: proposalDetail(proposal, greens.get(proposal.route)),
+      active: proposal.profile === front,
+      // Comme en voiture : un premier toucher met en avant, le second part.
+      onPick: () => {
+        if (proposal.profile === front) start(choice.points, choice.names, "cycling", proposal.route);
+        else setHighlighted(proposal.profile);
+      },
+    }));
+  }, [status, proposals, choice, highlighted, greens, start]);
+
+  /** Toutes les propositions à l'écran, cadrées une fois par jeu de propositions. */
+  const frame = useMemo(() => {
+    if (status !== "choosing" || !proposals?.length) return null;
+    let west = 180, south = 90, east = -180, north = -90;
+    for (const { route: r } of proposals) {
+      for (const p of r.points) {
+        west = Math.min(west, p.lon);
+        east = Math.max(east, p.lon);
+        south = Math.min(south, p.lat);
+        north = Math.max(north, p.lat);
+      }
+    }
+    return {
+      bbox: [west, south, east, north] as [number, number, number, number],
+      token: `bike-${proposals.map((p) => p.profile).join("-")}-${west}-${north}`,
+    };
+  }, [status, proposals]);
+
   const map: NavMapState | null = useMemo(() => {
+    // Pendant le choix, la carte ne suit personne : elle montre les parcours et
+    // se laisse déplacer, comme en voiture.
+    if (active && status === "choosing") {
+      return { position: null, heading: 0, choices, boldRoute: false, camera: null, frame };
+    }
     if (!active || !fix) return null;
     // Le cap de l'appareil quand il marche vraiment, sinon celui du tracé :
     // à l'arrêt, un téléphone annonce n'importe quelle direction et la carte
@@ -618,8 +749,13 @@ export function useNavigation(): NavSession {
       choices: null,
       boldRoute: false,
       frame: null,
+      // À vélo, les pistes et bandes du trajet suivi, en vert sur le tracé.
+      traffic:
+        mode === "cycling" && route
+          ? { segments: cyclewaySegments(greens.get(route)), incidents: [] }
+          : null,
     };
-  }, [active, fix, progress, follow, cameraMode]);
+  }, [active, fix, progress, follow, cameraMode, status, choices, frame, mode, route, greens]);
 
   return {
     active,
@@ -638,6 +774,8 @@ export function useNavigation(): NavSession {
     mapRoute: active ? (route?.result ?? null) : null,
     map,
     start,
+    choose,
+    choiceCount: status === "choosing" ? (proposals?.length ?? null) : null,
     finish,
     summary,
     stop,

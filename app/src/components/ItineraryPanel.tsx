@@ -779,11 +779,7 @@ export function ItineraryPanel({
           <StartNavigationButton mode={mode} onStart={onStartNavigation} />
         </div>
       )}
-      {/* Le secours du vélo ne passe jamais en silence : on dit que ce n'est
-          pas le moteur habituel, et ce que cela change (`bikeRouting.ts`). */}
-      {ready && route && !loading && mode === "cycling" && route.source === "brouter" && (
-        <p className="itinerary-note is-fallback">{t("itinerary.bikeFallback")}</p>
-      )}
+
       </div>
     </div>
   );

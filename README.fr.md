@@ -83,8 +83,9 @@ connaît pas un endroit, un navigateur intégré le cherche sur le web et rappor
 sa position sur la carte — sans jamais interroger Google.
 
 **Y aller.** À pied, à vélo, en voiture et en transports, plus un mode course
-avec son graphe d'allure. Les itinéraires à vélo privilégient les pistes
-cyclables, partout dans le monde et sans clé d'API. La navigation voiture montre la circulation en cours sur le
+avec son graphe d'allure. À vélo, le plus rapide et le plus sûr sont proposés
+côte à côte, pistes et bandes cyclables en vert — partout dans le monde, sans
+clé d'API. La navigation voiture montre la circulation en cours sur le
 trajet, les vitesses limites, les voies à emprunter et les radars. Chaque marche
 et chaque course est gardée sur l'appareil, avec son tracé et son dénivelé, aussi
 longtemps que vous le décidez — ou pas du tout.

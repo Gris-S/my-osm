@@ -82,8 +82,8 @@ place, a built-in browser searches the web and brings the location back to the
 map — without ever asking Google.
 
 **Get there.** Walking, cycling, driving and public transport, plus a running
-mode with its own pace chart. Cycling routes favour bike lanes, worldwide and
-without an API key. Driving navigation shows live traffic on your route, speed
+mode with its own pace chart. Cycling offers the fastest and the safest route
+side by side, with bike lanes drawn in green — worldwide, without an API key. Driving navigation shows live traffic on your route, speed
 limits, lane guidance and speed-camera warnings. Every trip you walk or run is
 kept on the device, with its track and elevation profile, for as long as you
 choose — or not at all.

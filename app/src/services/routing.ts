@@ -1,7 +1,7 @@
 import { CONFIG, type RoadMode } from "../config";
 import type { LonLat, RouteResult } from "../types";
 import { t } from "../i18n";
-import { BikeRouteError, fetchBikeRoute } from "./bikeRouting";
+import { BikeRouteError, fetchBikeOptions } from "./bikeRouting";
 
 // Chaque mode a sa propre instance OSRM (profil dédié) + le segment "profile"
 // attendu dans l'URL. `routed-foot` route sur les chemins piétons et exclut
@@ -75,19 +75,21 @@ export async function getRoute(mode: RoadMode, points: LonLat[]): Promise<RouteR
 }
 
 /**
- * L'itinéraire à vélo, pour le panneau : Valhalla, ou BRouter en secours — et
- * dans ce cas le résultat **le dit** (`source`), le panneau l'affiche.
+ * L'itinéraire à vélo, pour le panneau : **la première proposition** du choix
+ * au départ — la durée du panneau et celle de la première bulle doivent être
+ * la même (voir le scénario `coherence`). Les réponses sont gardées par
+ * `bikeRouting.ts`, et « Démarrer » les réutilise sans rappeler.
  */
 async function getBikeRoute(points: LonLat[]): Promise<RouteResult> {
   if (!navigator.onLine) throw new Error(t("error.routeOffline"));
   try {
-    const { source, route } = await fetchBikeRoute(points);
+    const [{ bike }] = await fetchBikeOptions(points);
+    const { route } = bike;
     return {
       mode: "cycling",
       distanceMeters: route.distance,
       durationSeconds: route.duration,
       segments: [{ geometry: route.geometry, color: ROUTE_COLOR, dashed: false }],
-      source,
     };
   } catch (e) {
     if (e instanceof BikeRouteError) {

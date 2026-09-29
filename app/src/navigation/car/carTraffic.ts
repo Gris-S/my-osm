@@ -42,7 +42,13 @@ export interface TrafficSection {
 /** Un morceau de tracé à colorer. */
 export interface TrafficSegment {
   geometry: GeoJSON.LineString;
-  level: TrafficLevel;
+  /**
+   * `cycleway` n'est pas du trafic : c'est une portion **sur piste ou bande
+   * cyclable**, dessinée en vert sur un parcours à vélo (`useNavigation`). Elle
+   * passe par la même couche que les bouchons, qui sait déjà colorer des
+   * morceaux de tracé, pendant le choix comme pendant la navigation.
+   */
+  level: TrafficLevel | "cycleway";
 }
 
 /** Un repère d'incident sur le parcours. */

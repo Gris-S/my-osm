@@ -58,6 +58,13 @@ export const ROUTE_TRAFFIC_SOURCE_ID = "route-traffic-source";
 export const ROUTE_TRAFFIC_LAYER_ID = "route-traffic";
 export const TRAFFIC_SLOW_COLOR = "#ff9f0a";
 export const TRAFFIC_JAM_COLOR = "#ff3b30";
+/**
+ * Le vert des pistes et bandes cyclables sur un parcours à vélo : le vert
+ * système d'Apple, de la même famille que le bleu d'itinéraire (#007AFF) et
+ * que l'orange et le rouge du trafic — c'est aussi celui d'Apple Plans pour
+ * les aménagements cyclables.
+ */
+export const CYCLEWAY_COLOR = "#34C759";
 // La marche d'un trajet en transports est tracée en pointillés. MapLibre ne
 // sait pas faire varier `line-dasharray` d'un objet à l'autre : il faut une
 // seconde couche, filtrée sur la même source.
@@ -769,7 +776,15 @@ export function installMapLayers(
     source: ROUTE_TRAFFIC_SOURCE_ID,
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
-      "line-color": ["match", ["get", "level"], "jam", TRAFFIC_JAM_COLOR, TRAFFIC_SLOW_COLOR],
+      "line-color": [
+        "match",
+        ["get", "level"],
+        "jam",
+        TRAFFIC_JAM_COLOR,
+        "cycleway",
+        CYCLEWAY_COLOR,
+        TRAFFIC_SLOW_COLOR,
+      ],
       "line-width": ["get", "width"],
       "line-opacity": ["case", ["get", "dim"], 0.5, 0.95],
     },

@@ -1,5 +1,5 @@
 import { CONFIG } from "../config";
-import { BikeRouteError, fetchBikeRoute, type BikeSource } from "../services/bikeRouting";
+import { BikeRouteError, fetchBikeRoute, type BikeProfile, type BikeSource } from "../services/bikeRouting";
 import type { LonLat, RouteResult } from "../types";
 import { distance } from "./geo";
 import { navText } from "./strings";
@@ -70,8 +70,10 @@ export interface NavRoute {
   durationSeconds: number;
   /** Le trajet sous la forme que `MapView` sait déjà dessiner. */
   result: RouteResult;
-  /** À vélo : le moteur qui a répondu — `brouter` en secours, et c'est dit. */
+  /** À vélo : le moteur qui a répondu (`brouter` en secours, sans le dire). */
   source?: BikeSource;
+  /** À vélo : le profil demandé, que les recalculs reprennent. */
+  profile?: BikeProfile;
 }
 
 /** Les deux déplacements que ce guidage suit : à pied, et à vélo. */
@@ -109,15 +111,16 @@ interface OsrmStepsResponse {
 export async function getNavRoute(
   points: LonLat[],
   signal?: AbortSignal,
-  mode: NavMode = "walking"
+  mode: NavMode = "walking",
+  profile: BikeProfile = "fast"
 ): Promise<NavRoute> {
   if (points.length < 2) throw new Error(navText("nav.errorNoRoute"));
   // À vélo, la réponse de Valhalla — ou de BRouter en secours — arrive déjà
   // sous la forme d'OSRM (`services/bikeRouting.ts`) : la suite est commune.
   if (mode === "cycling") {
     try {
-      const { source, route } = await fetchBikeRoute(points, signal);
-      return { ...buildRoute(route, "cycling"), source };
+      const { source, route } = await fetchBikeRoute(points, profile, signal);
+      return { ...buildRoute(route, "cycling"), source, profile };
     } catch (e) {
       if (signal?.aborted || !(e instanceof BikeRouteError)) throw e;
       if (e.reason === "noRoute") throw new Error(navText("bike.errorNoRoute"));
