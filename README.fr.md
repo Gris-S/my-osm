@@ -82,8 +82,9 @@ encore.
 connaît pas un endroit, un navigateur intégré le cherche sur le web et rapporte
 sa position sur la carte — sans jamais interroger Google.
 
-**Y aller.** À pied, en voiture et en transports, plus un mode course avec son
-graphe d'allure. La navigation voiture montre la circulation en cours sur le
+**Y aller.** À pied, à vélo, en voiture et en transports, plus un mode course
+avec son graphe d'allure. Les itinéraires à vélo privilégient les pistes
+cyclables, partout dans le monde et sans clé d'API. La navigation voiture montre la circulation en cours sur le
 trajet, les vitesses limites, les voies à emprunter et les radars. Chaque marche
 et chaque course est gardée sur l'appareil, avec son tracé et son dénivelé, aussi
 longtemps que vous le décidez — ou pas du tout.
@@ -140,7 +141,7 @@ l'application les crédite toutes dans *Menu › Sources et licences*.
 | Données de la carte, lieux, arrêts | contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright), ODbL |
 | Tuiles vectorielles | [OpenFreeMap](https://openfreemap.org/) |
 | Recherche et adresses | [Photon](https://photon.komoot.io/), [Base Adresse Nationale](https://adresse.data.gouv.fr/) |
-| Itinéraires | [OSRM](https://routing.openstreetmap.de/), TomTom (clé facultative) |
+| Itinéraires | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) et [BRouter](https://brouter.de/brouter/) pour le vélo, TomTom (clé facultative) |
 | Transports | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (clé facultative) |
 | Météo et air | [Open-Meteo](https://open-meteo.com/), Météo-France (clé facultative) |
 | Imagerie et relief | Esri, [IGN](https://geoservices.ign.fr/), Mapzen/USGS/SRTM |

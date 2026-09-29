@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LonLat, RouteResult } from "../types";
-import { getNavRoute, type NavRoute } from "./route";
+import { getNavRoute, type NavMode, type NavRoute } from "./route";
 import { computeProgress, pathUpTo, rerouteRetryDelayMs, OFF_ROUTE_FIXES, OFF_ROUTE_METERS, REROUTE_MIN_GAP_MS, type NavProgress } from "./progress";
 import type { CarTraffic, TrafficSegment } from "./car/carTraffic";
 import { useNavPosition, type NavFix } from "./useNavPosition";
@@ -229,6 +229,8 @@ export interface NavMapState {
 
 export interface NavSession {
   active: boolean;
+  /** À pied ou à vélo : les deux se guident ici, sur le même tracé. */
+  mode: NavMode;
   status: NavStatus;
   route: NavRoute | null;
   progress: NavProgress | null;
@@ -250,7 +252,7 @@ export interface NavSession {
    * figurer dans la fiche de fin et dans l'historique, où « Ma position » ne
    * voudrait plus rien dire six mois après.
    */
-  start: (points: LonLat[], names?: { from?: string | null; to?: string | null }) => void;
+  start: (points: LonLat[], names?: { from?: string | null; to?: string | null }, mode?: NavMode) => void;
   /**
    * Clôt le trajet : la fiche de fin s'ouvre et le trajet part à l'historique.
    * Appelée par le bouton « Terminer » comme par l'arrivée.
@@ -270,12 +272,17 @@ export interface NavSession {
 
 interface Request {
   points: LonLat[];
+  mode: NavMode;
   /** Vrai quand la demande fait suite à un écart, et non à un départ. */
   reroute: boolean;
 }
 
 export function useNavigation(): NavSession {
   const [active, setActive] = useState(false);
+  // À vélo, le guidage est le même — tracé, manœuvres, recalcul — mais ni les
+  // pas ni la fiche d'une marche ne s'y appliquent.
+  const [mode, setMode] = useState<NavMode>("walking");
+  const modeRef = useLatest(mode);
   // Les deux extrémités, sous le nom qu'elles porteront dans l'historique. Un
   // état et non une ref : le bandeau d'arrivée les affiche, et l'adresse d'un
   // point de départ n'arrive qu'après le géocodage inverse.
@@ -345,30 +352,36 @@ export function useNavigation(): NavSession {
   const live = useNavPosition(running && !simulating);
   const simulated = useSimulatedPosition(route, running && simulating);
   const fix = simulating ? simulated : live.fix;
-  const { read: readSteps } = useStepCounter(running);
+  // Les pas n'ont de sens qu'à pied : à vélo, le podomètre compterait les
+  // cahots de la route.
+  const { read: readSteps } = useStepCounter(running && mode === "walking");
   // L'écran s'éteindrait au bout d'une minute, et le guidage avec lui.
   useWakeLock(running);
 
-  const start = useCallback((points: LonLat[], given?: { from?: string | null; to?: string | null }) => {
-    if (points.length < 2) return;
-    setActive(true);
-    setNames({ from: given?.from ?? "", to: given?.to ?? "" });
-    endpointsRef.current = { from: points[0], to: points[points.length - 1] };
-    setSessionId((current) => current + 1);
-    setFollow(true);
-    setSimulating(false);
-    setProgress(null);
-    setRoute(null);
-    setError(null);
-    setSummary(null);
-    setStatus("computing");
-    indexRef.current = 0;
-    offRouteRef.current = 0;
-    targetsRef.current = points.slice(1);
-    coveredRef.current = emptyCovered();
-    startedAtRef.current = Date.now();
-    setRequest({ points, reroute: false });
-  }, []);
+  const start = useCallback(
+    (points: LonLat[], given?: { from?: string | null; to?: string | null }, navMode: NavMode = "walking") => {
+      if (points.length < 2) return;
+      setActive(true);
+      setMode(navMode);
+      setNames({ from: given?.from ?? "", to: given?.to ?? "" });
+      endpointsRef.current = { from: points[0], to: points[points.length - 1] };
+      setSessionId((current) => current + 1);
+      setFollow(true);
+      setSimulating(false);
+      setProgress(null);
+      setRoute(null);
+      setError(null);
+      setSummary(null);
+      setStatus("computing");
+      indexRef.current = 0;
+      offRouteRef.current = 0;
+      targetsRef.current = points.slice(1);
+      coveredRef.current = emptyCovered();
+      startedAtRef.current = Date.now();
+      setRequest({ points, mode: navMode, reroute: false });
+    },
+    []
+  );
 
   const stop = useCallback(() => {
     setActive(false);
@@ -400,7 +413,8 @@ export function useNavigation(): NavSession {
     const trip = buildTrip(covered, {
       startedAt: startedAtRef.current,
       names: namesRef.current,
-      steps: readSteps(),
+      mode: modeRef.current,
+      steps: modeRef.current === "walking" ? readSteps() : null,
       completed: statusRef.current === "arrived",
     });
     // Lancé puis arrêté aussitôt : ni fiche, ni historique (voir `isTrivialTrip`).
@@ -434,7 +448,7 @@ export function useNavigation(): NavSession {
     }
 
     if (!showSummary) stop();
-  }, [readSteps, stop, progressRef, summaryRef, routeRef, namesRef, statusRef]);
+  }, [readSteps, stop, progressRef, summaryRef, routeRef, namesRef, statusRef, modeRef]);
 
   // Le calcul, au départ comme après un écart. Un recalcul ne remplace le
   // trajet **que s'il aboutit** : la réponse d'OSRM peut manquer, et perdre le
@@ -445,7 +459,7 @@ export function useNavigation(): NavSession {
     let cancelled = false;
     if (!request.reroute) rerouteFailuresRef.current = rerouteRetryAtRef.current = 0;
 
-    getNavRoute(request.points, controller.signal)
+    getNavRoute(request.points, controller.signal, request.mode)
       .then((next) => {
         if (cancelled) return;
         setRoute(next);
@@ -519,12 +533,12 @@ export function useNavigation(): NavSession {
         // sa portion de tracé, ses mètres et le temps qu'il annonçait pour eux.
         // Le nouveau repartira de zéro, et l'historique additionnera les deux.
         coveredRef.current = merge(coveredRef.current, route, next);
-        setRequest({ points: [{ lon: fix.lon, lat: fix.lat }, ...remaining], reroute: true });
+        setRequest({ points: [{ lon: fix.lon, lat: fix.lat }, ...remaining], mode: modeRef.current, reroute: true });
       }
     } else {
       offRouteRef.current = 0;
     }
-  }, [fix, route, active, finish, progressRef, statusRef, reroutingRef]);
+  }, [fix, route, active, finish, progressRef, statusRef, reroutingRef, modeRef]);
 
   /**
    * Donne une adresse aux extrémités qui n'ont pas de nom.
@@ -609,6 +623,7 @@ export function useNavigation(): NavSession {
 
   return {
     active,
+    mode,
     status,
     route,
     progress,
@@ -672,10 +687,12 @@ function buildTrip(
   context: {
     startedAt: number;
     names: { from: string; to: string };
+    mode: NavMode;
     steps: number | null;
     completed: boolean;
   }
 ): Trip {
+  const ride = context.mode === "cycling";
   const endedAt = Date.now();
   return {
     id: `${endedAt}-${Math.random().toString(36).slice(2, 8)}`,
@@ -688,8 +705,11 @@ function buildTrip(
     announcedSeconds: covered.announcedSeconds,
     // Le capteur quand il a compté, la distance sinon : la fiche dit laquelle
     // des deux, un chiffre mesuré et un chiffre déduit ne se valent pas.
-    steps: context.steps ?? estimateSteps(covered.meters),
+    // À vélo, pas de pas : le champ reste à zéro, et l'affichage ne le montre
+    // pas (`kind: "ride"`).
+    steps: ride ? 0 : (context.steps ?? estimateSteps(covered.meters)),
     stepSource: context.steps === null ? "estimate" : "sensor",
+    ...(ride ? { kind: "ride" as const } : {}),
     points: covered.points,
     profile: null,
     ascent: null,

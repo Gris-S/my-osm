@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowUp, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MapPin, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Bike, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MapPin, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
 import { CONFIG, type TravelMode } from "../config";
 import type { LonLat, Place, RouteResult, RouteStop, StopEdit } from "../types";
 import { getNextDepartures, type NextDeparture } from "../services/transit";
@@ -17,6 +17,7 @@ import { useBackClose } from "../hooks/useBackClose";
 const MODES: { id: TravelMode; icon: typeof Car; label: TranslationKey }[] = [
   { id: "driving", icon: Car, label: "route.driving" },
   { id: "walking", icon: Footprints, label: "route.walking" },
+  { id: "cycling", icon: Bike, label: "route.cycling" },
   { id: "transit", icon: TrainFront, label: "route.transit" },
 ];
 
@@ -777,6 +778,11 @@ export function ItineraryPanel({
               les transports ont leur propre bouton, dans le trajet retenu. */}
           <StartNavigationButton mode={mode} onStart={onStartNavigation} />
         </div>
+      )}
+      {/* Le secours du vélo ne passe jamais en silence : on dit que ce n'est
+          pas le moteur habituel, et ce que cela change (`bikeRouting.ts`). */}
+      {ready && route && !loading && mode === "cycling" && route.source === "brouter" && (
+        <p className="itinerary-note is-fallback">{t("itinerary.bikeFallback")}</p>
       )}
       </div>
     </div>

@@ -77,6 +77,9 @@ export function NavigationPanel({ session }: { session: NavSession }) {
         {/* Le recalcul se dit sans effacer l'instruction : tant qu'il n'a pas
             abouti, la précédente reste la meilleure indication disponible. */}
         {session.rerouting && <p className="nav-banner-note">{nav("nav.rerouting")}</p>}
+        {/* Le secours BRouter du vélo se dit pendant tout le guidage : ses
+            consignes n'ont pas de noms de rues, et c'est la seule explication. */}
+        {session.route?.source === "brouter" && <p className="nav-banner-note">{nav("bike.fallback")}</p>}
         {!session.rerouting && progress && progress.offsetMeters > OFF_ROUTE_METERS && !arrived && !stopped && (
           <p className="nav-banner-note">{nav("nav.offRoute")}</p>
         )}

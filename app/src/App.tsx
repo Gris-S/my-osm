@@ -474,7 +474,13 @@ export default function App() {
     }
     // Les deux extrémités sont nommées : ce sont elles qui titrent le trajet
     // dans l'historique, longtemps après que le parcours a disparu.
-    navigation.start(routePoints, { from: stopName(stops[0]), to: stopName(stops[stops.length - 1]) });
+    // À pied comme à vélo, le même guidage — le mode ne change que le moteur
+    // d'itinéraire et ce que la fiche de fin compte.
+    navigation.start(
+      routePoints,
+      { from: stopName(stops[0]), to: stopName(stops[stops.length - 1]) },
+      routeMode === "cycling" ? "cycling" : "walking"
+    );
   }
 
   // Hauteur libérée sous la colonne de boutons de droite. Pendant le guidage,

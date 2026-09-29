@@ -72,9 +72,9 @@ export interface Trip {
   completed: boolean;
   /**
    * La nature de l'activité. Absent des trajets enregistrés avant le mode
-   * course : ce sont des marches.
+   * course : ce sont des marches. `ride` : un trajet guidé à vélo, sans pas.
    */
-  kind?: "walk" | "run";
+  kind?: "walk" | "run" | "ride";
   /** Course seulement : les relevés, pour le graphe de l'allure. */
   samples?: RunSample[];
   /** Course seulement : le temps passé en pause, exclu de `elapsedSeconds`. */

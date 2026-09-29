@@ -298,6 +298,8 @@ export const CONFIG = {
     photon: "https://photon.komoot.io/",
     ban: "https://adresse.data.gouv.fr/",
     osrm: "https://routing.openstreetmap.de/",
+    valhalla: "https://github.com/valhalla/valhalla",
+    brouter: "https://brouter.de/brouter/",
     openmeteo: "https://open-meteo.com/",
     meteofrance: "https://meteofrance.com/",
     tomtom: "https://www.tomtom.com/",
@@ -554,6 +556,33 @@ export const CONFIG = {
     walking: "https://routing.openstreetmap.de/routed-foot",
   } as const,
 
+  // Calcul d'itinéraires à vélo (demande du 29 septembre 2026 : pistes
+  // cyclables, mises à jour régulières, monde entier, sans clé). Comparaison
+  // faite ce jour-là, services interrogés en direct :
+  //
+  // - **Valhalla de la FOSSGIS**, le moteur retenu : tuiles reconstruites
+  //   environ tous les deux jours, profil vélo réglable (`use_roads` pour la
+  //   circulation, `use_hills` pour les côtes), consignes avec les noms de
+  //   rues, et surtout `format: "osrm"`, qui rend la **forme exacte** que le
+  //   guidage à pied lit déjà. Règle d'usage : 1 appel par seconde et par
+  //   utilisateur, et un en-tête `X-Client-Id` qui nomme l'application
+  //   (github.com/valhalla/valhalla/discussions/3373) ;
+  // - **BRouter**, le secours : les meilleurs profils vélo, mises à jour
+  //   hebdomadaires, mais des consignes sans nom de rue, et aucune règle
+  //   d'usage publiée pour brouter.de. Les paramètres de profil
+  //   (`profile:xxx=`) répondent 500 sur ce serveur : seuls les profils
+  //   nommés (`trekking`, `safety`) servent ;
+  // - OSRM `routed-bike` de la FOSSGIS, écarté : profil vélo figé, le plus
+  //   sommaire des trois.
+  //
+  // Le passage au secours n'est **jamais silencieux** : le résultat porte sa
+  // source et le panneau l'annonce ; un réglage l'interdit (`bikeSettings.ts`).
+  BIKE_ROUTING: {
+    VALHALLA_URL: "https://valhalla1.openstreetmap.de/route",
+    BROUTER_URL: "https://brouter.de/brouter",
+    CLIENT_ID: "my-osm",
+  } as const,
+
   // Étapes intermédiaires d'un parcours. Le plafond n'est pas une limite des
   // moteurs — OSRM en accepte cent, et les transports enchaînent des appels —
   // mais celle de ce qu'un panneau flottant peut montrer et de ce qu'un
@@ -694,5 +723,5 @@ export const CONFIG = {
 // Le mode « transit » n'a pas de profil OSRM : il est calculé sur les horaires
 // (voir `services/transit.ts`). D'où `RoadMode`, qui désigne les seuls modes
 // que l'on demande à un routeur de voirie.
-export type TravelMode = "driving" | "walking" | "transit";
+export type TravelMode = "driving" | "walking" | "cycling" | "transit";
 export type RoadMode = Exclude<TravelMode, "transit">;

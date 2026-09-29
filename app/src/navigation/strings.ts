@@ -24,6 +24,10 @@ const fr = {
   // Bouton de départ, dans le panneau d'itinéraire
   "nav.start": "Démarrer",
   "nav.startAria": "Démarrer la navigation à pied",
+  "bike.startAria": "Démarrer la navigation à vélo",
+  "bike.fallback": "Itinéraire de secours (BRouter) : consignes sans noms de rues.",
+  "bike.shareTitle": "Trajet à vélo",
+  "bike.errorNoRoute": "Aucun itinéraire à vélo entre ces points.",
 
   // Bandeau de manœuvre et barre du bas
   // Les trois chiffres de la barre du bas ne portent pas de libellé à l'écran —
@@ -355,6 +359,10 @@ export type NavKey = keyof typeof fr;
 const en: NavDict = {
   "nav.start": "Start",
   "nav.startAria": "Start walking navigation",
+  "bike.startAria": "Start cycling navigation",
+  "bike.fallback": "Backup route (BRouter): directions without street names.",
+  "bike.shareTitle": "Cycling trip",
+  "bike.errorNoRoute": "No cycling route between these points.",
 
   "nav.remaining": "Time remaining",
   "nav.arrival": "Arrival time",

@@ -81,8 +81,9 @@ is open *now*, not just what its hours are. When OpenStreetMap doesn't know a
 place, a built-in browser searches the web and brings the location back to the
 map — without ever asking Google.
 
-**Get there.** Walking, driving and public transport, plus a running mode with
-its own pace chart. Driving navigation shows live traffic on your route, speed
+**Get there.** Walking, cycling, driving and public transport, plus a running
+mode with its own pace chart. Cycling routes favour bike lanes, worldwide and
+without an API key. Driving navigation shows live traffic on your route, speed
 limits, lane guidance and speed-camera warnings. Every trip you walk or run is
 kept on the device, with its track and elevation profile, for as long as you
 choose — or not at all.
@@ -137,7 +138,7 @@ credits them all under *Menu › Sources & licences*.
 | Map data, places, stops | [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL |
 | Vector tiles | [OpenFreeMap](https://openfreemap.org/) |
 | Search & addresses | [Photon](https://photon.komoot.io/), [Base Adresse Nationale](https://adresse.data.gouv.fr/) |
-| Routing | [OSRM](https://routing.openstreetmap.de/), TomTom (optional key) |
+| Routing | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) and [BRouter](https://brouter.de/brouter/) for cycling, TomTom (optional key) |
 | Public transport | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (optional key) |
 | Weather & air | [Open-Meteo](https://open-meteo.com/), Météo-France (optional key) |
 | Imagery & terrain | Esri, [IGN](https://geoservices.ign.fr/), Mapzen/USGS/SRTM |

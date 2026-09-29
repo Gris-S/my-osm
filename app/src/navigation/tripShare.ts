@@ -37,7 +37,7 @@ export type ShareOutcome = "shared" | "cancelled" | "copied" | "downloaded";
  * clic**, sans `await` avant : c'est cette absence d'attente qui permet à la
  * feuille de partage de s'ouvrir.
  */
-export function shareImage(blob: Blob, name: string): Promise<ShareOutcome> {
+export function shareImage(blob: Blob, name: string, title = navText("history.shareTitle")): Promise<ShareOutcome> {
   const file = new File([blob], name, { type: "image/png" });
 
   // `canShare` est le seul moyen de savoir si **les fichiers** passent : un
@@ -45,7 +45,7 @@ export function shareImage(blob: Blob, name: string): Promise<ShareOutcome> {
   // envoyer quand même fait échouer tout le partage.
   if (isHandheld() && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
     return navigator
-      .share({ title: navText("history.shareTitle"), files: [file] })
+      .share({ title, files: [file] })
       .then<ShareOutcome>(() => "shared")
       // Annulation de l'utilisateur, ou refus du navigateur. On ne copie ni ne
       // télécharge dans son dos : un fichier qui apparaît sans qu'on l'ait

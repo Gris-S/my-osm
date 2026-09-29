@@ -6,6 +6,7 @@ import {
   Footprints,
   Gauge,
   LoaderCircle,
+  Mountain,
   Route,
   Share2,
   Timer,
@@ -285,7 +286,10 @@ function TripDetail({
     const card = cardRef.current;
     if (!card) return;
     setNotice(null);
-    void shareImage(card, imageFileName(tripDate(trip, locale), isRun ? nav("run.title") : trip.to)).then((outcome) => {
+    // Le titre de la feuille de partage : « Trajet à vélo » pour un vélo, le
+    // titre habituel sinon.
+    const title = trip.kind === "ride" ? nav("bike.shareTitle") : undefined;
+    void shareImage(card, imageFileName(tripDate(trip, locale), isRun ? nav("run.title") : trip.to), title).then((outcome) => {
       if (outcome === "copied") setNotice(nav("history.copied"));
       if (outcome === "downloaded") setNotice(nav("history.downloaded"));
     });
@@ -313,11 +317,20 @@ function TripDetail({
             </small>
           )}
         </li>
-        <li>
-          <Footprints size={14} />
-          <span className="history-figure-value">{trip.steps.toLocaleString(locale)}</span>
-          <small>{stepsOrigin(trip)}</small>
-        </li>
+        {trip.kind === "ride" ? (
+          // À vélo, le dénivelé tient la place des pas.
+          <li>
+            <Mountain size={14} />
+            <span className="history-figure-value">{trip.ascent !== null ? `D+\u00a0${trip.ascent}\u00a0m` : "—"}</span>
+            {trip.descent !== null && <small>{`D−\u00a0${trip.descent}\u00a0m`}</small>}
+          </li>
+        ) : (
+          <li>
+            <Footprints size={14} />
+            <span className="history-figure-value">{trip.steps.toLocaleString(locale)}</span>
+            <small>{stepsOrigin(trip)}</small>
+          </li>
+        )}
         <li>
           <Gauge size={14} />
           <span className="history-figure-value">{speed === null ? "—" : formatSpeed(speed, locale)}</span>

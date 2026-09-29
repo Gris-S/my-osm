@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Flag, Footprints, Gauge, MapPin, Route, Timer } from "lucide-react";
+import { Flag, Footprints, Gauge, MapPin, Mountain, Route, Timer } from "lucide-react";
 import { formatDistance, formatDuration } from "../utils/format";
 import type { Trip } from "./history";
 import { historyRetention } from "./settings";
@@ -94,16 +94,28 @@ export function TripSummary({ trip, onClose }: { trip: Trip; onClose: () => void
             )}
           </Stat>
 
-          <Stat
-            icon={<Footprints size={15} />}
-            label={nav("trip.steps")}
-            value={trip.steps.toLocaleString(locale)}
-          >
-            {/* D'où vient le chiffre : un capteur qui a compté et une division
-                par la longueur d'un pas ne se valent pas, et l'utilisateur doit
-                pouvoir faire la différence. */}
-            <span className="trip-stat-note">{stepsOrigin(trip)}</span>
-          </Stat>
+          {/* À vélo, pas de pas : la case prend le dénivelé, qui compte bien
+              plus pour qui pédale. */}
+          {trip.kind === "ride" ? (
+            <Stat
+              icon={<Mountain size={15} />}
+              label={nav("run.elevation")}
+              value={trip.ascent !== null ? `D+\u00a0${trip.ascent}\u00a0m` : "—"}
+            >
+              {trip.descent !== null && <span className="trip-stat-note">{`D−\u00a0${trip.descent}\u00a0m`}</span>}
+            </Stat>
+          ) : (
+            <Stat
+              icon={<Footprints size={15} />}
+              label={nav("trip.steps")}
+              value={trip.steps.toLocaleString(locale)}
+            >
+              {/* D'où vient le chiffre : un capteur qui a compté et une division
+                  par la longueur d'un pas ne se valent pas, et l'utilisateur doit
+                  pouvoir faire la différence. */}
+              <span className="trip-stat-note">{stepsOrigin(trip)}</span>
+            </Stat>
+          )}
 
           <Stat
             icon={<Gauge size={15} />}

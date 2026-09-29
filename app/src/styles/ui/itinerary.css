@@ -424,3 +424,46 @@
   opacity: 1;
   font-weight: 600;
 }
+
+/* Section « Vélo » des paramètres (`BikeSettings.tsx`) --------------------- */
+
+.bike-settings {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.bike-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bike-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.bike-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.bike-slider input[type="range"]:disabled {
+  opacity: 0.45;
+}
+
+.bike-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+}

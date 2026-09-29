@@ -123,11 +123,17 @@ function figuresOf(trip: Trip, locale: string, palette: Palette): Figure[] {
       value: formatDistance(trip.distanceMeters),
       note: trip.ascent !== null ? `D+ ${trip.ascent} m · D− ${trip.descent} m` : "",
     },
-    {
-      label: navText("trip.steps"),
-      value: trip.steps.toLocaleString(locale),
-      note: stepsOrigin(trip),
-    },
+    trip.kind === "ride"
+      ? {
+          label: navText("run.elevation"),
+          value: trip.ascent !== null ? `D+ ${trip.ascent} m` : "—",
+          note: trip.ascent !== null ? `D− ${trip.descent ?? 0} m` : "",
+        }
+      : {
+          label: navText("trip.steps"),
+          value: trip.steps.toLocaleString(locale),
+          note: stepsOrigin(trip),
+        },
     {
       label: navText("trip.speed"),
       value: speed === null ? "—" : formatSpeed(speed, locale),

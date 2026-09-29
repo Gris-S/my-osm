@@ -1,4 +1,5 @@
 import { CONFIG } from "../config";
+import { BikeRouteError, fetchBikeRoute, type BikeSource } from "../services/bikeRouting";
 import type { LonLat, RouteResult } from "../types";
 import { distance } from "./geo";
 import { navText } from "./strings";
@@ -69,7 +70,12 @@ export interface NavRoute {
   durationSeconds: number;
   /** Le trajet sous la forme que `MapView` sait déjà dessiner. */
   result: RouteResult;
+  /** À vélo : le moteur qui a répondu — `brouter` en secours, et c'est dit. */
+  source?: BikeSource;
 }
+
+/** Les deux déplacements que ce guidage suit : à pied, et à vélo. */
+export type NavMode = "walking" | "cycling";
 
 interface OsrmStep {
   distance: number;
@@ -100,8 +106,25 @@ interface OsrmStepsResponse {
  * seule URL et rend un tronçon (`leg`) par couple. Il n'y a donc qu'un appel,
  * quel que soit le nombre d'étapes.
  */
-export async function getNavRoute(points: LonLat[], signal?: AbortSignal): Promise<NavRoute> {
+export async function getNavRoute(
+  points: LonLat[],
+  signal?: AbortSignal,
+  mode: NavMode = "walking"
+): Promise<NavRoute> {
   if (points.length < 2) throw new Error(navText("nav.errorNoRoute"));
+  // À vélo, la réponse de Valhalla — ou de BRouter en secours — arrive déjà
+  // sous la forme d'OSRM (`services/bikeRouting.ts`) : la suite est commune.
+  if (mode === "cycling") {
+    try {
+      const { source, route } = await fetchBikeRoute(points, signal);
+      return { ...buildRoute(route, "cycling"), source };
+    } catch (e) {
+      if (signal?.aborted || !(e instanceof BikeRouteError)) throw e;
+      if (e.reason === "noRoute") throw new Error(navText("bike.errorNoRoute"));
+      if (e.reason === "offline") throw new Error(navText("nav.errorOffline"));
+      throw new Error(navText("nav.errorService", { status: String(e.status ?? 0) }));
+    }
+  }
   const coords = points.map((p) => `${p.lon},${p.lat}`).join(";");
   const url =
     `${CONFIG.OSRM_ROUTING.walking}/route/v1/walking/${coords}` +
@@ -112,7 +135,7 @@ export async function getNavRoute(points: LonLat[], signal?: AbortSignal): Promi
   const data: OsrmStepsResponse = await res.json();
   if (data.code !== "Ok" || !data.routes.length) throw new Error(navText("nav.errorNoRoute"));
 
-  return buildRoute(data.routes[0]);
+  return buildRoute(data.routes[0], "walking");
 }
 
 /**
@@ -123,7 +146,7 @@ export async function getNavRoute(points: LonLat[], signal?: AbortSignal): Promi
  * écartés à l'assemblage, faute de quoi le tracé porterait des segments de
  * longueur nulle sur lesquels aucune projection n'a de sens.
  */
-function buildRoute(route: OsrmStepsResponse["routes"][number]): NavRoute {
+function buildRoute(route: OsrmStepsResponse["routes"][number], mode: NavMode): NavRoute {
   const points: LonLat[] = [];
   const measures: number[] = [];
   const steps: NavStep[] = [];
@@ -195,7 +218,7 @@ function buildRoute(route: OsrmStepsResponse["routes"][number]): NavRoute {
     distanceMeters: traveled,
     durationSeconds: route.duration,
     result: {
-      mode: "walking",
+      mode,
       distanceMeters: traveled,
       durationSeconds: route.duration,
       segments: [

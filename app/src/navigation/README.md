@@ -24,7 +24,7 @@ marqué d'un commentaire qui nomme ce dossier.
 | Fichier | Rôle |
 | --- | --- |
 | `geo.ts` | Distances, caps, projection d'un point sur un segment. |
-| `route.ts` | L'appel à OSRM avec `steps=true`, et le trajet mis en forme (`NavRoute`). |
+| `route.ts` | L'appel à OSRM avec `steps=true` (à pied) ou à `services/bikeRouting.ts` (à vélo : Valhalla, BRouter en secours), et le trajet mis en forme (`NavRoute`). |
 | `progress.ts` | Où l'on en est sur ce tracé : avancement, écart, manœuvre à venir. |
 | `elevation.ts` | Le profil du dénivelé, lu dans les tuiles d'altitude déjà utilisées par le relief. |
 | `useNavPosition.ts` | `watchPosition` : le suivi continu de la position. |

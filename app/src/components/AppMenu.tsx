@@ -8,6 +8,7 @@ import { CONFIG } from "../config";
 // fournie par le module ; la fenêtre ne fait que lui donner sa place.
 import { ApiKeysSettings } from "./ApiKeysSettings";
 import { HistoryPanel, ModesSettings, navText, NavigationSettings } from "../navigation";
+import { BikeSettings } from "./BikeSettings";
 import { HomeWorkSettings } from "./HomeWorkSettings";
 import { SourcesList } from "./SourcesList";
 import { useBackClose } from "../hooks/useBackClose";
@@ -443,6 +444,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
 
             <HomeWorkSettings />
             <NavigationSettings />
+            <BikeSettings />
           </div>
         </div>
       )}

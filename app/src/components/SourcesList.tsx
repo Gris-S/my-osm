@@ -39,6 +39,8 @@ const GROUPS: { title: TranslationKey; entries: SourceEntry[] }[] = [
       { name: "Photon", role: "sources.role.photon", url: CONFIG.ATTRIBUTION_LINKS.photon },
       { name: "Base Adresse Nationale", role: "sources.role.ban", url: CONFIG.ATTRIBUTION_LINKS.ban },
       { name: "OSRM (FOSSGIS)", role: "sources.role.osrm", url: CONFIG.ATTRIBUTION_LINKS.osrm },
+      { name: "Valhalla (FOSSGIS)", role: "sources.role.valhalla", url: CONFIG.ATTRIBUTION_LINKS.valhalla },
+      { name: "BRouter", role: "sources.role.brouter", url: CONFIG.ATTRIBUTION_LINKS.brouter },
       { name: "Open-Meteo", role: "sources.role.openmeteo", url: CONFIG.ATTRIBUTION_LINKS.openmeteo },
       { name: "Météo-France", role: "sources.role.meteofrance", url: CONFIG.ATTRIBUTION_LINKS.meteofrance },
       { name: "TomTom", role: "sources.role.tomtom", url: CONFIG.ATTRIBUTION_LINKS.tomtom },

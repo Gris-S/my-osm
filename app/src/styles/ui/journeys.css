@@ -269,3 +269,9 @@
   font-size: 11px;
   color: var(--text-secondary);
 }
+
+/* Le secours BRouter du vélo : assez visible pour qu'on le remarque. */
+.itinerary-note.is-fallback {
+  color: var(--caution);
+  font-weight: 600;
+}

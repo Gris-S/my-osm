@@ -20,7 +20,7 @@ export function StartNavigationButton({
   mode,
   onStart,
 }: {
-  mode: "walking" | "driving" | "transit";
+  mode: "walking" | "cycling" | "driving" | "transit";
   onStart: () => void;
 }) {
   const { nav } = useNav();
@@ -62,6 +62,7 @@ export function StartNavigationButton({
  */
 const ARIA = {
   walking: "nav.startAria",
+  cycling: "bike.startAria",
   driving: "car.startAria",
   transit: "transit.startAria",
 } as const;

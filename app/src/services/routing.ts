@@ -1,11 +1,12 @@
 import { CONFIG, type RoadMode } from "../config";
 import type { LonLat, RouteResult } from "../types";
 import { t } from "../i18n";
+import { BikeRouteError, fetchBikeRoute } from "./bikeRouting";
 
 // Chaque mode a sa propre instance OSRM (profil dédié) + le segment "profile"
 // attendu dans l'URL. `routed-foot` route sur les chemins piétons et exclut
 // autoroutes / voies rapides ; `routed-car` route pour la voiture.
-const PROFILE: Record<RoadMode, { base: string; path: string }> = {
+const PROFILE: Record<Exclude<RoadMode, "cycling">, { base: string; path: string }> = {
   driving: { base: CONFIG.OSRM_ROUTING.driving, path: "driving" },
   walking: { base: CONFIG.OSRM_ROUTING.walking, path: "walking" },
 };
@@ -37,6 +38,7 @@ interface OsrmResponse {
  */
 export async function getRoute(mode: RoadMode, points: LonLat[]): Promise<RouteResult> {
   if (points.length < 2) throw new Error(t("error.noRoute"));
+  if (mode === "cycling") return getBikeRoute(points);
   const { base, path } = PROFILE[mode];
   const coords = points.map((p) => `${p.lon},${p.lat}`).join(";");
   const url = `${base}/route/v1/${path}/${coords}?overview=full&geometries=geojson`;
@@ -70,4 +72,28 @@ export async function getRoute(mode: RoadMode, points: LonLat[]): Promise<RouteR
     // sert qu'aux transports en commun (voir `services/transit.ts`).
     segments: [{ geometry: route.geometry, color: ROUTE_COLOR, dashed: false }],
   };
+}
+
+/**
+ * L'itinéraire à vélo, pour le panneau : Valhalla, ou BRouter en secours — et
+ * dans ce cas le résultat **le dit** (`source`), le panneau l'affiche.
+ */
+async function getBikeRoute(points: LonLat[]): Promise<RouteResult> {
+  if (!navigator.onLine) throw new Error(t("error.routeOffline"));
+  try {
+    const { source, route } = await fetchBikeRoute(points);
+    return {
+      mode: "cycling",
+      distanceMeters: route.distance,
+      durationSeconds: route.duration,
+      segments: [{ geometry: route.geometry, color: ROUTE_COLOR, dashed: false }],
+      source,
+    };
+  } catch (e) {
+    if (e instanceof BikeRouteError) {
+      if (e.reason === "offline") throw new Error(t("error.routeOffline"));
+      if (e.reason === "service") throw new Error(t("error.routeFailed", { status: e.status ?? 0 }));
+    }
+    throw new Error(t("error.noRoute"));
+  }
 }

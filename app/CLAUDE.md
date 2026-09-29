@@ -637,6 +637,59 @@ Points à connaître sur le calcul lui-même :
   descendre en dessous, dans `App` et pas seulement dans l'interface, pour
   qu'aucun appel ne laisse un itinéraire sans arrivée.
 
+### Vélo : itinéraire et navigation (29 septembre 2026)
+
+**Demande** : navigation vélo avec pistes cyclables, mises à jour régulières,
+monde entier, sans clé. Trois services comparés en direct ce jour-là (détail et
+sources dans le commentaire de `CONFIG.BIKE_ROUTING`) :
+
+- **Valhalla de la FOSSGIS** (`valhalla1.openstreetmap.de/route`), **retenu** :
+  tuiles reconstruites environ tous les deux jours, profil `bicycle` réglable,
+  noms de rues, et `format: "osrm"` qui rend **la forme que le guidage à pied
+  lit déjà** — aucun nouveau lecteur de manœuvres. Règle d'usage : 1 appel/s
+  par utilisateur, en-tête `X-Client-Id: my-osm` (préflight vérifié : l'en-tête
+  est autorisé en origine croisée). Une réponse **400** veut dire « pas de
+  chemin » (`DistanceExceeded` mesuré sur Paris → New York), pas une panne.
+- **BRouter** (`brouter.de/brouter`), **secours** : consignes sans noms de rues
+  (`voicehints` : `[point, commande, sortie, distance, angle]`, lu dans
+  `FormatJson.java`/`VoiceHint.java`), aucune règle d'usage publiée. **Les
+  paramètres de profil (`profile:xxx=`) répondent 500 sur ce serveur** : seuls
+  les profils nommés servent (`trekking`, `safety`). Il rend aussi un 500 quand
+  il ne trouve pas de chemin.
+- OSRM `routed-bike` de la FOSSGIS, **écarté** : profil figé, le plus sommaire.
+
+Points à connaître :
+
+- **Un seul appel pour le panneau et le guidage** : `services/bikeRouting.ts`
+  ramène les deux moteurs à la forme d'OSRM `steps=true` ; `services/routing.ts`
+  (panneau) et `navigation/route.ts` (guidage, `getNavRoute(…, "cycling")`) le
+  lisent. BRouter rend un tracé unique : il est recoupé au point le plus proche
+  de chaque étape pour que le guidage retrouve ses arrivées intermédiaires.
+- **Le secours n'est jamais silencieux** (règle de l'utilisateur) : le résultat
+  porte `source`, le panneau affiche `itinerary.bikeFallback` et le bandeau de
+  navigation `bike.fallback`. Le réglage « Secours BRouter » l'interdit. Il
+  n'est tenté que sur panne (réseau, 5xx, 429), **jamais sur un 400** : un autre
+  moteur ne trouverait pas de chemin non plus. Testé (`tests/bikeRouting.test.ts`).
+- **Un appel par seconde au plus**, tous moteurs confondus (`politeSlot`) : les
+  appels attendent leur créneau au lieu d'être refusés. Les curseurs des
+  paramètres ne s'appliquent qu'une demi-seconde après le dernier mouvement,
+  sans quoi chaque cran relancerait un calcul.
+- **Réglages** (`services/bikeSettings.ts`, magasin de module, clé
+  `osm-local:bike-settings`, section « Vélo » des paramètres) : circulation
+  (`use_roads = 1 − avoidTraffic`, défaut 0,75), côtes (`use_hills`), vélo
+  électrique (22 km/h, côtes au tiers), priorité sécurité (`use_roads` 0 ;
+  BRouter `safety`), secours autorisé. Hors de `src/navigation/` parce que le
+  panneau en dépend. `useItinerary` recalcule quand ils changent.
+  **Effet mesuré** (`trace_attributes`, part du trajet sur piste, bande
+  cyclable, chemin ou voie calme) : Nation → Opéra **21 %** à `use_roads` 1,
+  **80 %** au défaut, **94 %** à 0, pour 5,8 km dans les trois cas ;
+  Part-Dieu → Villeurbanne ≈ 73 % partout (le direct y est déjà cyclable).
+- **La navigation vélo est la session à pied** (`useNavigation`, `mode:
+  "cycling"`) : même tracé, même recalcul. Ni podomètre ni pas : le trajet
+  s'enregistre en `kind: "ride"`, et la fiche, l'historique et l'image de
+  partage montrent le **dénivelé** à la place des pas. La fiche de fin suit le
+  réglage « Résumé après une marche ».
+
 ### Navigation guidée à pied (`src/navigation/`)
 
 Le guidage pas à pas d'un trajet **à pied** : la manœuvre à venir et sa
