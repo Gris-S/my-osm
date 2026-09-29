@@ -6,6 +6,8 @@ import * as maplibregl from "maplibre-gl";
 import type { Map as MLMap, StyleSpecification, FilterSpecification } from "maplibre-gl";
 import { CONFIG } from "../../config";
 import { APPLE_DARK_STYLE } from "../../styles/appleDark";
+import { APPLE_LIGHT_STYLE } from "../../styles/appleLight";
+import { poiAllowOverlap, poiIconsOpacity, poiSortKey } from "./poiPick";
 import type { Basemap } from "../../hooks/useBasemap";
 import type { Theme } from "../../hooks/useTheme";
 import { FILTER_GROUPS, GROUP_COLOR_FALLBACK, type IconNode } from "../../filters";
@@ -38,6 +40,8 @@ export const TRAFFIC_COLOR: Record<string, string> = {
 
 export const POI_SOURCE_ID = "poi-source";
 export const POI_LAYER_ID = "poi-layer";
+/** Les pastilles telles qu'on les voit dès le zoom 15, le plus important dessus. */
+export const POI_ICONS_LAYER_ID = "poi-icons-layer";
 // Tracé de la ligne dont on consulte les horaires : un liseré sombre pour
 // détacher la ligne du fond, puis la ligne à sa couleur officielle.
 export const LINE_SHAPE_SOURCE_ID = "line-shape-source";
@@ -214,7 +218,7 @@ export function styleKey(theme: Theme, basemap: Basemap): string {
 
 export function resolveStyle(theme: Theme, basemap: Basemap): string | StyleSpecification {
   if (basemap === "satellite") return satelliteStyle(theme);
-  return theme === "dark" ? APPLE_DARK_STYLE : CONFIG.MAP_STYLE_URL;
+  return theme === "dark" ? APPLE_DARK_STYLE : APPLE_LIGHT_STYLE;
 }
 
 export function placesToGeoJSON(
@@ -629,7 +633,7 @@ export function installMapLayers(
   bold: boolean,
   routeTraffic: GeoJSON.FeatureCollection
 ) {
-  for (const id of [POI_LAYER_ID, ROUTE_LAYER_ID, ROUTE_WALK_LAYER_ID, LINE_SHAPE_LAYER_ID, LINE_SHAPE_CASING_ID, CHOICE_DIM_LAYER_ID, CHOICE_ACTIVE_LAYER_ID, ROUTE_TRAFFIC_LAYER_ID]) {
+  for (const id of [POI_LAYER_ID, POI_ICONS_LAYER_ID, ROUTE_LAYER_ID, ROUTE_WALK_LAYER_ID, LINE_SHAPE_LAYER_ID, LINE_SHAPE_CASING_ID, CHOICE_DIM_LAYER_ID, CHOICE_ACTIVE_LAYER_ID, ROUTE_TRAFFIC_LAYER_ID]) {
     if (map.getLayer(id)) map.removeLayer(id);
   }
   for (const id of [POI_SOURCE_ID, ROUTE_SOURCE_ID, LINE_SHAPE_SOURCE_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID]) {
@@ -687,6 +691,33 @@ export function installMapLayers(
   });
 
   map.addSource(POI_SOURCE_ID, { type: "geojson", data: placesToGeoJSON(places, lines, brandMode) });
+  // Les pastilles **telles qu'on les voit**, à partir du zoom 15 : une couche
+  // de dessin seule, sous celle qui décide (`POI_LAYER_ID`).
+  //
+  // Dès le zoom 15, toutes les pastilles sont dessinées, même serrées, et
+  // l'ordre de dessin décide laquelle est **dessus**. Dans la couche qui
+  // décide, cet ordre est celui du placement — le plus important d'abord,
+  // donc dessous : au Centre Pompidou, la boutique recouvrait le musée et
+  // toucher le musée ouvrait la boutique. Inverser l'ordre de cette couche-là
+  // donnait aux noms des lieux secondaires la priorité de place (essayé :
+  // « Boutique Georges Pompidou » s'affichait, plus le musée), et séparer noms
+  // et pastilles faisait passer les noms sur les pastilles voisines (essayé
+  // aussi, à la gare de l'Est). D'où ce montage : la couche qui décide reste
+  // exactement celle d'avant — placement, noms, toucher — et ne fait plus que
+  // réserver la place de ses pastilles à partir du zoom 15 ; celle-ci les
+  // dessine, le plus important dessus (`poiPick.ts`), sans rien réserver.
+  map.addLayer({
+    id: POI_ICONS_LAYER_ID,
+    type: "symbol",
+    source: POI_SOURCE_ID,
+    layout: {
+      "icon-image": ["get", "icon"],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "symbol-sort-key": poiSortKey(brandMode),
+    },
+    paint: { "icon-opacity": poiIconsOpacity(brandMode, "drawn") },
+  });
   map.addLayer({
     id: POI_LAYER_ID,
     type: "symbol",
@@ -699,7 +730,7 @@ export function installMapLayers(
       // quelques mètres, ou plusieurs enseignes d'un même immeuble, se
       // masquaient l'un l'autre alors qu'on zoomait précisément pour les voir.
       // Dès le zoom 15, toutes les pastilles sont donc dessinées.
-      "icon-allow-overlap": ["step", ["zoom"], false, 15, true],
+      "icon-allow-overlap": poiAllowOverlap(brandMode),
       "icon-padding": 2,
       // Ordre de placement stable, du plus important au moins important
       // (`rank` d'OpenMapTiles). Sans cette clé, MapLibre place les symboles
@@ -721,6 +752,10 @@ export function installMapLayers(
       "text-optional": true,
     },
     paint: {
+      // Ses pastilles cèdent la place à celles de la couche de dessin dès
+      // qu'elles se chevauchent : elles réservent encore leur place, on ne
+      // les voit plus.
+      "icon-opacity": poiIconsOpacity(brandMode, "placement"),
       // Texte clair sur fond sombre : mode nuit, mais aussi vue satellite,
       // dont l'imagerie est sombre quel que soit le thème de l'interface.
       "text-color": onDarkGround ? "#f2f2f7" : "#3c3c43",

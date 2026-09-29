@@ -1,7 +1,7 @@
 {
   "name": "my-osm",
   "private": true,
-  "version": "0.1.0-alpha.65",
+  "version": "0.1.0-alpha.67",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "test": "vitest run",
     "preview": "vite preview",
     "build:dark-style": "node scripts/build-apple-dark-style.mjs",
+    "build:light-style": "node scripts/build-apple-light-style.mjs",
     "build:icons": "node scripts/build-icons.mjs",
     "build:car-data": "node scripts/build-car-data.mjs"
   },

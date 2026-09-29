@@ -255,6 +255,28 @@ Points à connaître avant d'y toucher :
   le placement des pastilles voisines — et `symbol-sort-key` fixe l'ordre de
   placement sur le `rank` d'OpenMapTiles, sans quoi il suivrait l'ordre
   d'arrivée dans la source, qui change à chaque relecture.
+- **Deux couches pour les pastilles, et le plus important dessus** (29 septembre
+  2026, `components/map/poiPick.ts`). Au Centre Pompidou, le musée (rang 227) et
+  sa boutique (rang 371) sont à 8 px au zoom 17,5 : la boutique recouvrait le
+  musée, et toucher le musée ouvrait la boutique — 15 paires à moins de 24 px
+  sur 33 pastilles dans la même vue. Deux causes : MapLibre **dessine** dans
+  l'ordre de `symbol-sort-key`, le plus petit d'abord, donc dessous ; et le
+  toucher prenait la première pastille renvoyée, celle du dessus.
+  - `poi-layer` reste **la couche qui décide** — placement, noms, toucher —
+    exactement comme avant ; à partir du zoom 15, ses pastilles sont invisibles
+    (`icon-opacity`) mais réservent toujours leur place.
+  - `poi-icons-layer`, dessous, **les dessine**, ordre inversé (le plus
+    important en dernier, donc dessus), sans rien réserver
+    (`icon-ignore-placement`).
+  - Le toucher choisit **la pastille la plus proche du doigt**, et à 6 px près
+    la plus importante (`pickPoi`, testé) : viser le bord visible d'une
+    pastille à demi cachée la choisit.
+  - Deux essais écartés, à ne pas refaire : inverser l'ordre de la couche
+    unique donne aux noms des lieux secondaires la priorité de place (c'est
+    « Boutique Georges Pompidou » qui s'affichait) ; mettre les noms dans leur
+    propre couche les fait buter sur toutes les pastilles (0 nom sur 33) ou,
+    pastilles ignorées, passer sur toutes. Comparé à la version précédente,
+    capture à l'appui : mêmes noms, aux mêmes endroits.
 - **Les POI lus sont mémorisés** (`seen`, plafonné à 8 000, éviction LRU) et
   l'affichage est tiré de cette mémoire filtrée par l'emprise. Ne pas revenir à
   un rendu de la seule dernière lecture : au-delà du zoom 14 la relecture peut
@@ -2397,6 +2419,34 @@ connaître :
   reste visible dans le menu d'affichage, mais inerte et expliquée — et
   `useMapillary` refuse de se rallumer au démarrage, un choix mémorisé du temps
   où le jeton existait n'ayant plus rien à afficher.
+
+### Style clair (`src/styles/appleLight.ts`)
+
+**Généré, ne pas l'éditer à la main** : `npm run build:light-style`
+(`scripts/build-apple-light-style.mjs`), même méthode que le style sombre —
+Liberty retouché, mêmes tuiles, même sprite, mêmes polices, donc rien à changer
+au hors-ligne. Demandé le 29 septembre 2026, capture d'Apple Plans à l'appui :
+routes grises au loin et blanches de près (autoroutes gris-lilas), banlieue à
+peine plus sombre que le fond crème, forêts et eau plus francs, villes en gras,
+villages et lieux-dits plus tard.
+
+- **Le filet gris de la banlieue venait des liserés**, pas des routes : aux
+  zooms larges, le liseré de Liberty est plus large que la route. Il n'apparaît
+  qu'à partir du zoom 10-11 (primaires) et 11-13 (secondaires). Mesuré sur
+  quatre captures successives — éclaircir les routes seules ne changeait
+  presque rien.
+- **Les numéros de route prennent les couleurs françaises** (A et N rouges, D
+  jaunes, E et F verts, M cyan, le reste blanc cerné), celles du bandeau de la
+  navigation voiture. Le sprite n'a qu'un cartouche blanc, qui ne se recolore
+  pas : les images `fr-shield-<couleur>-<longueur>` sont dessinées par
+  `components/map/roadShields.ts`, **par le résolveur d'images manquantes**
+  (`setMissingStyleImageResolver`). En MapLibre 6, l'événement
+  `styleimagemissing` n'est plus qu'une notification : une image ajoutée depuis
+  lui arrive trop tard (« could not be loaded »). Une carte n'a qu'un résolveur.
+  Hors de France, ces couleurs sont celles de la France : un choix assumé pour
+  une application tournée vers la France.
+- Les noms de lieux restent ceux de Liberty, **anglais d'abord** (`name_en`,
+  puis `name`) : « Latin Quarter », « Paris – Le Bourget Airport ».
 
 ### Style sombre
 

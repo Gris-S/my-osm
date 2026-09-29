@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as MLMap, StyleSpecification } from "maplibre-gl";
-import { CONFIG } from "../config";
 import { APPLE_DARK_STYLE } from "../styles/appleDark";
+import { APPLE_LIGHT_STYLE } from "../styles/appleLight";
+import { installRoadShields } from "../components/map/roadShields";
 import type { Theme } from "../hooks/useTheme";
 import type { LonLat } from "../types";
 import { useLatest } from "../hooks/useLatest";
@@ -35,7 +36,7 @@ const START_COLOR = "#34C759";
 const END_COLOR = "#FF3B30";
 
 function styleFor(theme: Theme): string | StyleSpecification {
-  return theme === "dark" ? APPLE_DARK_STYLE : CONFIG.MAP_STYLE_URL;
+  return theme === "dark" ? APPLE_DARK_STYLE : APPLE_LIGHT_STYLE;
 }
 
 function traceData(points: LonLat[]): GeoJSON.FeatureCollection {
@@ -124,6 +125,7 @@ export function TripMap({ points, theme, onReady, color = TRACE_COLOR }: Props) 
       canvasContextAttributes: { preserveDrawingBuffer: true },
     });
     mapRef.current = map;
+    installRoadShields(map);
 
     // Le crédit des sources s'ouvre déplié, et une carte immobile ne le replie
     // jamais (MapLibre attend un glissé) : il cachait la moitié du tracé. Replié,

@@ -1,3 +1,5 @@
+import { APPLE_LIGHT_STYLE } from "../styles/appleLight";
+import { installRoadShields } from "./map/roadShields";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import { Check, Download, HardDrive, Loader2, RefreshCw, Trash2, X } from "lucide-react";
@@ -169,12 +171,14 @@ function DownloadPanelContent({ center, onClose }: Props) {
     if (!mapNode.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: mapNode.current,
-      style: CONFIG.MAP_STYLE_URL,
+      // Le même fond clair que la carte principale (`styles/appleLight.ts`).
+      style: APPLE_LIGHT_STYLE,
       center: [center.lon, center.lat],
       zoom: PICK_START_ZOOM,
       attributionControl: false,
     });
     mapRef.current = map;
+    installRoadShields(map);
     map.on("zoom", () => setPickLevel(levelForZoom(map.getZoom())));
     map.on("load", () => {
       // Les couleurs du thème, lues une fois : MapLibre ne connaît pas les

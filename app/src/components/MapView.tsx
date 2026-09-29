@@ -1,6 +1,8 @@
+import { pickPoi, poiAllowOverlap, poiIconsOpacity, poiSortKey } from "./map/poiPick";
+import { installRoadShields } from "./map/roadShields";
 import { memo, useCallback, useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { Map as MLMap, MapMouseEvent, PropertyValueSpecification } from "maplibre-gl";
+import type { Map as MLMap, MapMouseEvent } from "maplibre-gl";
 import { CONFIG } from "../config";
 import type { Basemap } from "../hooks/useBasemap";
 import type { Theme } from "../hooks/useTheme";
@@ -33,7 +35,7 @@ import type { SavedPlace as StoredPlace } from "../hooks/useBookmarks";
 // dossier, et se retire avec lui.
 import type { NavChoice, NavMapState, CarTraffic } from "../navigation";
 import { followConnectivity, installOfflineTiles, offlineTransformRequest } from "../services/offline/nativeTiles";
-import { POI_SOURCE_ID, POI_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
+import { POI_SOURCE_ID, POI_LAYER_ID, POI_ICONS_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
 import { subscribeCompass } from "../navigation/compass";
 import { useLatest } from "../hooks/useLatest";
 import { STOP_COLOR, pinElement, waypointPinElement, streetViewElement, dotElement, choiceBubbleElement, incidentElement, navArrowElement } from "./map/markers";
@@ -417,10 +419,13 @@ export const MapView = memo(function MapView({
       // décombrement, utile pour les commerces du quotidien, en escamoterait la
       // moitié et donnerait l'impression qu'ils sont regroupés.
       if (map.getLayer(POI_LAYER_ID)) {
-        const allowOverlap: PropertyValueSpecification<boolean> = brandQuery
-          ? true
-          : ["step", ["zoom"], false, 15, true];
-        map.setLayoutProperty(POI_LAYER_ID, "icon-allow-overlap", allowOverlap);
+        map.setLayoutProperty(POI_LAYER_ID, "icon-allow-overlap", poiAllowOverlap(!!brandQuery));
+        // Qui montre les pastilles, et dans quel ordre (`poiPick.ts`).
+        map.setPaintProperty(POI_LAYER_ID, "icon-opacity", poiIconsOpacity(!!brandQuery, "placement"));
+      }
+      if (map.getLayer(POI_ICONS_LAYER_ID)) {
+        map.setLayoutProperty(POI_ICONS_LAYER_ID, "symbol-sort-key", poiSortKey(!!brandQuery));
+        map.setPaintProperty(POI_ICONS_LAYER_ID, "icon-opacity", poiIconsOpacity(!!brandQuery, "drawn"));
       }
       source.setData(placesToGeoJSON(places, stopLinesRef.current, !!brandQuery));
       void refreshStopLines(map, places);
@@ -520,6 +525,8 @@ export const MapView = memo(function MapView({
     // style, aucune tuile n'est encore dessinée — le réglage prend effet avant
     // la première image. Un même gestionnaire sert au démarrage et à chaque
     // changement de fond de carte, qui repart lui aussi du style d'origine.
+    // Les cartouches des numéros de route du style clair, dessinés à la demande.
+    installRoadShields(map);
     map.on("style.load", () => {
       installMapLayers(
         map,
@@ -612,8 +619,19 @@ export const MapView = memo(function MapView({
     map.on("click", (e: MapMouseEvent) => {
       let hitPlace: Place | undefined;
       try {
-        const hits = map.queryRenderedFeatures(e.point, { layers: [POI_LAYER_ID] });
-        hitPlace = hits.length ? placesRef.current.find((p) => p.id === hits[0].properties?.id) : undefined;
+        // Pas la première pastille renvoyée — celle du dessus — mais la plus
+        // proche du doigt, et à égalité la plus importante (`poiPick.ts`) :
+        // toucher le Centre Pompidou ouvrait sa boutique, posée par-dessus.
+        // La couche qui décide, seule : ses pastilles sont exactement là où on
+        // voit celles de la couche de dessin, et elle seule sait lesquelles
+        // sont affichées aux zooms larges.
+        const hits = map.queryRenderedFeatures(e.point, { layers: [POI_LAYER_ID] }).flatMap((hit) => {
+          if (hit.geometry.type !== "Point") return [];
+          const at = map.project(hit.geometry.coordinates as [number, number]);
+          return [{ id: String(hit.properties?.id), rank: Number(hit.properties?.rank ?? 999), x: at.x, y: at.y }];
+        });
+        const picked = pickPoi(hits, e.point.x, e.point.y);
+        hitPlace = picked ? placesRef.current.find((p) => p.id === picked.id) : undefined;
       } catch {
         hitPlace = undefined; // la couche peut être absente pendant un changement de style
       }
