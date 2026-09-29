@@ -25,7 +25,9 @@
   en trois exemplaires qui doivent rester d'accord : `vite.config.ts`,
   `CONFIG.RELAY_TARGETS` et `docker/myosm.conf.template` ; la politique de
   contenu en deux : `src/security.ts` et `docker/security-headers.conf`.
-- **Publier une version Docker à tester** : pousser sur la branche `docker-test`,
-  qui construit `ghcr.io/gris-s/my-osm:test` (`.github/workflows/docker.yml`).
-  **Jamais de `latest` ni de tag de version** tant que l'utilisateur n'a pas validé
-  l'image sur son serveur.
+- **Publier la version Docker** : pousser sur `main`, qui construit la
+  **release** `ghcr.io/gris-s/my-osm:latest`, plus le tag de la version
+  (`0.1.0-alpha.N`, lu dans `app/package.json`) et `sha-…`
+  (`.github/workflows/docker.yml`). **Plus de canal `test`** (demande
+  explicite, 29 septembre 2026) : les outils de mise à jour de l'utilisateur
+  ne proposaient rien, faute d'un `latest` qui bouge.

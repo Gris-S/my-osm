@@ -2,14 +2,14 @@
 #
 #   docker compose -f docker/compose.yaml up -d      → http://localhost:8080
 #
-# `:test` est la version à vérifier, construite depuis la branche
-# `docker-test`. Ce n'est pas une release.
+# `:latest` est la release, construite à chaque envoi sur `main`. Pour figer
+# une version, remplacer `latest` par son numéro (ex. `0.1.0-alpha.64`).
 
 services:
   my-osm:
-    image: ghcr.io/gris-s/my-osm:test
+    image: ghcr.io/gris-s/my-osm:latest
     # Retélécharge l'image à chaque déploiement : redéployer suffit à passer
-    # à la dernière version de test.
+    # à la dernière release.
     pull_policy: always
     container_name: my-osm
     restart: unless-stopped

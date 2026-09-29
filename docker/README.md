@@ -14,8 +14,10 @@ docker compose -f docker/compose.yaml up -d
 
 Then open <http://localhost:8080>.
 
-`ghcr.io/gris-s/my-osm:test` is the **test build**, published from the
-`docker-test` branch. It is not a release.
+`ghcr.io/gris-s/my-osm:latest` is the **release**, rebuilt on every push to
+`main`: update tools such as Watchtower, What's Up Docker or Portainer see it
+change and offer the update. Each release is also tagged with its version
+(e.g. `ghcr.io/gris-s/my-osm:0.1.0-alpha.64`) — use that tag to pin one.
 
 To build the image yourself instead, from the root of the repository:
 

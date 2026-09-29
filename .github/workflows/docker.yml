@@ -1,9 +1,10 @@
 # Builds the MY OSM Docker image and pushes it to the GitHub Container Registry.
 #
-# A push to the `docker-test` branch publishes `ghcr.io/gris-s/my-osm:test`,
-# the build to check before anything is released. Version tags do **not**
-# trigger it yet: the phone releases push `v*` tags, and they must not publish
-# a `latest` Docker image that nobody has checked.
+# A push to `main` publishes the release: `ghcr.io/gris-s/my-osm:latest`, the
+# app version read from `app/package.json` (e.g. `0.1.0-alpha.64`) and the
+# commit SHA. `latest` moving is what makes update tools (Watchtower, What's Up
+# Docker, Portainer…) offer the new image; the version tag says which one it is.
+# There is no `test` channel any more (owner's request, 29 September 2026).
 #
 # Every action is pinned to a full commit SHA: a tag can be moved, a commit
 # cannot. The version each SHA stands for is in the comment next to it.
@@ -11,7 +12,7 @@ name: Docker image
 
 on:
   push:
-    branches: [docker-test]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -43,14 +44,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The one source of the version, the same the app shows under its menu.
+      - name: App version
+        id: version
+        run: echo "value=$(jq -r .version app/package.json)" >> "$GITHUB_OUTPUT"
+
       - name: Tags and labels
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/gris-s/my-osm
           tags: |
-            type=raw,value=test
-            type=sha,prefix=test-
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.value }}
+            type=sha,prefix=sha-
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
 
       # No QEMU: the app is built once on the runner's own architecture, and
       # the final stage only copies files (see docker/Dockerfile).
