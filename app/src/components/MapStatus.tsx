@@ -68,18 +68,6 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
     };
   }, [status]);
 
-  // Le manque de certains commerces se dit, puis se tait : la carte reste
-  // utilisable, et il sera redit au prochain échec d'une autre zone.
-  const [partialExpired, setPartialExpired] = useState(false);
-  useEffect(() => {
-    if (status !== "partial") return;
-    const timer = setTimeout(() => setPartialExpired(true), 8000);
-    return () => {
-      clearTimeout(timer);
-      setPartialExpired(false);
-    };
-  }, [status]);
-
   // Une panne de carte prime sur tout le reste : tant qu'elle dure, l'état du
   // chargement des commerces n'intéresse personne.
   if (mapError) {
@@ -126,7 +114,11 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
     );
   }
 
-  if (status === "partial" && !partialExpired) {
+  // Le manque de certains commerces reste dit **tant qu'il dure** : affiché
+  // huit secondes, il passait inaperçu, et une carte incomplète se prenait pour
+  // une carte complète (constaté sur la version Docker). Il s'efface au
+  // chargement réussi, que l'application retente seule chaque minute.
+  if (status === "partial") {
     return (
       <div className="map-status is-warning" style={place} role="status">
         <TriangleAlert size={15} />

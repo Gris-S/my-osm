@@ -2276,6 +2276,17 @@ sport, mémorial.
   **attendue** ; la file sert **la demande la plus récente d'abord**, une à la
   fois, et abandonne avant départ celles dont aucune case n'est plus à
   l'écran. Le quota annoncé a varié le même jour (4, puis 2 créneaux).
+- **Quatre essais sur un « occupé »** (`BUSY_ATTEMPTS`, 2 puis 4 puis 8 s
+  d'attente au moins) : overpass-api.de ne réussit que 50 à 75 % des requêtes
+  de zone certains jours (mesuré, 1 comme 4 cases), deux essais laissaient
+  une vue sur quatre vide. **Pourquoi le téléphone montrait la fromagerie et
+  pas le Docker, même version** : le téléphone avait la case en mémoire (sept
+  jours) depuis un chargement réussi ; le navigateur neuf dépendait d'Overpass
+  en direct, qui répondait 504. Pour comparer deux appareils, regarder d'abord
+  `gaps:v1:*` dans IndexedDB (`osm-local:transport-cache`).
+- **L'avertissement « certains commerces n'ont pas pu être chargés » reste
+  affiché tant que le manque dure** (plus de 8 s d'affichage) : il passait
+  inaperçu.
 - **Une tuile qui échoue ne pose plus de bandeau d'erreur** (`map.on("error")`,
   événement porteur de `tile`) : un 400 passager de l'IGN, sur une tuile qui
   répondait 200 l'instant d'après, barrait toute la vue satellite.

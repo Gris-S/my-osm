@@ -216,6 +216,15 @@ export async function searchBrandPlaces(
   return { places, complete: data.elements.length < CONFIG.BRAND_SEARCH_LIMIT };
 }
 
+/**
+ * Essais sur une même instance qui répond « occupé » (429 ou 504). Mesuré le
+ * 30 septembre 2026 sur overpass-api.de : de 50 à 75 % de réussite par essai
+ * pour la requête des commerces hors tuiles, quelle que soit la taille de la
+ * zone (1 ou 4 cases) — deux essais laissaient encore une vue sur quatre
+ * vide ; quatre en laissent de l'ordre de 3 %.
+ */
+const BUSY_ATTEMPTS = 4;
+
 /** Réponse de l'instance qui dit « trop de requêtes » : on attend un créneau. */
 class RateLimited extends Error {}
 
@@ -252,7 +261,7 @@ async function slotWaitMs(url: string, signal?: AbortSignal): Promise<number> {
 async function politeAnswer(query: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<OsmResponse> {
   let lastError: unknown = new Error("Aucune instance Overpass configurée");
   for (const url of CONFIG.OVERPASS_URLS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < BUSY_ATTEMPTS; attempt++) {
       if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
       const controller = new AbortController();
       const abort = () => controller.abort();
@@ -275,8 +284,10 @@ async function politeAnswer(query: string, signal: AbortSignal | undefined, time
       } catch (error) {
         lastError = error;
         if (signal?.aborted) throw error;
-        if (!(error instanceof RateLimited) || attempt > 0) break; // instance suivante
-        const wait = Math.min(await slotWaitMs(url, signal), 30_000);
+        if (!(error instanceof RateLimited) || attempt === BUSY_ATTEMPTS - 1) break; // instance suivante
+        // Le créneau annoncé, et au moins 2, 4 puis 8 s : un 504 dit « occupé »
+        // alors que la page d'état annonce des créneaux libres.
+        const wait = Math.min(Math.max(await slotWaitMs(url, signal), 2000 * 2 ** attempt), 30_000);
         await new Promise<void>((resolve) => setTimeout(resolve, wait));
       } finally {
         clearTimeout(timer);
