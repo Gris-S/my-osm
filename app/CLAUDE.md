@@ -2250,6 +2250,12 @@ sport, mémorial.
   13 s et `private.coffee` muet. Un échec se retente au bout d'une minute, pas
   en boucle, et **se dit** : état `partial` de `MapStatus` (« certains
   commerces n'ont pas pu être chargés »). Pas de manque silencieux.
+  En revanche, **leur chargement ne met pas la carte « en chargement »** : les
+  autres commerces sont déjà là, et Overpass chargé peut mettre une minute.
+- **`idle` relit l'état de la carte** (`MapView`) : « Chargement des
+  commerces… » restait affiché indéfiniment quand le dernier `sourcedata`
+  tombait pendant le vol vers un résultat de recherche (Châtelet : source
+  chargée, carte immobile, message toujours là).
 - **`overpass.kumi.systems` a été retiré** d'`OVERPASS_URLS` : absent de la
   liste du wiki OSM et muet à chaque essai.
 - Si cette liste de tuiles change (mise à jour d'OpenMapTiles), refaire la

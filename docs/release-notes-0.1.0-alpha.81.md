@@ -28,7 +28,7 @@ The map tiles only carry a fixed list of place types. Cheese shops, pastry shops
 - **From 0.1.0-alpha.16 or earlier:** that build was signed with a development key, so Android will refuse to install over it. Uninstall first — which **erases downloaded offline maps, saved places, history and settings.**
 
 ## Docker
-The web version for larger screens is published with this release: `ghcr.io/gris-s/my-osm:latest` and `ghcr.io/gris-s/my-osm:0.1.0-alpha.80`. See [docker/README.md](https://github.com/Gris-S/my-osm/blob/main/docker/README.md). In a browser, signing in to OpenStreetMap shows a code to copy once.
+The web version for larger screens is published with this release: `ghcr.io/gris-s/my-osm:latest` and `ghcr.io/gris-s/my-osm:0.1.0-alpha.81`. See [docker/README.md](https://github.com/Gris-S/my-osm/blob/main/docker/README.md). In a browser, signing in to OpenStreetMap shows a code to copy once.
 
 ## Good to know
 - **No API keys are bundled.** Without keys, public transport runs on [Transitous](https://transitous.org) everywhere. Optional free keys (Paris region transport, TomTom, Mapillary, Météo-France) go in **Menu › API**.
@@ -36,5 +36,5 @@ The web version for larger screens is published with this release: `ghcr.io/gris
 - Android 7.0 (API 24) or later. This is an alpha: things may break.
 
 ## File
-`MY-OSM-0.1.0-alpha.80.apk`
-SHA-256 `SHA256_PLACEHOLDER`
+`MY-OSM-0.1.0-alpha.81.apk`
+SHA-256 `e8dbcb01454cd28cab05c3dc6e0fe8845c9b35f28f8aa6ec8daaceb641c6b236`

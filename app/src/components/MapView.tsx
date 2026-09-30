@@ -658,6 +658,14 @@ export const MapView = memo(function MapView({
       // milliers d'entités à chaque fois n'apporte rien de plus à l'écran.
       if (e.sourceId === VECTOR_SOURCE_ID && e.isSourceLoaded) scheduleRefreshPois();
     });
+    // Filet de sécurité : la carte au repos et tout chargé (`idle`, émis une
+    // fois par retour au calme), l'état est relu. Sans lui, « Chargement des
+    // commerces… » restait affiché indéfiniment quand le dernier `sourcedata`
+    // tombait pendant le vol vers un résultat de recherche (constaté sur
+    // Châtelet : source chargée, carte immobile, message toujours là).
+    map.on("idle", () => {
+      if (!brandRef.current) scheduleRefreshPois();
+    });
 
     // Le cap est rapporté au degré près : l'aiguille de la boussole n'a pas
     // besoin de plus, et chaque valeur distincte coûte un rendu de
