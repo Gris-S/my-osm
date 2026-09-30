@@ -492,9 +492,12 @@ export const MapView = memo(function MapView({
       return;
     }
     const tilesPending = zoom >= CONFIG.MIN_ZOOM_FOR_POIS && !!map.getSource(VECTOR_SOURCE_ID) && !map.isSourceLoaded(VECTOR_SOURCE_ID);
-    const gapsLoading = zoom >= GAP_MIN_ZOOM && gapsPending.current !== null;
+    // Les commerces hors tuiles ne mettent pas la carte « en chargement » :
+    // les autres sont déjà là, et Overpass chargé peut mettre une minute —
+    // « Chargement des commerces… » restait affiché tout ce temps (constaté).
+    // Leur échec, lui, se dit.
     const gapsFailed = zoom >= GAP_MIN_ZOOM && gapsRef.current.failed && gapsPending.current === null;
-    onPoiStatusRef.current(tilesPending || gapsLoading ? "loading" : gapsFailed ? "partial" : "idle");
+    onPoiStatusRef.current(tilesPending ? "loading" : gapsFailed ? "partial" : "idle");
   }, [refreshStopLines, refreshTransitStops, refreshTileGaps]);
 
   // Les arrêts de Transitous arrivent après coup : la couche se relit alors.

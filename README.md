@@ -25,8 +25,8 @@ nothing sent to Google.
 | | |
 | --- | --- |
 | **Android** | [Releases](https://github.com/Gris-S/my-osm/releases) — install the APK directly |
-| **F-Droid** | Submission in preparation — the app is already built to their rules: FOSS toolchain, no proprietary SDK, and **no API key baked into the build** |
-| **Web** | Work in progress. The same codebase runs as an installable website, but it is not published yet |
+| **F-Droid** | Submitted ([merge request !49227](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49227)), waiting for review. The build is reproducible: F-Droid will ship the very APK published here |
+| **Docker** | `ghcr.io/gris-s/my-osm:latest` — the web version for larger screens, see [docker/README.md](docker/README.md) |
 
 It is **alpha** software: it works, it is used daily, and it still changes.
 
@@ -37,9 +37,9 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 <table>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/01-map.png" width="220" alt="Map showing shops and cafés"><br>
+<img src="docs/screenshots/01-map.png" width="220" alt="Map of Paris with shops, each with its own icon"><br>
 <b>Places, not clutter</b><br>
-<sub>Shops, cafés, transport — read from the map tiles themselves, so they appear instantly.</sub>
+<sub>Shops, cafés, transport — each pin says what the place is: a cheese, a fish, a croissant.</sub>
 </td>
 <td width="33%" align="center">
 <img src="docs/screenshots/02-place.png" width="220" alt="Place card with opening hours"><br>
@@ -47,26 +47,43 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 <sub>Opening hours, address, phone and website, with directions one tap away.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/03-transit.png" width="220" alt="Next departures at a stop"><br>
-<b>Live departures</b><br>
-<sub>Next departures at any stop, and whether each one is measured or timetabled.</sub>
+<img src="docs/screenshots/03-osm.png" width="220" alt="Form to add a place to OpenStreetMap"><br>
+<b>Add it to OpenStreetMap</b><br>
+<sub>Found a shop the map didn't know? Check the pre-filled form, and the next person finds it.</sub>
 </td>
 </tr>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/04-navigation.png" width="220" alt="Turn-by-turn driving navigation with music controls"><br>
-<b>Drive with confidence</b><br>
-<sub>Turn-by-turn driving with live traffic and speed limits — and whatever you are listening to, from any player.</sub>
+<img src="docs/screenshots/04-transit.png" width="220" alt="Next departures at a stop"><br>
+<b>Live departures</b><br>
+<sub>Next departures at any stop, and whether each one is measured or timetabled.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/05-offline.png" width="220" alt="Offline area download"><br>
+<img src="docs/screenshots/05-navigation.png" width="220" alt="Turn-by-turn navigation"><br>
+<b>Step by step</b><br>
+<sub>Walking, cycling, driving and transit, with live traffic, speed limits and lane guidance on the road.</sub>
+</td>
+<td width="33%" align="center">
+<img src="docs/screenshots/06-categories.png" width="220" alt="Category menu"><br>
+<b>Your map, your filter</b><br>
+<sub>16 categories to switch on and off, from food shops to parking.</sub>
+</td>
+</tr>
+<tr>
+<td width="33%" align="center">
+<img src="docs/screenshots/07-offline.png" width="220" alt="Offline area download"><br>
 <b>Take it offline</b><br>
 <sub>Tap a country, a region or a department and keep it on the device.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/06-satellite.png" width="220" alt="Satellite view"><br>
+<img src="docs/screenshots/08-satellite.png" width="220" alt="Satellite view"><br>
 <b>Satellite and terrain</b><br>
 <sub>Aerial imagery, hillshading and contour lines, light or dark.</sub>
+</td>
+<td width="33%" align="center">
+<img src="docs/screenshots/09-dark.png" width="220" alt="The map in dark mode"><br>
+<b>Day and night</b><br>
+<sub>A dark theme that follows the phone's light sensor.</sub>
 </td>
 </tr>
 </table>
@@ -75,37 +92,43 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 
 ## What it does
 
-**Find places.** Shops, cafés, pharmacies, transport and more, classified into
-16 categories you can switch on and off. Opening hours tell you whether a place
-is open *now*, not just what its hours are. When OpenStreetMap doesn't know a
-place, a built-in browser searches the web and brings the location back to the
-map — without ever asking Google.
+**Find places**
+- 16 categories to switch on and off — groceries, food shops, restaurants, bars, health, beauty, fashion, home, culture, parks, sport, hotels, transport, parking…
+- Each pin shows what the place is (a cheese for a cheese shop, a fish for a fishmonger…)
+- Opening hours that say whether a place is open **now**
+- Search with stations first, recent searches, home and work in one tap
+- Places OpenStreetMap doesn't know: a built-in browser searches the web and brings the location back to the map — without ever asking Google
+- Towns and neighbourhoods: outline, population, area, density; Wikipedia summaries and photos
 
-**Get there.** Walking, cycling, driving and public transport, plus a running
-mode with its own pace chart. Cycling offers the fastest and the safest route
-side by side, with bike lanes drawn in green — worldwide, without an API key. Driving navigation shows live traffic on your route, speed
-limits, lane guidance and speed-camera warnings. Every trip you walk or run is
-kept on the device, with its track and elevation profile, for as long as you
-choose — or not at all.
+**Give back to OpenStreetMap**
+- A place found on the web can be **added to OpenStreetMap** from its card: pre-filled form, pin to place, duplicate check, confirmation before sending
+- One-time sign-in, no password stored; off by default (Menu › Modes)
 
-**Ride.** Live departures worldwide through [Transitous](https://transitous.org/),
-and in the Paris region through Île-de-France Mobilités. Journeys are followed
-step by step: where to board, which direction, where to get off, which station
-exit to take.
+**Get there**
+- Walking, cycling, driving and public transport
+- Cycling: fastest or safest route side by side, bike lanes in green, worldwide and without a key
+- Driving: live traffic on your route, speed limits, lane guidance, speed-camera warnings, toll prices where published
+- Transit: live departures worldwide ([Transitous](https://transitous.org/)) and in the Paris region (Île-de-France Mobilités); journeys followed step by step, down to the station exit
+- A running mode with its own pace chart
+- Your music (any player) controllable during navigation
+- Walks and runs kept on the device with track and elevation, for as long as you choose — or not at all
 
-**Go offline.** Download a country, a region or a department: map tiles, place
-details, the search index and street addresses are stored **inside the app**,
-where the system cannot clear them. Browsing, search and place details then work
-with no connection at all.
+**Go offline**
+- Download a country, a region or a department: map tiles, place details, search index, street addresses and Wikipedia, stored **inside the app**
+- Browsing, search and place details then work with no connection
 
 > **Honest limit:** route calculation still needs a connection. There is no
 > routing engine on the device — the app says so plainly instead of failing
 > silently.
 
-**And the rest.** Weather, air quality, pollen and official French weather
-warnings. Street-level photos from Mapillary. Saved places in colour-coded
-folders. Home and work as one-tap destinations. Light and dark themes, the
-latter following the phone's ambient light sensor. French and English.
+**And the rest**
+- Weather, air quality, pollen and official French weather warnings
+- Satellite imagery, terrain relief, contour lines, 3D buildings, live traffic layer
+- Street-level photos from Mapillary
+- Saved places in colour-coded folders
+- Light and dark themes, the dark one following the ambient light sensor
+- English and French
+- A Docker image for larger screens, with the same features except the running mode
 
 ---
 
@@ -117,7 +140,8 @@ Because a map should not be the price of knowing where you are.
   Google Maps. Android's cloud backup and device-to-device transfer are turned
   off for this app, and the WebView's own telemetry and Safe Browsing are
   disabled. The built-in web browser blocks every Google host outright.
-- **No account, ever.** Nothing to sign up for, nothing to log into.
+- **No account needed.** Nothing to sign up for. The only sign-in is to your
+  own OpenStreetMap account, and only if you choose to add places to it.
 - **Your data stays on the phone.** Saved places, home and work addresses, trip
   history and downloaded maps never leave the device. There is no server to
   leave to.
@@ -137,6 +161,8 @@ credits them all under *Menu › Sources & licences*.
 | --- | --- |
 | Map data, places, stops | [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL |
 | Vector tiles | [OpenFreeMap](https://openfreemap.org/) |
+| Places the tiles leave out, place details | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) (overpass-api.de, private.coffee) |
+| Adding places | [OpenStreetMap API](https://wiki.openstreetmap.org/wiki/API_v0.6), with your own account |
 | Search & addresses | [Photon](https://photon.komoot.io/), [Base Adresse Nationale](https://adresse.data.gouv.fr/) |
 | Routing | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) and [BRouter](https://brouter.de/brouter/) for cycling, TomTom (optional key) |
 | Public transport | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (optional key) |

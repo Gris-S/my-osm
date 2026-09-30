@@ -476,7 +476,7 @@ const SCENARIOS = [
   },
   {
     id: "itineraire",
-    titre: "Le panneau d'itinéraire : trois modes, deux chiffres",
+    titre: "Le panneau d'itinéraire : quatre modes, deux chiffres",
     async executer() {
       await scene();
       await positionSimulee(48.86, 2.3376);
@@ -487,7 +487,9 @@ const SCENARIOS = [
       await attendre(".sheet");
       await cliquer(".sheet-action-primary");
       verifier("le panneau s'ouvre", await attendre(".itinerary-panel"));
-      verifier("les trois modes sont offerts", (await js("document.querySelectorAll('.itinerary-mode').length")) === 3);
+      // Marche, vélo (29 septembre 2026), voiture, transports.
+      const modes = await js("document.querySelectorAll('.itinerary-mode').length");
+      verifier("les quatre modes sont offerts", modes === 4, String(modes));
       verifier("un résultat est calculé", await attendre(".itinerary-result", 25_000));
       const enfants = await js("(()=>{const r=document.querySelector('.itinerary-result');return r?[...r.children].map(c=>c.className||c.tagName).join('|'):''})()");
       // Demande explicite : la durée, la distance, le départ. Rien d'autre.
@@ -895,17 +897,19 @@ const SCENARIOS = [
       if (!verifier("le menu principal s'ouvre", await ouvrirMenu())) return;
       await entreeMenu("/\\bAPI\\b/");
       if (!verifier("l'écran des clés s'ouvre", await attendre(".apikeys", 15_000))) return;
-      const rangs = await js("document.querySelectorAll('.apikey-row').length");
+      // Les clés seulement : le bloc OpenStreetMap, sous elles, n'en est pas une
+      // (un Client ID public, en clair, et un compte) — hors de `.apikeys`.
+      const rangs = await js("document.querySelectorAll('.apikeys .apikey-row').length");
       verifier("des clés sont listées", rangs > 0, `${rangs} clé(s)`);
-      const etats = await js("[...document.querySelectorAll('.apikey-pill')].map(e=>e.className.replace('apikey-pill ','')).join(', ')");
-      verifier("chaque clé porte un état", (await js("document.querySelectorAll('.apikey-pill').length")) === rangs, etats);
-      verifier("chaque champ est étiqueté", (await js("document.querySelectorAll('.apikey-label').length")) === rangs);
+      const etats = await js("[...document.querySelectorAll('.apikeys .apikey-pill')].map(e=>e.className.replace('apikey-pill ','')).join(', ')");
+      verifier("chaque clé porte un état", (await js("document.querySelectorAll('.apikeys .apikey-pill').length")) === rangs, etats);
+      verifier("chaque champ est étiqueté", (await js("document.querySelectorAll('.apikeys .apikey-label').length")) === rangs);
       // Une clé saisie ne doit pas s'étaler à l'écran par-dessus l'épaule.
       // `.apikey-input` est l'**enveloppe** : le champ est dedans, à côté du
       // bouton œil. Interroger le `type` de l'enveloppe rendait une chaîne vide,
       // et l'assertion passait au vert sans avoir rien vérifié — un faux
       // positif est pire qu'une vérification absente, il donne l'assurance.
-      const types = await js("[...document.querySelectorAll('.apikey-input input')].map(e=>e.type).join(',')");
+      const types = await js("[...document.querySelectorAll('.apikeys .apikey-input input')].map(e=>e.type).join(',')");
       verifier(
         "les clés sont masquées par défaut",
         types.length > 0 && types.split(",").every((t) => t === "password"),
@@ -921,9 +925,9 @@ const SCENARIOS = [
       capture("14-cles-api");
       // Chaque service dit où obtenir sa clé ; PRIM et Météo-France nomment en
       // plus l'API à chercher sur leur portail.
-      const liens = await js("[...document.querySelectorAll('.apikey-signup')].map(a=>new URL(a.href).host).join(', ')");
+      const liens = await js("[...document.querySelectorAll('.apikeys .apikey-signup')].map(a=>new URL(a.href).host).join(', ')");
       verifier("chaque service mène à sa page d'inscription", liens.split(", ").length === 4, liens);
-      const apis = await js("document.querySelectorAll('.apikey-apis').length");
+      const apis = await js("document.querySelectorAll('.apikeys .apikey-apis').length");
       verifier("les API à chercher sont nommées", apis === 3, `${apis} mention(s)`);
       // Le bas de la fenêtre, où Mapillary et Météo-France sortent de la capture.
       await js("(()=>{const g=document.querySelectorAll('.apikey-group');g[g.length-1]?.scrollIntoView({block:'end'});return true})()");
@@ -1596,7 +1600,9 @@ const SCENARIOS = [
       verifier("c'est une station", /transport/i.test((await texte(".sheet-subtitle")) ?? ""), (await texte(".sheet-subtitle")) ?? "");
       await cliquer(".sheet-action-primary");
       await attendre(".itinerary-panel");
-      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[2])m[2].click();return true})()");
+      // Les transports par leur libellé, pas par leur rang : le vélo s'est inséré
+      // avant eux le 29 septembre 2026, et le 3e bouton est devenu le vélo.
+      await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
       const calcule = await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
       verifier("un trajet en transports est proposé", calcule);
       if (!calcule) return;
@@ -1811,7 +1817,9 @@ const SCENARIOS = [
 
       await cliquer(".sheet-action-primary");
       await attendre(".itinerary-panel");
-      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[2])m[2].click();return true})()");
+      // Les transports par leur libellé, pas par leur rang : le vélo s'est inséré
+      // avant eux le 29 septembre 2026, et le 3e bouton est devenu le vélo.
+      await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
       await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
       await etat("panneau des transports");
 

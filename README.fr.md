@@ -25,8 +25,8 @@ envoyer à Google.
 | | |
 | --- | --- |
 | **Android** | [Releases](https://github.com/Gris-S/my-osm/releases) — l'APK s'installe directement |
-| **F-Droid** | Dépôt en préparation — l'application respecte déjà leurs règles : chaîne d'outils libre, aucun SDK propriétaire, et **aucune clé d'API compilée dans le livrable** |
-| **Web** | En chantier. Le même code tourne comme site installable, mais il n'est pas encore publié |
+| **F-Droid** | Demande déposée ([merge request !49227](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49227)), en attente de revue. La construction est reproductible : F-Droid distribuera l'APK publié ici, à l'identique |
+| **Docker** | `ghcr.io/gris-s/my-osm:latest` — la version web pour grand écran, voir [docker/README.md](docker/README.md) |
 
 C'est une **alpha** : elle fonctionne, elle sert tous les jours, et elle bouge
 encore.
@@ -38,36 +38,53 @@ encore.
 <table>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/01-map.png" width="220" alt="Carte avec commerces et cafés"><br>
-<b>Des lieux, pas du fouillis</b><br>
-<sub>Commerces, cafés, transports — lus dans les tuiles elles-mêmes, donc affichés sans attente.</sub>
+<img src="docs/screenshots/01-map.png" width="220" alt="Carte de Paris avec les commerces, chacun avec son pictogramme"><br>
+<b>Des lieux, pas du bruit</b><br>
+<sub>Commerces, cafés, transports — chaque pastille dit ce qu'est le lieu : un fromage, un poisson, un croissant.</sub>
 </td>
 <td width="33%" align="center">
 <img src="docs/screenshots/02-place.png" width="220" alt="Fiche d'un lieu avec ses horaires"><br>
 <b>Ouvert ou fermé, maintenant</b><br>
-<sub>Horaires, adresse, téléphone et site, l'itinéraire à portée d'un doigt.</sub>
+<sub>Horaires, adresse, téléphone et site, l'itinéraire à portée de doigt.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/03-transit.png" width="220" alt="Prochains passages à un arrêt"><br>
-<b>Passages en direct</b><br>
-<sub>Les prochains passages à un arrêt, et si chacun est mesuré ou théorique.</sub>
+<img src="docs/screenshots/03-osm.png" width="220" alt="Formulaire d'ajout d'un lieu à OpenStreetMap"><br>
+<b>L'ajouter à OpenStreetMap</b><br>
+<sub>Un commerce que la carte ignorait ? On vérifie le formulaire pré-rempli, et le suivant le trouve.</sub>
 </td>
 </tr>
 <tr>
 <td width="33%" align="center">
-<img src="docs/screenshots/04-navigation.png" width="220" alt="Navigation voiture pas à pas avec la musique en cours"><br>
-<b>La navigation au volant</b><br>
-<sub>Instruction après instruction, avec la circulation en direct, les vitesses limites — et ce que vous écoutez, quel que soit le lecteur.</sub>
+<img src="docs/screenshots/04-transit.png" width="220" alt="Prochains passages à un arrêt"><br>
+<b>Passages en direct</b><br>
+<sub>Les prochains passages à tout arrêt, et si chacun est mesuré ou théorique.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/05-offline.png" width="220" alt="Téléchargement d'une zone hors ligne"><br>
-<b>Emportez-la</b><br>
-<sub>Touchez un pays, une région ou un département : tout reste sur l'appareil.</sub>
+<img src="docs/screenshots/05-navigation.png" width="220" alt="Navigation pas à pas"><br>
+<b>Pas à pas</b><br>
+<sub>À pied, à vélo, en voiture et en transports, avec trafic, limitations et voies sur la route.</sub>
 </td>
 <td width="33%" align="center">
-<img src="docs/screenshots/06-satellite.png" width="220" alt="Vue satellite"><br>
+<img src="docs/screenshots/06-categories.png" width="220" alt="Menu des catégories"><br>
+<b>Votre carte, votre filtre</b><br>
+<sub>16 catégories à allumer ou éteindre, des commerces de bouche au stationnement.</sub>
+</td>
+</tr>
+<tr>
+<td width="33%" align="center">
+<img src="docs/screenshots/07-offline.png" width="220" alt="Téléchargement d'une zone hors ligne"><br>
+<b>Hors ligne</b><br>
+<sub>Un pays, une région ou un département, gardé sur l'appareil d'un toucher.</sub>
+</td>
+<td width="33%" align="center">
+<img src="docs/screenshots/08-satellite.png" width="220" alt="Vue satellite"><br>
 <b>Satellite et relief</b><br>
-<sub>Imagerie aérienne, ombrage et courbes de niveau, en clair comme en sombre.</sub>
+<sub>Imagerie aérienne, ombrage du relief et courbes de niveau, en clair ou en sombre.</sub>
+</td>
+<td width="33%" align="center">
+<img src="docs/screenshots/09-dark.png" width="220" alt="La carte en thème sombre"><br>
+<b>Jour et nuit</b><br>
+<sub>Un thème sombre qui suit le capteur de lumière du téléphone.</sub>
 </td>
 </tr>
 </table>
@@ -76,38 +93,43 @@ encore.
 
 ## Ce qu'elle fait
 
-**Trouver.** Commerces, cafés, pharmacies, transports et le reste, rangés en
-16 catégories qu'on allume et éteint. Les horaires disent si un lieu est ouvert
-*maintenant*, pas seulement quelles sont ses heures. Quand OpenStreetMap ne
-connaît pas un endroit, un navigateur intégré le cherche sur le web et rapporte
-sa position sur la carte — sans jamais interroger Google.
+**Trouver des lieux**
+- 16 catégories à allumer ou éteindre — épiceries, commerces de bouche, restaurants, bars, santé, beauté, mode, maison, culture, parcs, sport, hôtels, transports, stationnement…
+- Chaque pastille dit ce qu'est le lieu (un fromage pour une fromagerie, un poisson pour une poissonnerie…)
+- Des horaires qui disent si le lieu est ouvert **maintenant**
+- Une recherche qui met les stations en tête, les recherches récentes, maison et travail d'un toucher
+- Les lieux qu'OpenStreetMap ne connaît pas : un navigateur intégré cherche sur le web et rapporte la position sur la carte — sans jamais interroger Google
+- Villes et quartiers : contour, population, surface, densité ; résumés et photos de Wikipédia
 
-**Y aller.** À pied, à vélo, en voiture et en transports, plus un mode course
-avec son graphe d'allure. À vélo, le plus rapide et le plus sûr sont proposés
-côte à côte, pistes et bandes cyclables en vert — partout dans le monde, sans
-clé d'API. La navigation voiture montre la circulation en cours sur le
-trajet, les vitesses limites, les voies à emprunter et les radars. Chaque marche
-et chaque course est gardée sur l'appareil, avec son tracé et son dénivelé, aussi
-longtemps que vous le décidez — ou pas du tout.
+**Rendre à OpenStreetMap**
+- Un lieu trouvé sur le web peut être **ajouté à OpenStreetMap** depuis sa fiche : formulaire pré-rempli, épingle à poser, vérification des doublons, confirmation avant l'envoi
+- Une seule connexion, aucun mot de passe gardé ; éteint par défaut (Menu › Modes)
 
-**Prendre les transports.** Horaires en direct partout par
-[Transitous](https://transitous.org/), et en Île-de-France par Île-de-France
-Mobilités. Le trajet se suit pas à pas : où monter, dans quelle direction, où
-descendre, par quelle sortie de station.
+**S'y rendre**
+- À pied, à vélo, en voiture et en transports en commun
+- Vélo : le plus rapide ou le plus sûr côte à côte, pistes cyclables en vert, partout et sans clé
+- Voiture : trafic en direct sur le trajet, limitations de vitesse, voies à suivre, radars, prix des péages quand il est publié
+- Transports : passages en direct partout ([Transitous](https://transitous.org/)) et en Île-de-France (Île-de-France Mobilités) ; trajet suivi étape par étape, jusqu'à la sortie de station
+- Un mode course avec son graphe d'allure
+- Votre musique (n'importe quel lecteur) pilotable pendant la navigation
+- Marches et courses gardées sur l'appareil avec tracé et dénivelé, aussi longtemps que vous le choisissez — ou pas du tout
 
-**Partir hors ligne.** Téléchargez un pays, une région ou un département : les
-tuiles, les détails des lieux, l'index de recherche et les adresses sont rangés
-**dans l'application**, là où le système ne peut pas les effacer. Consultation,
-recherche et fiches fonctionnent alors sans aucune connexion.
+**Hors ligne**
+- Un pays, une région ou un département : tuiles, détails des lieux, index de recherche, adresses et Wikipédia, rangés **dans l'application**
+- Navigation dans la carte, recherche et fiches marchent alors sans connexion
 
-> **Limite assumée :** le calcul d'itinéraire demande encore une connexion. Il
-> n'y a pas de moteur embarqué — l'application le dit clairement au lieu
-> d'échouer en silence.
+> **Limite assumée :** le calcul d'itinéraire demande toujours une connexion. Il
+> n'y a pas de moteur de calcul sur l'appareil — l'application le dit
+> franchement au lieu d'échouer en silence.
 
-**Et le reste.** Météo, qualité de l'air, pollens et vigilances Météo-France.
-Photos de rue Mapillary. Lieux enregistrés dans des dossiers de couleur. Maison
-et travail en une touche. Thèmes clair et sombre, le second suivant le capteur
-de luminosité du téléphone. Français et anglais.
+**Et le reste**
+- Météo, qualité de l'air, pollens et vigilances de Météo-France
+- Imagerie satellite, relief, courbes de niveau, bâtiments en 3D, calque du trafic
+- Photos de rue de Mapillary
+- Lieux enregistrés dans des dossiers de couleur
+- Thèmes clair et sombre, le sombre suivant le capteur de lumière
+- Français et anglais
+- Une image Docker pour grand écran, avec les mêmes fonctions sauf le mode course
 
 ---
 
@@ -120,7 +142,9 @@ Parce qu'une carte ne devrait pas être le prix à payer pour savoir où l'on es
   appareil sont coupés pour cette application, et les statistiques comme le Safe
   Browsing de la WebView sont désactivés. Le navigateur intégré bloque purement
   et simplement tous les hôtes Google.
-- **Aucun compte, jamais.** Rien à créer, rien à quoi se connecter.
+- **Aucun compte nécessaire.** Rien à créer. La seule connexion possible est à
+  votre propre compte OpenStreetMap, et seulement si vous choisissez d'y ajouter
+  des lieux.
 - **Vos données restent sur le téléphone.** Lieux enregistrés, adresses Maison et
   Travail, historique des trajets et cartes téléchargées ne quittent pas
   l'appareil. Il n'y a aucun serveur où aller.
@@ -141,6 +165,8 @@ l'application les crédite toutes dans *Menu › Sources et licences*.
 | --- | --- |
 | Données de la carte, lieux, arrêts | contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright), ODbL |
 | Tuiles vectorielles | [OpenFreeMap](https://openfreemap.org/) |
+| Lieux absents des tuiles, détails des lieux | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) (overpass-api.de, private.coffee) |
+| Ajout de lieux | [API d'OpenStreetMap](https://wiki.openstreetmap.org/wiki/API_v0.6), avec votre propre compte |
 | Recherche et adresses | [Photon](https://photon.komoot.io/), [Base Adresse Nationale](https://adresse.data.gouv.fr/) |
 | Itinéraires | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) et [BRouter](https://brouter.de/brouter/) pour le vélo, TomTom (clé facultative) |
 | Transports | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (clé facultative) |

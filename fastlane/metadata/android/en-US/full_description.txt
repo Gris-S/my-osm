@@ -34,6 +34,13 @@ One honest limit: route calculation still needs a connection. There is no
 routing engine on the device, and the app says so plainly instead of failing
 silently.
 
+GIVE BACK
+When a place is missing from OpenStreetMap, the app can add it for you: the
+place you found on the web gets an "OSM" button, the form is filled in from what
+you searched, nearby places with the same name are flagged, and nothing is sent
+until you have checked it. You sign in to OpenStreetMap once, in the app. Off by
+default (Menu › Modes).
+
 AND THE REST
 Weather, air quality, pollen and official French weather warnings. Street-level
 photos from Mapillary. Saved places in colour-coded folders. Home and work as
@@ -44,8 +51,8 @@ PRIVACY
 No Firebase, no Analytics, no Play Services, no Google Maps. Android's cloud
 backup and device-to-device transfer are disabled for this app, and the
 WebView's own telemetry and Safe Browsing are turned off. The built-in browser
-blocks every Google host outright. There is no account to create and no server
-to leave to: saved places, home and work addresses, trip history and downloaded
+blocks every Google host outright. There is no account to create — only an
+OpenStreetMap one, if you choose to add places — and no server to leave to: saved places, home and work addresses, trip history and downloaded
 maps stay on the device.
 
 Some extras can use free API keys (Île-de-France Mobilités, TomTom, Mapillary,
