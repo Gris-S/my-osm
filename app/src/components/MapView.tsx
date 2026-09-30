@@ -342,6 +342,14 @@ export const MapView = memo(function MapView({
           if (controller.signal.aborted) return;
           gapsRef.current = { key, places, failed, at: Date.now() };
           refreshPoisLatest.current();
+          // Un échec se retente **tout seul** une minute plus tard, sans
+          // attendre un geste : la carte laissée immobile gardait sinon ses
+          // trous indéfiniment (constaté, Overpass en 504).
+          if (failed) {
+            window.setTimeout(() => {
+              if (gapsRef.current.key === key && gapsRef.current.failed) refreshPoisLatest.current();
+            }, 61_000);
+          }
         })
         .catch(() => {
           /* abandon : une vue plus récente a pris le relais */

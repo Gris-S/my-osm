@@ -265,7 +265,11 @@ async function politeAnswer(query: string, signal: AbortSignal | undefined, time
           body: query,
           signal: controller.signal,
         });
-        if (res.status === 429) throw new RateLimited(`Réponse 429 de ${url}`);
+        // 429 : quota épuisé. 504 : « serveur trop occupé » (constaté le
+        // 30 septembre 2026, au bout de 15 s). Dans les deux cas l'instance
+        // répondra plus tard : on attend plutôt que de partir vers une autre,
+        // muette ce jour-là.
+        if (res.status === 429 || res.status === 504) throw new RateLimited(`Réponse ${res.status} de ${url}`);
         if (!res.ok) throw new Error(`Réponse ${res.status} de ${url}`);
         return (await res.json()) as OsmResponse;
       } catch (error) {

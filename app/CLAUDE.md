@@ -2262,7 +2262,11 @@ sport, mémorial.
   La case de « Fromagerie Collet » ne se chargeait jamais (constaté sur le
   téléphone, carte centrée dessus). D'où `politeAnswer` : instances une par
   une, sans lancement en parallèle, et sur un 429 **attente du créneau
-  annoncé** par la page d'état (30 s au plus) puis second essai.
+  annoncé** par la page d'état (30 s au plus) puis second essai. Même
+  traitement pour un **504** (« trop occupé », constaté au bout de 15 s), et
+  un échec se **retente seul** une minute plus tard (`MapView`), sans attendre
+  un geste : carte immobile, la fromagerie ne venait jamais. Le téléphone et
+  un PC du même foyer partagent le quota (même identifiant sur `/api/status`).
 - **Une tuile qui échoue ne pose plus de bandeau d'erreur** (`map.on("error")`,
   événement porteur de `tile`) : un 400 passager de l'IGN, sur une tuile qui
   répondait 200 l'instant d'après, barrait toute la vue satellite.
