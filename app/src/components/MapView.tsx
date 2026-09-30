@@ -1631,9 +1631,13 @@ export const MapView = memo(function MapView({
       return;
     }
     if (navMarkerRef.current) onNavigationPanRef.current();
+    // Le zoom demandé est un **plancher**, jamais un plafond (demande
+    // explicite : toucher un lieu au zoom 19 ramenait la carte au 16 — un
+    // dézoom qui ne servait à rien et noyait la rue sous les pastilles). De
+    // loin, un résultat de recherche rapproche toujours ; de près, on reste.
     map.flyTo({
       center: [flyTo.lon, flyTo.lat],
-      zoom: flyTo.zoom ?? 16,
+      zoom: Math.max(map.getZoom(), flyTo.zoom ?? 16),
       essential: true,
       padding: { ...map.getPadding(), left: insetLeftRef.current },
     });

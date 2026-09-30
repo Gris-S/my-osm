@@ -2294,7 +2294,12 @@ fromage, poissonnerie un poisson…) : même couleur de catégorie, autre dessin
 image `poi-marker-<groupe>-<valeur>`. Alimentation, plus les types qui se
 reconnaissent sans hésiter ailleurs (piscine, vélo, fleuriste, opticien,
 bijouterie, coiffeur). Le fromage est dessiné à la main dans le style Lucide,
-qui n'en a pas.
+qui n'en a pas : un triangle de profil à trous inégaux — la première version,
+un quartier de trois-quarts, passait pour une maison sur la pastille.
+
+**Ouvrir un lieu ne dézoome plus** (demande explicite) : le zoom du
+recentrage (`flyTo`, 16 pour un lieu) est un plancher, jamais un plafond.
+Toucher une pastille au zoom 19 ramenait la carte au 16.
 
 ### filters.ts, source unique des catégories
 

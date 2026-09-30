@@ -1,0 +1,7 @@
+Add a place to OpenStreetMap: a place found on the web gets an "OSM" button (turn it on in Menu › Modes). One-time sign-in; pre-filled, checked for duplicates.
+
+Cheese shops, pastry shops, gyms and 38 other kinds of places missing from the map tiles now appear, and keep trying when the server is busy.
+
+Food shops and groceries are two categories, with an icon per shop type.
+
+Opening a place no longer zooms the map out. A single missing satellite tile no longer shows an error.

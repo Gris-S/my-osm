@@ -385,12 +385,14 @@ const SHOP_ICON: IconNode = [
 // Tracés Lucide (ISC), sauf le fromage, dessiné ici dans le même style.
 // ---------------------------------------------------------------------------
 
+// Un triangle de fromage vu de profil, trous de tailles inégales : le quartier
+// vu de trois-quarts de la première version passait pour une maison à la
+// taille d'une pastille (constaté).
 const CHEESE_ICON: IconNode = [
-  ["path", { d: "M21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6" }],
-  ["path", { d: "M3 13h18V9.3L15.4 4.6a2 2 0 0 0-2.3-.1z" }],
-  ["circle", { cx: "9", cy: "17", r: "1.5" }],
-  ["circle", { cx: "16.5", cy: "16", r: "1" }],
-  ["circle", { cx: "14.5", cy: "9", r: ".6" }],
+  ["path", { d: "M3 19h18V6.5L3 14z" }],
+  ["circle", { cx: "9.5", cy: "16", r: "1.5" }],
+  ["circle", { cx: "16", cy: "13.5", r: "2" }],
+  ["circle", { cx: "18.5", cy: "17.3", r: ".7" }],
 ];
 const FISH_ICON: IconNode = [
   ["path", { d: "M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z" }],
