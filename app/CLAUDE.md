@@ -2267,6 +2267,15 @@ sport, mémorial.
   un échec se **retente seul** une minute plus tard (`MapView`), sans attendre
   un geste : carte immobile, la fromagerie ne venait jamais. Le téléphone et
   un PC du même foyer partagent le quota (même identifiant sur `/api/status`).
+- **Une demande Overpass n'est jamais annulée** (`tileGaps.ts`, `inflight`,
+  file `jobs`) : le serveur la calcule jusqu'au bout même quand le navigateur
+  raccroche, et elle garde son créneau. Annuler à chaque changement de vue (vue
+  d'ouverture, vol vers le résultat, crans de zoom) laissait quatre requêtes
+  vivantes côté serveur et rendait un 429 dès la première visite (constaté sur
+  la version Docker, satellite, rue du Midi). Une case déjà demandée est
+  **attendue** ; la file sert **la demande la plus récente d'abord**, une à la
+  fois, et abandonne avant départ celles dont aucune case n'est plus à
+  l'écran. Le quota annoncé a varié le même jour (4, puis 2 créneaux).
 - **Une tuile qui échoue ne pose plus de bandeau d'erreur** (`map.on("error")`,
   événement porteur de `tile`) : un 400 passager de l'IGN, sur une tuile qui
   répondait 200 l'instant d'après, barrait toute la vue satellite.

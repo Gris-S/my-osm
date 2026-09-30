@@ -115,10 +115,99 @@ const CELLS_PER_REQUEST = 4;
 const REQUEST_TIMEOUT_MS = 25000;
 
 /**
+ * Les demandes en cours, par case, et la file qui les fait passer **une à la
+ * fois**.
+ *
+ * Une demande Overpass n'est **jamais annulée** : le serveur la calcule
+ * jusqu'au bout même si le navigateur raccroche, et elle occupe l'un des
+ * 4 créneaux de l'adresse IP. Constaté sur la version Docker : la vue de
+ * départ, le vol vers un résultat puis trois crans de zoom lançaient chacun une
+ * demande en annulant la précédente — quatre requêtes vivantes côté serveur,
+ * et un 429 dès la première visite de la rue du Midi. Désormais une case déjà
+ * demandée est **attendue**, pas redemandée, et le résultat d'une vue quittée
+ * sert quand même (il est rangé pour sept jours).
+ */
+const inflight = new Map<string, Promise<Place[] | null | undefined>>();
+
+/**
+ * La file : la demande **la plus récente passe d'abord** (la vue qu'on
+ * regarde), une seule à la fois, et une demande pas encore partie dont aucune
+ * case n'est plus à l'écran est abandonnée avant de partir (`undefined` : ni
+ * chargée ni en échec, elle sera redemandée si on y revient). Sans cela, les
+ * cases de la vue d'ouverture passaient avant celle du résultat qu'on venait
+ * d'ouvrir (constaté : trois requêtes sur Paris avant la rue du Midi).
+ */
+interface Job {
+  keys: string[];
+  area: [number, number, number, number];
+  settle: (found: Place[] | null | undefined) => void;
+}
+const jobs: Job[] = [];
+let busy = false;
+let wanted = new Set<string>();
+
+function pump(): void {
+  if (busy) return;
+  let job = jobs.pop();
+  while (job && !job.keys.some((key) => wanted.has(key))) {
+    job.settle(undefined);
+    job = jobs.pop();
+  }
+  if (!job) return;
+  busy = true;
+  const current = job;
+  fetchTaggedPlaces(TILE_GAP_TAGS, current.area, undefined, REQUEST_TIMEOUT_MS)
+    .then(
+      (found) => current.settle(found),
+      (error: unknown) => {
+        // Pas de repli silencieux : l'appelant affiche que ces commerces manquent.
+        console.warn("[carte] commerces hors tuiles indisponibles (Overpass) :", error);
+        current.settle(null);
+      }
+    )
+    .finally(() => {
+      busy = false;
+      pump();
+    });
+}
+
+function requestBatch(batch: ReturnType<typeof cellsFor>): void {
+  const bounds = batch.map(tileBounds);
+  const area: [number, number, number, number] = [
+    Math.min(...bounds.map((b) => b[1])),
+    Math.min(...bounds.map((b) => b[0])),
+    Math.max(...bounds.map((b) => b[3])),
+    Math.max(...bounds.map((b) => b[2])),
+  ];
+  const keys = batch.map(tileKey);
+  let settle!: (found: Place[] | null | undefined) => void;
+  const outcome = new Promise<Place[] | null | undefined>((resolve) => (settle = resolve));
+  keys.forEach((key, index) => {
+    const mine = outcome
+      .then((found) => {
+        if (found === undefined) return undefined; // abandonnée avant de partir
+        if (found === null) {
+          failedAt.set(key, Date.now());
+          return null;
+        }
+        const places = found.filter((place) => inCell(place, bounds[index])).map((place) => ({ ...place, rank: RANK }));
+        memory.set(key, places);
+        failedAt.delete(key);
+        void writePersistent(`gaps:v1:${key}`, places, TTL_MS);
+        return places;
+      })
+      .finally(() => inflight.delete(key));
+    inflight.set(key, mine);
+  });
+  jobs.push({ keys, area, settle });
+}
+
+/**
  * Les lieux « hors tuiles » de la vue : mémoire, puis appareil, puis Overpass
- * pour les cases manquantes, **deux par deux en partant du centre de l'écran**.
- * `onProgress` reçoit ce qui est connu après chaque réponse : la carte se
- * remplit au fur et à mesure au lieu d'attendre la zone entière.
+ * pour les cases ni connues ni déjà demandées, **quatre par requête en partant
+ * du centre de l'écran**. `onProgress` reçoit ce qui est connu après chaque
+ * case arrivée : la carte se remplit au fur et à mesure. `signal` ne fait que
+ * cesser d'attendre — la demande, elle, va au bout (voir `inflight`).
  */
 export async function loadTileGaps(
   bbox: ViewBbox,
@@ -126,8 +215,10 @@ export async function loadTileGaps(
   onProgress?: (places: Place[]) => void
 ): Promise<GapResult> {
   const cells = cellsFor(bbox); // déjà triées du centre vers le bord
+  wanted = new Set(cells.map(tileKey));
   const places: Place[] = [];
   const missing: typeof cells = [];
+  const pending: Promise<Place[] | null | undefined>[] = [];
   let failed = false;
 
   for (const cell of cells) {
@@ -136,6 +227,8 @@ export async function loadTileGaps(
     if (known) {
       memory.set(key, known);
       places.push(...known);
+    } else if (inflight.has(key)) {
+      pending.push(inflight.get(key)!);
     } else if (Date.now() - (failedAt.get(key) ?? 0) < RETRY_MS) {
       failed = true; // échec récent : on ne harcèle pas un serveur saturé
     } else {
@@ -144,35 +237,21 @@ export async function loadTileGaps(
   }
   if (places.length) onProgress?.([...places]);
 
-  for (let i = 0; i < missing.length && !signal?.aborted; i += CELLS_PER_REQUEST) {
-    const batch = missing.slice(i, i + CELLS_PER_REQUEST);
-    const bounds = batch.map(tileBounds);
-    const area: [number, number, number, number] = [
-      Math.min(...bounds.map((b) => b[1])),
-      Math.min(...bounds.map((b) => b[0])),
-      Math.max(...bounds.map((b) => b[3])),
-      Math.max(...bounds.map((b) => b[2])),
-    ];
-    try {
-      const found = (await fetchTaggedPlaces(TILE_GAP_TAGS, area, signal, REQUEST_TIMEOUT_MS)).map((place) => ({
-        ...place,
-        rank: RANK,
-      }));
-      batch.forEach((cell, index) => {
-        const key = tileKey(cell);
-        const mine = found.filter((place) => inCell(place, bounds[index]));
-        memory.set(key, mine);
-        failedAt.delete(key);
-        void writePersistent(`gaps:v1:${key}`, mine, TTL_MS);
-        places.push(...mine);
-      });
+  // Poussées du bord vers le centre : la file sert la dernière d'abord, donc
+  // les cases du centre de l'écran.
+  const batches: (typeof cells)[] = [];
+  for (let i = 0; i < missing.length; i += CELLS_PER_REQUEST) batches.push(missing.slice(i, i + CELLS_PER_REQUEST));
+  for (const batch of batches.reverse()) requestBatch(batch);
+  pump();
+  for (const cell of missing) pending.push(inflight.get(tileKey(cell))!);
+
+  for (const wait of pending) {
+    const result = await wait;
+    if (signal?.aborted) return { places, failed };
+    if (result === null) failed = true;
+    else if (result?.length) {
+      places.push(...result);
       onProgress?.([...places]);
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      for (const cell of batch) failedAt.set(tileKey(cell), Date.now());
-      // Pas de repli silencieux : l'appelant affiche que ces commerces manquent.
-      console.warn("[carte] commerces hors tuiles indisponibles (Overpass) :", error);
-      failed = true;
     }
   }
   return { places, failed };
