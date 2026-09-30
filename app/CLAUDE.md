@@ -2238,10 +2238,9 @@ sport, mémorial.
 - **`TILE_GAP_TAGS`** = ce que `filters.ts` énumère moins cette liste (41
   valeurs). Elles seules sont demandées à Overpass pour la vue, **dès le zoom
   14** (celui d'ouverture — au 15, la carte s'ouvrait sans elles), par cases
-  z14 (9 au plus, ~8 sur un téléphone), **deux cases par requête en partant du
-  centre**, 25 s de délai chacune, affichées au fur et à mesure, 500 ms après le
-  mouvement — une seule requête pour 8 cases (6 × 3 km) ne revenait pas sur le
-  téléphone ; puis versées au souvenir des POI
+  z14 (9 au plus, ~8 sur un téléphone), **quatre cases par requête en partant
+  du centre** (~6 s, mesuré), affichées au fur et à mesure, 500 ms après le
+  mouvement ; puis versées au souvenir des POI
   (`rememberPlaces`) — même filtre, même pastille, même fiche. Même identifiant
   `node/…` qu'une tuile : pas de doublon. Un test vérifie que chaque valeur a
   sa catégorie.
@@ -2256,6 +2255,17 @@ sport, mémorial.
   commerces… » restait affiché indéfiniment quand le dernier `sourcedata`
   tombait pendant le vol vers un résultat de recherche (Châtelet : source
   chargée, carte immobile, message toujours là).
+- **Le quota d'overpass-api.de est de 4 créneaux par adresse IP** (lu sur
+  `/api/status`), chacun occupé un moment après sa requête. Découper la vue en
+  quatre requêtes, plus les fiches de lieux, l'épuisait : un 429, puis la
+  bascule vers `private.coffee` — muet — et un « AbortError » au bout de 25 s.
+  La case de « Fromagerie Collet » ne se chargeait jamais (constaté sur le
+  téléphone, carte centrée dessus). D'où `politeAnswer` : instances une par
+  une, sans lancement en parallèle, et sur un 429 **attente du créneau
+  annoncé** par la page d'état (30 s au plus) puis second essai.
+- **Une tuile qui échoue ne pose plus de bandeau d'erreur** (`map.on("error")`,
+  événement porteur de `tile`) : un 400 passager de l'IGN, sur une tuile qui
+  répondait 200 l'instant d'après, barrait toute la vue satellite.
 - **`overpass.kumi.systems` a été retiré** d'`OVERPASS_URLS` : absent de la
   liste du wiki OSM et muet à chaque essai.
 - Si cette liste de tuiles change (mise à jour d'OpenMapTiles), refaire la

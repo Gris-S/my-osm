@@ -216,6 +216,73 @@ export async function searchBrandPlaces(
   return { places, complete: data.elements.length < CONFIG.BRAND_SEARCH_LIMIT };
 }
 
+/** Réponse de l'instance qui dit « trop de requêtes » : on attend un créneau. */
+class RateLimited extends Error {}
+
+/**
+ * Le temps à attendre avant un créneau libre, lu sur la page d'état de
+ * l'instance (`/api/status` : « Slot available after: …, in 24 seconds. »).
+ * Mesuré le 30 septembre 2026 : 4 créneaux par adresse IP sur overpass-api.de,
+ * chacun occupé un moment après la fin de sa requête.
+ */
+async function slotWaitMs(url: string, signal?: AbortSignal): Promise<number> {
+  try {
+    const res = await fetch(url.replace(/interpreter$/, "status"), { signal });
+    const text = await res.text();
+    if (/\d+ slots? available now/.test(text)) return 1000;
+    const seconds = Number(text.match(/in (\d+) seconds/)?.[1]);
+    return Number.isFinite(seconds) ? (seconds + 1) * 1000 : 10_000;
+  } catch {
+    return 10_000;
+  }
+}
+
+/**
+ * Une requête Overpass **qui respecte le quota** au lieu de s'en faire refuser :
+ * les instances une par une (pas de lancement en parallèle, qui prendrait un
+ * créneau de plus à chacune) ; sur un 429, attente du créneau annoncé — 30 s
+ * au plus — puis un second essai sur la même instance. Une instance muette ou
+ * en panne fait passer à la suivante.
+ *
+ * Constaté : la vue découpée en quatre requêtes, plus les fiches de lieux,
+ * épuisait les 4 créneaux ; le 429 envoyait alors vers `private.coffee`, muet
+ * ce jour-là, et l'échec se lisait « AbortError » au bout de 25 s — la case de
+ * « Fromagerie Collet » ne se chargeait jamais.
+ */
+async function politeAnswer(query: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<OsmResponse> {
+  let lastError: unknown = new Error("Aucune instance Overpass configurée");
+  for (const url of CONFIG.OVERPASS_URLS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      const timer = setTimeout(abort, timeoutMs);
+      signal?.addEventListener("abort", abort);
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: query,
+          signal: controller.signal,
+        });
+        if (res.status === 429) throw new RateLimited(`Réponse 429 de ${url}`);
+        if (!res.ok) throw new Error(`Réponse ${res.status} de ${url}`);
+        return (await res.json()) as OsmResponse;
+      } catch (error) {
+        lastError = error;
+        if (signal?.aborted) throw error;
+        if (!(error instanceof RateLimited) || attempt > 0) break; // instance suivante
+        const wait = Math.min(await slotWaitMs(url, signal), 30_000);
+        await new Promise<void>((resolve) => setTimeout(resolve, wait));
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+      }
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Les lieux nommés qui portent l'un de ces tags, dans une emprise
  * `[sud, ouest, nord, est]`. Sert à combler ce que les tuiles de la carte ne
@@ -234,11 +301,7 @@ export async function fetchTaggedPlaces(
     .map(([key, values]) => `nwr["${key}"~"^(${values.join("|")})$"]["name"](${area});`)
     .join("");
   const overpassQuery = `[out:json][timeout:20];(${parts});out center tags;`;
-  const attempts = CONFIG.OVERPASS_URLS.map(
-    (url) => (attemptSignal: AbortSignal) =>
-      fetchJson(url, { method: "POST", headers: { "Content-Type": "text/plain" }, body: overpassQuery }, attemptSignal, timeoutMs)
-  );
-  const data = await firstAnswer(attempts, signal);
+  const data = await politeAnswer(overpassQuery, signal, timeoutMs);
   const places: Place[] = [];
   for (const element of data.elements) {
     const place = elementToPlace(element);

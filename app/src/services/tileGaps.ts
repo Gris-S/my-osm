@@ -104,8 +104,13 @@ export interface GapResult {
   failed: boolean;
 }
 
-/** Cases par requête : une requête sur 8 cases z14 (6 × 3 km) dépassait le délai sur un serveur chargé. */
-const CELLS_PER_REQUEST = 2;
+/**
+ * Cases par requête : 4 cases z14 (~3 × 3 km) répondent en ~6 s (mesuré sur le
+ * téléphone). Les découper davantage épuisait les 4 créneaux par adresse IP
+ * d'overpass-api.de — c'était ça, et non un délai trop court, qui laissait
+ * la case de « Fromagerie Collet » vide.
+ */
+const CELLS_PER_REQUEST = 4;
 /** Délai d'une requête : plus long que celui des détails d'un lieu, la zone est plus grande. */
 const REQUEST_TIMEOUT_MS = 25000;
 

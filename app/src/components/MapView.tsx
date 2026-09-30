@@ -606,8 +606,18 @@ export const MapView = memo(function MapView({
     // qui n'arrive pas, un contexte WebGL refusé ou une tuile rejetée laissent
     // une carte grise et muette — et la cause n'est lisible que dans une
     // console, qui n'existe pas sur un téléphone.
-    map.on("error", (event: { error?: { message?: string } }) => {
+    map.on("error", (event: { error?: { message?: string }; tile?: unknown }) => {
       const message = event?.error?.message;
+      // L'échec d'**une** tuile n'est pas une panne de carte : MapLibre la
+      // redemande au déplacement suivant (événement porteur de `tile`, lu dans
+      // sa source, les 404 y étant déjà tus). Constaté le 30 septembre 2026 :
+      // un 400 passager de l'IGN sur une tuile d'orthophoto — la même URL
+      // répondait 200 l'instant d'après — posait un bandeau d'erreur sur toute
+      // la vue satellite. Il reste dans la console.
+      if (event?.tile) {
+        if (message) console.warn("[carte] tuile non chargée :", message);
+        return;
+      }
       if (message) onMapErrorRef.current(message);
     });
 
