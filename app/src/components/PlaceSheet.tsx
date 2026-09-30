@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { safeWebLink } from "../utils/safe";
-import { Bookmark, BookmarkCheck, Check, ChevronDown, Clipboard, Clock, Globe, MapPin, Navigation, Phone, Share2, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Check, ChevronDown, Clipboard, Clock, Globe, MapPin, Navigation, Phone, Plus, Share2, X } from "lucide-react";
 import { getFilterGroup } from "../filters";
 import type { Place } from "../types";
 import { copyToClipboard, formatCoords } from "../utils/clipboard";
@@ -12,6 +12,7 @@ import { AreaFacts, WikiCard } from "./PlaceWiki";
 import { areaKindLabel } from "../services/areaInfo";
 import { useI18n } from "../i18n";
 import { useBackClose } from "../hooks/useBackClose";
+import { useOsmContrib } from "../services/osmContrib";
 
 /**
  * Le domaine d'une adresse, pour nommer un lien sans l'écrire en entier.
@@ -46,6 +47,8 @@ interface PlaceSheetProps {
   onUnsave: () => void;
   /** Hauteur occupée par la fiche, pour que les boutons flottants la dégagent. */
   onHeightChange: (height: number) => void;
+  /** Ouvre la fenêtre « Ajouter à OpenStreetMap » (lieu venu du web seulement). */
+  onContribute: () => void;
 }
 
 /** `tel:` n'accepte ni espaces ni séparateurs de lisibilité. */
@@ -270,8 +273,16 @@ export function PlaceSheet({
   onSave,
   onUnsave,
   onHeightChange,
+  onContribute,
 }: PlaceSheetProps) {
   const { t } = useI18n();
+  // « + OSM » n'existe que pour un lieu trouvé sur le web (`web/…` : ce n'est
+  // pas un objet OSM) et que si l'option est allumée — elle est éteinte par
+  // défaut. Une fois le lieu ajouté, le bouton cède la place au lien du point.
+  const contrib = useOsmContrib();
+  const fromWeb = place.id.startsWith("web/");
+  const publishedLink = fromWeb ? contrib.published.get(place.id) : undefined;
+  const showContribute = fromWeb && contrib.enabled && !publishedLink;
   // Le geste retour ferme la fiche, comme sa croix.
   useBackClose(true, onClose);
 
@@ -438,6 +449,16 @@ export function PlaceSheet({
           {savedIn ? t("sheet.saved") : t("sheet.save")}
         </button>
         <ShareAction place={place} />
+        {/* Le contour arc-en-ciel qui tourne est voulu (demande explicite) :
+            ce bouton ne paraît que dans ce cas précis, il doit se voir. */}
+        {showContribute && (
+          <button className="sheet-action-osm" onClick={onContribute} title={t("osm.sheet.title")}>
+            <span>
+              <Plus size={16} strokeWidth={2.6} />
+              {t("osm.sheet.button")}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Le résumé Wikipédia, pour tout lieu qui a un article : ville, quartier,
@@ -462,6 +483,14 @@ export function PlaceSheet({
             </span>
             <span className="sheet-info-value">{place.address}</span>
           </div>
+        )}
+        {publishedLink && (
+          <a className="sheet-info-row is-link" href={publishedLink} target="_blank" rel="noreferrer">
+            <span className="sheet-info-icon">
+              <Check size={17} />
+            </span>
+            <span className="sheet-info-value">{t("osm.sheet.published")}</span>
+          </a>
         )}
       </div>
     </div>

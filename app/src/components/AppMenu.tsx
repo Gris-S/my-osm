@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, memo } from "react";
-import { Coffee, Download, History, KeyRound, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
+import { Coffee, Download, History, KeyRound, MapPinPlus, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
 import type { AutoSource, Theme } from "../hooks/useTheme";
 import { useI18n, useLangSetting, type Lang, type TranslationKey } from "../i18n";
 import type { LonLat } from "../types";
@@ -7,6 +7,8 @@ import { CONFIG } from "../config";
 // Navigation guidée — voir `src/navigation/README.md`. La section entière est
 // fournie par le module ; la fenêtre ne fait que lui donner sa place.
 import { ApiKeysSettings } from "./ApiKeysSettings";
+import { OsmAccountSettings } from "./OsmAccountSettings";
+import { setContribEnabled, useOsmContrib } from "../services/osmContrib";
 import { HistoryPanel, ModesSettings, navText, NavigationSettings } from "../navigation";
 import { HomeWorkSettings } from "./HomeWorkSettings";
 import { SourcesList } from "./SourcesList";
@@ -121,6 +123,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stationsFirst, setStationsFirst] = useState(stationsFirstEnabled);
+  const osmContrib = useOsmContrib();
   // Les clés d'API ont leur propre fenêtre : longue, rarement ouverte, elle
   // noyait le thème et la langue au bas des paramètres.
   const [apiOpen, setApiOpen] = useState(false);
@@ -471,6 +474,29 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
             </div>
 
             <ModesSettings />
+            {/* « + OSM » sur la fiche d'un lieu trouvé sur le web, rangé dans
+                « Modes » (demande explicite). Hors de `ModesSettings`, qui
+                appartient au module de navigation et doit rester retirable
+                d'un bloc ; même ligne, même style. Éteint par défaut : éteint,
+                rien n'est chargé. */}
+            <button
+              className="modes-row"
+              onClick={() => setContribEnabled(!osmContrib.enabled)}
+              role="switch"
+              aria-checked={osmContrib.enabled}
+            >
+              <span className="modes-row-text">
+                <span className="modes-row-label">
+                  <MapPinPlus size={16} />
+                  {t("settings.osmContrib")}
+                </span>
+                <span className="modes-row-hint">{t("settings.osmContrib.hint")}</span>
+              </span>
+              <span className={`toggle-switch ${osmContrib.enabled ? "is-on" : ""}`} aria-hidden="true">
+                <span className="toggle-switch-knob" />
+              </span>
+            </button>
+
           </div>
         </div>
       )}
@@ -499,6 +525,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
             </div>
 
             <ApiKeysSettings />
+            <OsmAccountSettings />
           </div>
         </div>
       )}

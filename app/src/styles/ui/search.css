@@ -204,3 +204,19 @@
 .search-result.is-web .search-result-icon {
   color: var(--text-secondary);
 }
+
+/* Le moteur des commerces n'a pas répondu : un bandeau teinté en tête de liste,
+   pour qu'un « rien trouvé » ne passe pas pour une absence du lieu. */
+.search-degraded {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--caution) 14%, transparent);
+}
+
+.search-degraded svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--caution);
+}

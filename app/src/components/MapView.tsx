@@ -7,7 +7,8 @@ import { CONFIG } from "../config";
 import type { Basemap } from "../hooks/useBasemap";
 import type { Theme } from "../hooks/useTheme";
 import type { FilterGroupId } from "../filters";
-import { collectTilePois, VECTOR_SOURCE_ID } from "../services/tilePois";
+import { collectTilePois, rememberPlaces, VECTOR_SOURCE_ID } from "../services/tilePois";
+import { gapCellsKey, GAP_MIN_ZOOM, loadTileGaps } from "../services/tileGaps";
 import { isTransitStop } from "../services/idfm";
 import { getTrafficEvents, type TrafficEvent } from "../services/traffic";
 import { getLinesForStops, type StopLines } from "../services/idfmNetwork";
@@ -281,6 +282,13 @@ export const MapView = memo(function MapView({
   const transitStopsPending = useRef<string | null>(null);
   const transitStopsTimer = useRef<number | null>(null);
   const transitStopsAbort = useRef<AbortController | null>(null);
+  // Commerces que les tuiles ne transportent pas (fromageries, salles de
+  // sport… voir `services/tileGaps.ts`), demandés à Overpass pour la vue après
+  // 500 ms sans mouvement. `failed` fait dire à la carte qu'il en manque.
+  const gapsRef = useRef<{ key: string; places: Place[]; failed: boolean; at: number }>({ key: "", places: [], failed: false, at: 0 });
+  const gapsPending = useRef<string | null>(null);
+  const gapsTimer = useRef<number | null>(null);
+  const gapsAbort = useRef<AbortController | null>(null);
   const refreshPoisLatest = useRef<() => void>(() => {});
   const refreshTransitStops = useCallback((map: MLMap) => {
     const center = map.getCenter();
@@ -308,6 +316,41 @@ export const MapView = memo(function MapView({
           if (transitStopsPending.current === key) transitStopsPending.current = null;
         });
     }, TRANSITOUS_STOPS.debounceMs);
+  }, []);
+
+  const refreshTileGaps = useCallback((map: MLMap) => {
+    const bbox = currentBbox(map);
+    const key = gapCellsKey(bbox);
+    // Même vue : rien à refaire — sauf un échec vieux d'une minute, qu'on
+    // retente. Sans ce délai, un serveur en panne serait relancé en boucle.
+    const same = key === gapsRef.current.key;
+    if (key === gapsPending.current || (same && !(gapsRef.current.failed && Date.now() - gapsRef.current.at > 60_000))) return;
+    gapsPending.current = key;
+    if (gapsTimer.current !== null) window.clearTimeout(gapsTimer.current);
+    gapsTimer.current = window.setTimeout(() => {
+      gapsTimer.current = null;
+      gapsAbort.current?.abort();
+      const controller = new AbortController();
+      gapsAbort.current = controller;
+      loadTileGaps(bbox, controller.signal, (partial) => {
+        // Chaque réponse s'affiche aussitôt, sans attendre les cases suivantes.
+        if (controller.signal.aborted) return;
+        gapsRef.current = { ...gapsRef.current, places: partial };
+        refreshPoisLatest.current();
+      })
+        .then(({ places, failed }) => {
+          if (controller.signal.aborted) return;
+          gapsRef.current = { key, places, failed, at: Date.now() };
+          refreshPoisLatest.current();
+        })
+        .catch(() => {
+          /* abandon : une vue plus récente a pris le relais */
+        })
+        .finally(() => {
+          if (gapsPending.current === key) gapsPending.current = null;
+          refreshPoisLatest.current();
+        });
+    }, 500);
   }, []);
 
   // Remplace le pictogramme des arrêts par les pastilles de leurs lignes.
@@ -394,6 +437,12 @@ export const MapView = memo(function MapView({
     let places: Place[] = [];
     if (brandQuery) places = brandQuery;
     else if (zoom >= CONFIG.MIN_ZOOM_FOR_POIS) {
+      // Les commerces hors tuiles rejoignent le souvenir des POI : ils sont
+      // filtrés, triés et plafonnés comme les autres.
+      if (zoom >= GAP_MIN_ZOOM) {
+        rememberPlaces(gapsRef.current.places);
+        refreshTileGaps(map);
+      }
       places = collectTilePois(map, {
         groups: groupsRef.current,
         showBusStops: zoom >= CONFIG.MIN_ZOOM_FOR_BUS_STOPS,
@@ -443,8 +492,10 @@ export const MapView = memo(function MapView({
       return;
     }
     const tilesPending = zoom >= CONFIG.MIN_ZOOM_FOR_POIS && !!map.getSource(VECTOR_SOURCE_ID) && !map.isSourceLoaded(VECTOR_SOURCE_ID);
-    onPoiStatusRef.current(tilesPending ? "loading" : "idle");
-  }, [refreshStopLines, refreshTransitStops]);
+    const gapsLoading = zoom >= GAP_MIN_ZOOM && gapsPending.current !== null;
+    const gapsFailed = zoom >= GAP_MIN_ZOOM && gapsRef.current.failed && gapsPending.current === null;
+    onPoiStatusRef.current(tilesPending || gapsLoading ? "loading" : gapsFailed ? "partial" : "idle");
+  }, [refreshStopLines, refreshTransitStops, refreshTileGaps]);
 
   // Les arrêts de Transitous arrivent après coup : la couche se relit alors.
   useEffect(() => {
@@ -689,6 +740,8 @@ export const MapView = memo(function MapView({
 
     return () => {
       if (poiTimer.current !== null) window.clearTimeout(poiTimer.current);
+      if (gapsTimer.current !== null) window.clearTimeout(gapsTimer.current);
+      gapsAbort.current?.abort();
       stopFollowingConnectivity?.();
       map.remove();
       mapRef.current = null;

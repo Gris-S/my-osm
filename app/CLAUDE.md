@@ -2008,6 +2008,81 @@ tiers des McDonald's absents d'OSM ; HERE exige une carte. Le web trouve tout.
   `WebStorage.deleteOrigin`, dont Android ne garantit pas qu'il couvre tout
   (IndexedDB) ; le cache HTTP n'est pas vidé, il est commun avec la carte.
 
+### Contribuer à OpenStreetMap (« + OSM », 30 septembre 2026)
+
+**Un lieu trouvé sur le web peut être ajouté à OSM depuis sa fiche** (demande
+explicite) : le suivant le trouvera par la recherche, sans passer par le web.
+Prototype d'abord (`~/Documents/MY OSM Proto Contribuer`), essayé sur le
+serveur de test avant l'intégration.
+
+- **Option éteinte par défaut** (menu → « Modes » → « Contribuer à OpenStreetMap »,
+  rangée là plutôt que dans les Paramètres — demande explicite —,
+  demande explicite : ne rien ralentir pour qui ne contribue pas). Éteinte,
+  rien n'est chargé ni vérifié ; la fenêtre d'ajout est un fragment à part
+  (`lazy`, 7 ko), et le compte n'est vérifié qu'à l'ouverture d'une fenêtre qui
+  s'en sert. **Une connexion réussie l'allume** (`setOsmToken`) : connecté mais
+  option éteinte, le bouton n'apparaissait pas et rien ne disait pourquoi.
+- **L'OSM réel seulement** (demande explicite, 30 septembre 2026) : le
+  serveur de test a servi au prototype et à la mise au point, puis a été retiré
+  de l'application — ni réglage, ni Client ID à part. Une ancienne valeur
+  rangée par serveur (`{ live, dev }`) est relue, seul `live` est repris.
+- **Le bouton n'existe que pour un lieu `web/…`** (fiche du web, lien ou
+  coordonnées collés), au bout de la rangée Itinéraire / Enregistrer /
+  Partager — **sur la fiche, pas dans le navigateur intégré** (demande
+  explicite). Une fois le lieu ajouté, il cède la place au lien du point.
+- **Son contour arc-en-ciel est fixe** (demande explicite, après mesure). Le
+  faire tourner a été demandé puis essayé sous toutes ses formes, mesurées sur
+  le Pixel 8, fiche ouverte : rotation fluide **1,2 cœur**, 10 images/s 0,4,
+  4 images/s 0,3, GIF animé 0,3 — contre ~0 fixe. Toute image qui change fait
+  recomposer l'écran entier, carte comprise ; aucune technique n'y échappe.
+- **Le nom proposé est la saisie de la recherche** (`Place.webQuery`, posé par
+  `webSearch.ts`), avec un avertissement « vérifiez le nom exact » tant qu'on
+  n'y a pas touché (demande explicite) : le nom tiré de la page n'est souvent
+  qu'une adresse (« 19 Rue du Midi », constaté). Un point collé n'a pas de
+  saisie, il garde son nom.
+- **L'adresse est découpée en champs** (`splitAddress`, après `cleanAddress`),
+  même sans virgule (« 19 rue du Midi 94300 Vincennes » : le code postal ouvre
+  un morceau), et la rue prend sa majuscule initiale (`capitalizeStreet`),
+  sauf après une apostrophe (« 's-Gravendijkwal », Pays-Bas).
+- **Un jeton, jamais un mot de passe** (fenêtre « API », demande explicite :
+  ne pas se reconnecter à chaque fois). OSM a coupé identifiant + mot de passe
+  le 1er juin 2024 ; OAuth 2 + PKCE, jetons sans expiration. Rangé sous
+  `osm-local:osm-contrib`, vérifié par un appel réel (`/user/details.json`).
+- **Connexion automatique dans l'APK** (demande explicite) : la page d'OSM
+  s'ouvre dans le navigateur intégré, et l'adresse de retour
+  `http://127.0.0.1/myosm-osm-callback` **n'est pas ouverte** : le greffon la
+  rend (`openAuthBrowser`, écoutes `link` et `navigate`). Aucun changement
+  Java : `linkPatterns` suffisait. **Dans un navigateur et la version Docker**,
+  l'adresse de l'application n'est pas connue d'avance : OSM affiche le code
+  (`urn:ietf:wg:oauth:2.0:oob`) et on le recopie.
+- **L'application doit être enregistrée sur OSM** (« OAuth 2
+  applications » du compte), **non confidentielle** — la case est cochée par
+  défaut, et le code est alors refusé en `invalid_client` (rencontré, message
+  dédié `osm.error.confidential`) —, avec les **deux** adresses de retour et les
+  permissions « Read user preferences » et « Modify the map ». Son Client ID est
+  public : `CONFIG.OSM_EDIT.CLIENT_ID`, ou saisi dans la fenêtre « API ».
+- **Rien ne part sans relecture ni confirmation** : la fiche DuckDuckGo vient
+  de sources sous droits (Apple Plans, Yelp…) qu'OSM interdit de recopier. La
+  case de confirmation fait de l'ajout une contribution humaine, un point à la
+  fois — hors du champ du code de conduite des imports automatiques.
+- **Trois garde-fous avant l'envoi** : l'épingle à poser sur l'entrée (petite
+  carte à part) ; une catégorie obligatoire (`OSM_CATEGORIES`, balises
+  courantes) ; les lieux **du même nom** à moins de 100 m, lus sur OSM
+  (`/map.json`). « Même nom » = l'un contient l'autre **et** le plus
+  court fait au moins la moitié du plus long (`sameName`) : un point « test »
+  passait pour un doublon de « Boulangerie Test » (constaté sur le serveur de
+  test).
+- **L'envoi** : un groupe de modifications, un point, fermeture même en cas
+  d'échec (`createPlace`), en XML — le JSON n'est pas accepté en écriture.
+  `created_by=MY OSM <version>`.
+- **Après l'envoi, la fiche garde l'identifiant `web/…`** et reprend nom,
+  adresse, catégorie : le point vient d'être créé, et Overpass, où une fiche
+  `node/…` irait chercher ses détails, ne le connaît pas encore.
+- Fonctions pures testées dans `tests/osmEdit.test.ts` : SHA-256 (écrit à la
+  main — `crypto.subtle` manque en `http://`, cas de Docker sur le réseau
+  local — et comparé à Node sur 200 longueurs), découpage d'adresse, téléphone
+  `+33`, balises, XML, lecture du code de retour, noms voisins.
+
 ### Liens reçus d'une autre application (`services/incoming.ts`)
 
 **Toucher « Itinéraire » ailleurs ouvre MY OSM** (demande explicite) : sur un
@@ -2149,6 +2224,57 @@ ce qui est relu** — un dossier sans identifiant ou un lieu sans coordonnées e
   changements de style sans réinstallation. Leur clic **arrête la propagation**,
   sinon la carte le prend pour un clic dans le vide et referme la fiche qui
   vient de s'ouvrir.
+
+### Ce que les tuiles ne transportent pas (`services/tileGaps.ts`, 30 septembre 2026)
+
+**Constaté par l'utilisateur** : « Fromagerie Collet » (shop=cheese, dans OSM
+depuis 2013) absente de la carte, alors qu'OSM la connaît — il allait l'ajouter
+en double. Cause : le schéma OpenMapTiles des tuiles d'OpenFreeMap ne garde
+qu'une **liste fermée** de valeurs par clé (`layers/poi/mapping.yaml` du dépôt
+openmaptiles/openmaptiles). Mesuré sur six tuiles du centre de Paris : 613
+boulangeries, **zéro** fromagerie, pâtisserie, poissonnerie, épicerie, salle de
+sport, mémorial.
+
+- **`TILE_GAP_TAGS`** = ce que `filters.ts` énumère moins cette liste (41
+  valeurs). Elles seules sont demandées à Overpass pour la vue, **dès le zoom
+  14** (celui d'ouverture — au 15, la carte s'ouvrait sans elles), par cases
+  z14 (9 au plus, ~8 sur un téléphone), **deux cases par requête en partant du
+  centre**, 25 s de délai chacune, affichées au fur et à mesure, 500 ms après le
+  mouvement — une seule requête pour 8 cases (6 × 3 km) ne revenait pas sur le
+  téléphone ; puis versées au souvenir des POI
+  (`rememberPlaces`) — même filtre, même pastille, même fiche. Même identifiant
+  `node/…` qu'une tuile : pas de doublon. Un test vérifie que chaque valeur a
+  sa catégorie.
+- **Chaque case est gardée sept jours sur l'appareil** (`transport/persistentCache`) :
+  Overpass est fragile — le même jour, `overpass-api.de` « trop occupé » en
+  13 s et `private.coffee` muet. Un échec se retente au bout d'une minute, pas
+  en boucle, et **se dit** : état `partial` de `MapStatus` (« certains
+  commerces n'ont pas pu être chargés »). Pas de manque silencieux.
+- **`overpass.kumi.systems` a été retiré** d'`OVERPASS_URLS` : absent de la
+  liste du wiki OSM et muet à chaque essai.
+- Si cette liste de tuiles change (mise à jour d'OpenMapTiles), refaire la
+  différence : une valeur qui entre dans les tuiles peut sortir de
+  `TILE_GAP_TAGS`, une qui en sort doit y entrer.
+
+**La recherche dit quand Photon ne répond pas** (`searchPlacesDetailed`,
+`degraded`) : elle se repliait en silence sur la BAN, qui ne connaît aucun
+commerce — un « rien trouvé » passait pour une absence du lieu. Un bandeau le
+dit désormais en tête des résultats.
+
+**L'alimentation en deux catégories** (demande explicite) : « Épiceries &
+supérettes » (`grocery` : supermarché, supérette, épicerie, surgelés, bio,
+ferme) et « Commerces de bouche » (`foodshop` : boulangerie, pâtisserie,
+chocolatier, confiserie, fromagerie, boucherie, poissonnerie, primeur,
+traiteur, crèmerie, café/thé, épices, fruits secs, caviste, boissons). La
+catégorie `bakery` a disparu dans `foodshop` : `normalizeGroupId` reprend les
+réglages, signets et zones hors ligne qui la portaient encore.
+
+**Pictogrammes par type** (`TYPE_ICONS`, demande explicite : fromagerie un
+fromage, poissonnerie un poisson…) : même couleur de catégorie, autre dessin,
+image `poi-marker-<groupe>-<valeur>`. Alimentation, plus les types qui se
+reconnaissent sans hésiter ailleurs (piscine, vélo, fleuriste, opticien,
+bijouterie, coiffeur). Le fromage est dessiné à la main dans le style Lucide,
+qui n'en a pas.
 
 ### filters.ts, source unique des catégories
 

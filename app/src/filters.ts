@@ -14,7 +14,7 @@ import type { TranslationKey } from "./i18n";
 
 export type FilterGroupId =
   | "grocery"
-  | "bakery"
+  | "foodshop"
   | "fastfood"
   | "food"
   | "nightlife"
@@ -109,31 +109,35 @@ function rules(...rs: TagRule[]): TagRule {
   return { tags, match: (t) => rs.some((r) => r.match(t)) };
 }
 
+// L'alimentation en deux (demande explicite, 30 septembre 2026) : là où l'on
+// fait ses courses (supermarché, supérette, épicerie), et les commerces de
+// bouche — un métier, un produit : boulanger, fromager, boucher, poissonnier,
+// caviste… Les boulangeries, qui avaient leur propre catégorie, y sont rentrées.
 const GROCERY = rules(
-  tagRule("shop", [
-    "supermarket",
-    "convenience",
-    "greengrocer",
-    "butcher",
-    "deli",
-    "cheese",
-    "seafood",
-    "beverages",
-    "alcohol",
-    "wine",
-    "coffee",
-    "tea",
-    "dairy",
-    "frozen_food",
-    "health_food",
-    "farm",
-    "grocery",
-    "spices",
-    "nuts",
-  ])
+  tagRule("shop", ["supermarket", "convenience", "grocery", "frozen_food", "health_food", "farm"])
 );
 
-const BAKERY = rules(tagRule("shop", ["bakery", "pastry", "confectionery", "chocolate"]));
+const FOODSHOP = rules(
+  tagRule("shop", [
+    "bakery",
+    "pastry",
+    "confectionery",
+    "chocolate",
+    "cheese",
+    "butcher",
+    "seafood",
+    "greengrocer",
+    "deli",
+    "dairy",
+    "coffee",
+    "tea",
+    "spices",
+    "nuts",
+    "wine",
+    "alcohol",
+    "beverages",
+  ])
+);
 
 const FASTFOOD = rules(tagRule("amenity", ["fast_food", "food_court"]));
 
@@ -258,6 +262,17 @@ const GROCERY_ICON: IconNode = [
   ["circle", { cx: "8", cy: "20", r: "2" }],
 ];
 
+// Commerces de bouche : un panier (Lucide « shopping-basket »).
+const BASKET_ICON: IconNode = [
+  ["path", { d: "m15 11-1 9" }],
+  ["path", { d: "m19 11-4-7" }],
+  ["path", { d: "M2 11h20" }],
+  ["path", { d: "m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4" }],
+  ["path", { d: "M4.5 15.5h15" }],
+  ["path", { d: "m5 11 4-7" }],
+  ["path", { d: "m9 11 1 9" }],
+];
+
 const FASTFOOD_ICON: IconNode = [
   ["path", { d: "m2.37 11.223 8.372-6.777a2 2 0 0 1 2.516 0l8.371 6.777" }],
   ["path", { d: "M21 15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-5.25" }],
@@ -362,22 +377,179 @@ const SHOP_ICON: IconNode = [
   ["path", { d: "M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" }],
 ];
 
+// ---------------------------------------------------------------------------
+// Pictogrammes par type de commerce (demande explicite : une fromagerie montre
+// un fromage, une poissonnerie un poisson). La pastille garde la couleur de sa
+// catégorie ; seul le dessin change. Réservé à l'alimentation et aux types dont
+// le dessin se reconnaît sans hésiter ; les autres gardent celui du groupe.
+// Tracés Lucide (ISC), sauf le fromage, dessiné ici dans le même style.
+// ---------------------------------------------------------------------------
+
+const CHEESE_ICON: IconNode = [
+  ["path", { d: "M21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6" }],
+  ["path", { d: "M3 13h18V9.3L15.4 4.6a2 2 0 0 0-2.3-.1z" }],
+  ["circle", { cx: "9", cy: "17", r: "1.5" }],
+  ["circle", { cx: "16.5", cy: "16", r: "1" }],
+  ["circle", { cx: "14.5", cy: "9", r: ".6" }],
+];
+const FISH_ICON: IconNode = [
+  ["path", { d: "M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z" }],
+  ["path", { d: "M18 12v.5" }],
+  ["path", { d: "M16 17.93a9.77 9.77 0 0 1 0-11.86" }],
+  ["path", { d: "M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33" }],
+  ["path", { d: "M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4" }],
+  ["path", { d: "m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98" }],
+];
+const BEEF_ICON: IconNode = [
+  ["path", { d: "M16.4 13.7A6.5 6.5 0 1 0 6.28 6.6c-1.1 3.13-.78 3.9-3.18 6.08A3 3 0 0 0 5 18c4 0 8.4-1.8 11.4-4.3" }],
+  ["path", { d: "m18.5 6 1.754 3.5a6.48 6.48 0 0 1-1.854 8.2C15.4 20.2 11 22 7 22a3 3 0 0 1-2.68-1.66L2.4 16.5" }],
+  ["circle", { cx: "12.5", cy: "8.5", r: "2.5" }],
+];
+const CAKE_ICON: IconNode = [
+  ["path", { d: "M16 13H3" }],
+  ["path", { d: "M16 17H3" }],
+  ["path", { d: "m7.2 7.9-3.388 2.5A2 2 0 0 0 3 12.01V20a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-8.654c0-2-2.44-6.026-6.44-8.026a1 1 0 0 0-1.082.057L10.4 5.6" }],
+  ["circle", { cx: "9", cy: "7", r: "2" }],
+];
+const CANDY_ICON: IconNode = [
+  ["path", { d: "M10 7v10.9" }],
+  ["path", { d: "M14 6.1V17" }],
+  ["path", { d: "M16 7V3a1 1 0 0 1 1.707-.707 2.5 2.5 0 0 0 2.152.717 1 1 0 0 1 1.131 1.131 2.5 2.5 0 0 0 .717 2.152A1 1 0 0 1 21 8h-4" }],
+  ["path", { d: "M16.536 7.465a5 5 0 0 0-7.072 0l-2 2a5 5 0 0 0 0 7.07 5 5 0 0 0 7.072 0l2-2a5 5 0 0 0 0-7.07" }],
+  ["path", { d: "M8 17v4a1 1 0 0 1-1.707.707 2.5 2.5 0 0 0-2.152-.717 1 1 0 0 1-1.131-1.131 2.5 2.5 0 0 0-.717-2.152A1 1 0 0 1 3 16h4" }],
+];
+const WINE_ICON: IconNode = [
+  ["path", { d: "M8 22h8" }],
+  ["path", { d: "M7 10h10" }],
+  ["path", { d: "M12 15v7" }],
+  ["path", { d: "M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z" }],
+];
+const CARROT_ICON: IconNode = [
+  ["path", { d: "M15 16a1 1 0 0 0-7-7q-4 4-5.987 12.385a.5.5 0 0 0 .602.602Q11 20 15 16l-3-3" }],
+  ["path", { d: "M15 9q4 4 7 0-3-4-7 0 4-4 0-7-4 3 0 7" }],
+  ["path", { d: "m8 15-2.58-2.58" }],
+];
+const COFFEE_ICON: IconNode = [
+  ["path", { d: "M10 2v2" }],
+  ["path", { d: "M14 2v2" }],
+  ["path", { d: "M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" }],
+  ["path", { d: "M6 2v2" }],
+];
+const MILK_ICON: IconNode = [
+  ["path", { d: "M8 2h8" }],
+  ["path", { d: "M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2" }],
+  ["path", { d: "M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0" }],
+];
+const HAM_ICON: IconNode = [
+  ["path", { d: "M13.144 21.144A7.274 10.445 45 1 0 2.856 10.856" }],
+  ["path", { d: "M13.144 21.144A7.274 4.365 45 0 0 2.856 10.856a7.274 4.365 45 0 0 10.288 10.288" }],
+  ["path", { d: "M16.565 10.435 18.6 8.4a2.501 2.501 0 1 0 1.65-4.65 2.5 2.5 0 1 0-4.66 1.66l-2.024 2.025" }],
+  ["path", { d: "m8.5 16.5-1-1" }],
+];
+const NUT_ICON: IconNode = [
+  ["path", { d: "M12 4V2" }],
+  ["path", { d: "M5 10v4a7.004 7.004 0 0 0 5.277 6.787c.412.104.802.292 1.102.592L12 22l.621-.621c.3-.3.69-.488 1.102-.592A7.003 7.003 0 0 0 19 14v-4" }],
+  ["path", { d: "M12 4C8 4 4.5 6 4 8c-.243.97-.919 1.952-2 3 1.31-.082 1.972-.29 3-1 .54.92.982 1.356 2 2 1.452-.647 1.954-1.098 2.5-2 .595.995 1.151 1.427 2.5 2 1.31-.621 1.862-1.058 2.5-2 .629.977 1.162 1.423 2.5 2 1.209-.548 1.68-.967 2-2 1.032.916 1.683 1.157 3 1-1.297-1.036-1.758-2.03-2-3-.5-2-4-4-8-4Z" }],
+];
+const WAVES_ICON: IconNode = [
+  ["path", { d: "M2 12q2.5 2 5 0t5 0 5 0 5 0" }],
+  ["path", { d: "M2 19q2.5 2 5 0t5 0 5 0 5 0" }],
+  ["path", { d: "M2 5q2.5 2 5 0t5 0 5 0 5 0" }],
+];
+const BIKE_ICON: IconNode = [
+  ["circle", { cx: "18.5", cy: "17.5", r: "3.5" }],
+  ["circle", { cx: "5.5", cy: "17.5", r: "3.5" }],
+  ["circle", { cx: "15", cy: "5", r: "1" }],
+  ["path", { d: "M12 17.5V14l-3-3 4-3 2 3h2" }],
+];
+const FLOWER_ICON: IconNode = [
+  ["circle", { cx: "12", cy: "12", r: "3" }],
+  ["path", { d: "M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5" }],
+  ["path", { d: "M12 7.5V9" }],
+  ["path", { d: "M7.5 12H9" }],
+  ["path", { d: "M16.5 12H15" }],
+  ["path", { d: "M12 16.5V15" }],
+  ["path", { d: "m8 8 1.88 1.88" }],
+  ["path", { d: "M14.12 9.88 16 8" }],
+  ["path", { d: "m8 16 1.88-1.88" }],
+  ["path", { d: "M14.12 14.12 16 16" }],
+];
+const GLASSES_ICON: IconNode = [
+  ["circle", { cx: "6", cy: "15", r: "4" }],
+  ["circle", { cx: "18", cy: "15", r: "4" }],
+  ["path", { d: "M14 15a2 2 0 0 0-2-2 2 2 0 0 0-2 2" }],
+  ["path", { d: "M2.5 13 5 7c.7-1.3 1.4-2 3-2" }],
+  ["path", { d: "M21.5 13 19 7c-.7-1.3-1.5-2-3-2" }],
+];
+const GEM_ICON: IconNode = [
+  ["path", { d: "M10.5 3 8 9l4 13 4-13-2.5-6" }],
+  ["path", { d: "M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z" }],
+  ["path", { d: "M2 9h20" }],
+];
+const SCISSORS_ICON: IconNode = [
+  ["circle", { cx: "6", cy: "6", r: "3" }],
+  ["path", { d: "M8.12 8.12 12 12" }],
+  ["path", { d: "M20 4 8.12 15.88" }],
+  ["circle", { cx: "6", cy: "18", r: "3" }],
+  ["path", { d: "M14.8 14.8 20 20" }],
+];
+
+/**
+ * Valeur de tag → pictogramme, avec le groupe auquel il s'applique : la même
+ * valeur peut en théorie venir de deux clés, et une pastille ne change de
+ * dessin que dans sa propre catégorie. La clé est `rawType` — la sous-classe
+ * des tuiles, qui *est* la valeur du tag OSM, ou la valeur lue par Overpass.
+ */
+const TYPE_ICON_TABLE: [group: FilterGroupId, values: string[], icon: IconNode][] = [
+  ["foodshop", ["cheese"], CHEESE_ICON],
+  ["foodshop", ["seafood"], FISH_ICON],
+  ["foodshop", ["butcher"], BEEF_ICON],
+  ["foodshop", ["bakery"], CROISSANT_ICON],
+  ["foodshop", ["pastry"], CAKE_ICON],
+  ["foodshop", ["confectionery", "chocolate"], CANDY_ICON],
+  ["foodshop", ["wine", "alcohol", "beverages"], WINE_ICON],
+  ["foodshop", ["greengrocer"], CARROT_ICON],
+  ["foodshop", ["coffee", "tea"], COFFEE_ICON],
+  ["foodshop", ["dairy"], MILK_ICON],
+  ["foodshop", ["deli"], HAM_ICON],
+  ["foodshop", ["spices", "nuts"], NUT_ICON],
+  ["sport", ["swimming_pool", "water_park", "swimming"], WAVES_ICON],
+  ["shop", ["bicycle"], BIKE_ICON],
+  ["home", ["florist"], FLOWER_ICON],
+  ["health", ["optician"], GLASSES_ICON],
+  ["fashion", ["jewelry"], GEM_ICON],
+  ["beauty", ["hairdresser"], SCISSORS_ICON],
+];
+
+export const TYPE_ICONS: { group: FilterGroupId; value: string; icon: IconNode }[] = TYPE_ICON_TABLE.flatMap(
+  ([group, values, icon]) => values.map((value) => ({ group, value, icon }))
+);
+
+const TYPE_ICON_KEYS = new Set(TYPE_ICONS.map((entry) => `${entry.group}/${entry.value}`));
+
+/** Vrai si ce type a son propre pictogramme dans ce groupe. */
+export function hasTypeIcon(group: FilterGroupId | null | undefined, rawType: string | undefined): boolean {
+  return !!group && !!rawType && TYPE_ICON_KEYS.has(`${group}/${rawType}`);
+}
+
 export const FILTER_GROUPS: FilterGroup[] = [
   {
     id: "grocery",
     label: "filters.grocery",
     color: "#34C759",
     icon: GROCERY_ICON,
-    tileClasses: ["grocery", "butcher", "alcohol_shop", "beer"],
+    // `grocery` est la classe des supermarchés dans les tuiles ; la sous-classe,
+    // lue d'abord, renvoie traiteurs et primeurs aux commerces de bouche.
+    tileClasses: ["grocery"],
     ...GROCERY,
   },
   {
-    id: "bakery",
-    label: "filters.bakery",
+    id: "foodshop",
+    label: "filters.foodshop",
     color: "#E0A32E",
-    icon: CROISSANT_ICON,
-    tileClasses: ["bakery", "confectionery"],
-    ...BAKERY,
+    icon: BASKET_ICON,
+    tileClasses: ["bakery", "confectionery", "butcher", "alcohol_shop"],
+    ...FOODSHOP,
   },
   { id: "fastfood", label: "filters.fastfood", color: "#A2845E", icon: FASTFOOD_ICON, tileClasses: ["fast_food"], ...FASTFOOD },
   {
@@ -539,7 +711,25 @@ export const ALL_GROUP_IDS: FilterGroupId[] = FILTER_GROUPS.map((g) => g.id);
 const BY_ID = new Map(FILTER_GROUPS.map((g) => [g.id, g]));
 
 export function getFilterGroup(id: FilterGroupId | null | undefined): FilterGroup | undefined {
-  return id ? BY_ID.get(id) : undefined;
+  if (!id) return undefined;
+  // Un lieu relu d'un historique ancien peut porter une catégorie fondue
+  // depuis dans une autre (voir `normalizeGroupId`).
+  const current = normalizeGroupId(id);
+  return current ? BY_ID.get(current) : undefined;
+}
+
+/**
+ * Identifiants de catégorie retirés, et ce qu'ils sont devenus : un réglage ou
+ * un signet enregistré avant le changement doit retomber sur ses pieds.
+ * « bakery » a rejoint « foodshop » le 30 septembre 2026.
+ */
+const LEGACY_GROUP_IDS: Record<string, FilterGroupId> = { bakery: "foodshop" };
+
+/** Un identifiant relu du stockage, ramené à une catégorie actuelle (ou `null`). */
+export function normalizeGroupId(id: unknown): FilterGroupId | null {
+  if (typeof id !== "string") return null;
+  if (BY_ID.has(id as FilterGroupId)) return id as FilterGroupId;
+  return LEGACY_GROUP_IDS[id] ?? null;
 }
 
 /** Classe un POI d'après ses tags OSM ; `null` si aucun groupe ne correspond. */

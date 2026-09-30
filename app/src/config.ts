@@ -359,8 +359,11 @@ export const CONFIG = {
   // En auto-hébergement, ne laisser que sa propre instance.
   OVERPASS_URLS: [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
+    // `overpass.kumi.systems` retiré le 30 septembre 2026 : absent de la liste
+    // des instances publiques du wiki OSM, et muet (délai dépassé à chaque
+    // essai, depuis le PC comme depuis le téléphone). Il faisait attendre la
+    // source suivante pour rien.
     // `maps.mail.ru` (VK, en Russie) figurait ici en dernier recours : retiré
     // le 17 septembre 2026. Il recevait la zone consultée dès que les trois
     // autres tardaient, et un exploitant de ce genre n'a pas à la connaître.
@@ -381,6 +384,31 @@ export const CONFIG = {
   // seul objet à la fois : c'est une API d'édition, pas une source de données en
   // masse, et son règlement d'usage l'interdirait pour peupler la carte.
   OSM_API_URL: "https://api.openstreetmap.org/api/0.6",
+
+  // Ajouter à OSM un lieu trouvé sur le web (« + OSM » sur la fiche, voir
+  // `services/osmEdit.ts`). **L'OSM réel seulement** : le serveur de test a
+  // servi à la mise au point, puis a été retiré (demande explicite).
+  // Relevé le 30 septembre 2026 (wiki OSM « OAuth », code d'openstreetmap-website) :
+  // - OAuth 2 seulement — identifiant et mot de passe sont refusés depuis
+  //   le 1er juin 2024 ; les jetons n'expirent pas ;
+  // - l'application s'enregistre une fois (« OAuth 2 applications » des
+  //   réglages du compte), **non confidentielle** — une application installée
+  //   ne garde pas de secret —, permissions « Read user preferences » et
+  //   « Modify the map », et les deux adresses de retour ci-dessous ;
+  // - l'API et `/oauth2/token` répondent au CORS.
+  // `clientId` : l'identifiant **public** de l'application enregistrée (ce
+  // n'est pas un secret : il est dans chaque adresse d'autorisation). Vide tant
+  // qu'il n'a pas été fourni ; il se saisit alors dans la fenêtre « API ».
+  OSM_EDIT: {
+    WEB: "https://www.openstreetmap.org",
+    API: "https://api.openstreetmap.org/api/0.6",
+    CLIENT_ID: "",
+    // OSM affiche le code à recopier : navigateur et version Docker.
+    REDIRECT_OOB: "urn:ietf:wg:oauth:2.0:oob",
+    // APK : le navigateur intégré **n'ouvre pas** cette adresse, il la rend à
+    // l'application, qui y lit le code. OSM n'accepte en `http` que 127.0.0.1.
+    REDIRECT_APP: "http://127.0.0.1/myosm-osm-callback",
+  },
 
   // Horaires en temps réel des transports franciliens (bus, métro, RER,
   // tramway, Transilien), via la plateforme PRIM d'Île-de-France Mobilités.

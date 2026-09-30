@@ -50,10 +50,15 @@ const cache = new Map<string, PlaceDetails>();
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** `fetch` abandonné au bout de `CONFIG.OVERPASS_TIMEOUT_MS`, ou sur demande. */
-async function fetchJson(url: string, init: RequestInit, signal: AbortSignal): Promise<OsmResponse> {
+async function fetchJson(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal,
+  timeoutMs = CONFIG.OVERPASS_TIMEOUT_MS
+): Promise<OsmResponse> {
   const controller = new AbortController();
   const abort = () => controller.abort();
-  const timer = setTimeout(abort, CONFIG.OVERPASS_TIMEOUT_MS);
+  const timer = setTimeout(abort, timeoutMs);
   signal.addEventListener("abort", abort);
   try {
     const res = await fetch(url, { ...init, signal: controller.signal });
@@ -148,7 +153,7 @@ function elementToPlace(element: OsmElement): Place | null {
     id: `${element.type}/${element.id}`,
     name,
     group: groupFromTags(tags),
-    rawType: tags.shop ?? tags.amenity ?? tags.leisure ?? tags.tourism,
+    rawType: tags.shop ?? tags.amenity ?? tags.leisure ?? tags.tourism ?? tags.historic ?? tags.natural,
     lon,
     lat,
     address: address || undefined,
@@ -209,6 +214,37 @@ export async function searchBrandPlaces(
   }
 
   return { places, complete: data.elements.length < CONFIG.BRAND_SEARCH_LIMIT };
+}
+
+/**
+ * Les lieux nommés qui portent l'un de ces tags, dans une emprise
+ * `[sud, ouest, nord, est]`. Sert à combler ce que les tuiles de la carte ne
+ * transportent pas (`services/tileGaps.ts`) — une requête par déplacement,
+ * pour quelques dizaines de valeurs, jamais la couche entière.
+ */
+export async function fetchTaggedPlaces(
+  tags: Record<string, readonly string[]>,
+  bbox: [number, number, number, number],
+  signal?: AbortSignal,
+  timeoutMs = CONFIG.OVERPASS_TIMEOUT_MS
+): Promise<Place[]> {
+  const area = bbox.map((value) => value.toFixed(5)).join(",");
+  const parts = Object.entries(tags)
+    .filter(([, values]) => values.length > 0)
+    .map(([key, values]) => `nwr["${key}"~"^(${values.join("|")})$"]["name"](${area});`)
+    .join("");
+  const overpassQuery = `[out:json][timeout:20];(${parts});out center tags;`;
+  const attempts = CONFIG.OVERPASS_URLS.map(
+    (url) => (attemptSignal: AbortSignal) =>
+      fetchJson(url, { method: "POST", headers: { "Content-Type": "text/plain" }, body: overpassQuery }, attemptSignal, timeoutMs)
+  );
+  const data = await firstAnswer(attempts, signal);
+  const places: Place[] = [];
+  for (const element of data.elements) {
+    const place = elementToPlace(element);
+    if (place?.group) places.push(place);
+  }
+  return places;
 }
 
 function detailsFromTags(tags: Record<string, string>): PlaceDetails {

@@ -10,7 +10,7 @@ import { APPLE_LIGHT_STYLE } from "../../styles/appleLight";
 import { poiAllowOverlap, poiIconsOpacity, poiSortKey } from "./poiPick";
 import type { Basemap } from "../../hooks/useBasemap";
 import type { Theme } from "../../hooks/useTheme";
-import { FILTER_GROUPS, GROUP_COLOR_FALLBACK, type IconNode } from "../../filters";
+import { FILTER_GROUPS, getFilterGroup, GROUP_COLOR_FALLBACK, hasTypeIcon, TYPE_ICONS, type IconNode } from "../../filters";
 import { buildLineMarkerImage, buildMarkerImage } from "../../utils/markerImage";
 import { POI_SOURCE_LAYER, VECTOR_SOURCE_ID } from "../../services/tilePois";
 import type { TrafficEvent } from "../../services/traffic";
@@ -236,7 +236,7 @@ export function placesToGeoJSON(
         properties: {
           id: p.id,
           name: p.name,
-          icon: stopLines && !brandMode ? lineMarkerImageId(stopLines) : markerImageId(p.group, brandMode),
+          icon: stopLines && !brandMode ? lineMarkerImageId(stopLines) : markerImageId(p.group, brandMode, p.rawType),
           // Un arrêt annoncé par ses lignes se passe de son nom : les pastilles
           // disent déjà ce qu'il faut, et le libellé alourdirait la carte.
           label: stopLines ? "" : p.name,
@@ -355,8 +355,11 @@ export function routeToGeoJSON(route: RouteResult | null): GeoJSON.FeatureCollec
  * catégorie est conservé — un fast-food reste reconnaissable — mais la couleur
  * signale que ce point fait partie des résultats.
  */
-export function markerImageId(group: Place["group"], brandMode = false): string {
-  return `${brandMode ? "poi-brand" : "poi-marker"}-${group ?? "other"}`;
+export function markerImageId(group: Place["group"], brandMode = false, rawType?: string): string {
+  const base = `${brandMode ? "poi-brand" : "poi-marker"}-${group ?? "other"}`;
+  // Un type qui a son propre dessin (fromagerie, poissonnerie…) a sa propre
+  // image, à la couleur de sa catégorie (voir `TYPE_ICONS`).
+  return hasTypeIcon(group, rawType) ? `${base}-${rawType}` : base;
 }
 
 /**
@@ -390,10 +393,16 @@ export function installLineImages(map: MLMap, lines: Iterable<StopLines>) {
 // à chaque changement de fond de carte, avant la couche qui les référence.
 export function installMarkerImages(map: MLMap) {
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
-  // Une pastille par catégorie, plus une pastille grise sans pictogramme pour
-  // les lieux non classés (un résultat de recherche, par exemple).
+  // Une pastille par catégorie, une par type qui a son propre dessin, plus une
+  // pastille grise sans pictogramme pour les lieux non classés (un résultat de
+  // recherche, par exemple).
   const markers: [id: string, icon: IconNode, color: string][] = [
     ...FILTER_GROUPS.map((g): [string, IconNode, string] => [markerImageId(g.id), g.icon, g.color]),
+    ...TYPE_ICONS.map((entry): [string, IconNode, string] => [
+      markerImageId(entry.group, false, entry.value),
+      entry.icon,
+      getFilterGroup(entry.group)?.color ?? GROUP_COLOR_FALLBACK,
+    ]),
     [markerImageId(null), [], GROUP_COLOR_FALLBACK],
   ];
   for (const [id, icon, color] of markers) {

@@ -39,6 +39,7 @@
 @import "./styles/ui/first-run.css";
 @import "./styles/ui/bookmarks.css";
 @import "./styles/ui/save-place.css";
+@import "./styles/ui/osm-contrib.css";
 @import "./styles/ui/filter-menu.css";
 @import "./styles/ui/map-options.css";
 @import "./styles/ui/map-status.css";

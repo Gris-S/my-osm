@@ -205,7 +205,22 @@ export async function geocodeAddress(text: string): Promise<Place | null> {
  * sur la BAN : c'est qu'une saisie plus récente l'a remplacée.
  */
 export async function searchPlaces(query: string, near = CONFIG.DEFAULT_CENTER, signal?: AbortSignal): Promise<Place[]> {
-  if (!query.trim()) return [];
+  return (await searchPlacesDetailed(query, near, signal)).places;
+}
+
+/**
+ * `degraded` : Photon n'a pas répondu, et ce qui est rendu vient d'un repli
+ * qui **ne connaît pas les commerces** (la BAN : des adresses seulement ; ou
+ * les zones téléchargées). La barre de recherche le dit — un « rien trouvé »
+ * silencieux sur « Fromagerie Collet » passait pour une absence du lieu
+ * (constaté le 30 septembre 2026).
+ */
+export async function searchPlacesDetailed(
+  query: string,
+  near = CONFIG.DEFAULT_CENTER,
+  signal?: AbortSignal
+): Promise<{ places: Place[]; degraded: boolean }> {
+  if (!query.trim()) return { places: [], degraded: false };
   const url = new URL(CONFIG.PHOTON_URL);
   url.searchParams.set("q", query);
   url.searchParams.set("lang", "fr");
@@ -219,21 +234,22 @@ export async function searchPlaces(query: string, near = CONFIG.DEFAULT_CENTER, 
   // Hors ligne déclaré par le navigateur : inutile d'attendre que trois
   // géocodeurs distants expirent l'un après l'autre, on va droit aux zones
   // téléchargées.
-  if (!navigator.onLine) return searchOffline(query);
+  if (!navigator.onLine) return { places: await searchOffline(query), degraded: false };
 
   try {
     const res = await fetch(url.toString(), { signal });
     if (!res.ok) throw new Error(`Recherche échouée (${res.status})`);
     const data: PhotonResponse = await res.json();
-    return data.features.map(toPlace);
+    return { places: data.features.map(toPlace), degraded: false };
   } catch (error) {
     if (signal?.aborted) throw error;
     // Géocodeur injoignable : les adresses d'abord — c'est le repli d'origine,
     // et il vaut mieux qu'une zone partielle quand le réseau est là — puis les
     // zones téléchargées si la BAN ne répond pas non plus.
+    console.warn("[recherche] Photon injoignable, repli sur les adresses :", error);
     const addresses = await searchAddresses(query, near);
-    if (addresses.length) return addresses;
-    return searchOffline(query);
+    if (addresses.length) return { places: addresses, degraded: true };
+    return { places: await searchOffline(query), degraded: true };
   }
 }
 

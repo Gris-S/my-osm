@@ -1,0 +1,212 @@
+/* -------------------------------------------------------------------------
+   Contribuer à OpenStreetMap : bouton « + OSM » de la fiche, fenêtre d'ajout,
+   compte dans la fenêtre « API » (voir `services/osmEdit.ts`).
+   ------------------------------------------------------------------------- */
+
+/* Le bouton de la fiche : même pastille que ses voisins (`sheet-action-secondary`),
+   entourée d'un contour arc-en-ciel **fixe** (demande explicite, après mesure).
+
+   Il a tourné, et chaque façon de le faire tourner a été mesurée sur le Pixel 8
+   (processeur de l'application et de son moteur web, fiche ouverte, 20 s) :
+   rotation fluide 1,2 cœur ; 10 images/s 0,4 ; 4 images/s 0,3 ; GIF animé
+   0,3 ; contour fixe ~0. Toute image qui change fait recomposer tout l'écran,
+   carte comprise. Ne pas remettre d'animation sans refaire la mesure.
+
+   Le dégradé est posé sur le bord (`border-box`) et masqué au centre par le
+   fond (`padding-box`) : les 2,5 px du contour sont pris sur le rembourrage,
+   à la hauteur exacte de « Enregistrer ». */
+.sheet-action-osm {
+  padding: 0;
+  border: 2.5px solid transparent;
+  border-radius: var(--radius-pill);
+  background:
+    linear-gradient(var(--surface-solid), var(--surface-solid)) padding-box,
+    conic-gradient(#ff3b30, #ff9500, #ffcc00, #34c759, #00c7be, #007aff, #af52de, #ff2d55, #ff3b30) border-box;
+  box-shadow: 0 0 10px rgba(175, 82, 222, 0.3);
+}
+
+.sheet-action-osm > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7.5px 13.5px;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.sheet-action-osm:disabled {
+  opacity: 0.5;
+}
+
+/* La fenêtre d'ajout : le voile commun (`.modal-backdrop`) la tient à l'écart
+   de la caméra et de la barre de gestes, et elle défile sur elle-même. Un peu
+   plus large que les réglages : deux champs par ligne. */
+.osm-dialog {
+  width: min(420px, 100%);
+}
+
+.osm-server-badge {
+  margin: -6px 0 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.osm-server-badge {
+  background: color-mix(in srgb, var(--open) 16%, transparent);
+  color: var(--open);
+}
+
+.osm-login-hint {
+  margin: 0 0 10px;
+}
+
+/* La carte de l'épingle : assez haute pour viser une entrée, assez basse pour
+   que le formulaire reste à portée du pouce. */
+.osm-pin-map {
+  height: 190px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--hover);
+}
+
+.osm-dupes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--hover);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.osm-dupes.is-ok {
+  color: var(--open);
+}
+
+.osm-dupes.is-warn {
+  background: color-mix(in srgb, var(--caution) 14%, transparent);
+  color: var(--text-primary);
+}
+
+.osm-dupes ul {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.osm-dupes a {
+  color: var(--accent);
+}
+
+.osm-form .save-field {
+  margin-bottom: 12px;
+}
+
+.osm-form select.save-input {
+  appearance: auto;
+}
+
+.osm-row {
+  display: flex;
+  gap: 8px;
+}
+
+.osm-row > .save-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.osm-row > .save-field.is-narrow {
+  flex: 0 0 32%;
+}
+
+.osm-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.osm-confirm input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+
+.osm-preview {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.osm-preview pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--hover);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.osm-send {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.osm-send > span {
+  justify-content: center;
+  padding: 10.5px;
+  font-size: 15px;
+}
+
+/* Le compte, dans la fenêtre « API » : sous les clés, séparé comme elles. */
+.osm-account-group {
+  margin-top: 14px;
+}
+
+.osm-client {
+  margin-bottom: 10px;
+}
+
+.osm-code {
+  margin-top: 8px;
+}
+
+.osm-connect .apikey-warning {
+  margin: 8px 0 0;
+}
+
+.apikey-save:disabled {
+  opacity: 0.5;
+}
+
+/* Le lien d'enregistrement suit une ligne d'aide, pas un titre : la marge
+   négative des autres groupes le collait au texte. */
+.osm-client .apikey-signup {
+  margin: 8px 0 6px;
+}
+
+/* La ligne « Contribuer à OpenStreetMap » suit la liste des modes sans en
+   faire partie (voir `AppMenu`) : même trait de séparation que ses voisines. */
+.modes-list + .modes-row {
+  border-top: 1px solid var(--hairline);
+}
+
+/* L'avertissement sous le nom repris de la recherche : il ne quitte pas le
+   champ, et disparaît dès qu'on y touche. */
+.osm-name-check {
+  margin: 6px 0 0;
+}

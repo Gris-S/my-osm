@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ALL_GROUP_IDS, type FilterGroupId } from "../filters";
+import { ALL_GROUP_IDS, normalizeGroupId, type FilterGroupId } from "../filters";
 
 // ---------------------------------------------------------------------------
 // Catégories de POI affichées sur la carte (menu des catégories).
@@ -17,8 +17,10 @@ function readStored(): FilterGroupId[] | null {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
     // On ne garde que les identifiants encore connus : une catégorie retirée du
-    // code ne doit pas ressusciter depuis un stockage ancien.
-    return ALL_GROUP_IDS.filter((id) => parsed.includes(id));
+    // code ne doit pas ressusciter depuis un stockage ancien. Une catégorie
+    // fondue dans une autre (« bakery » → « foodshop ») passe à celle-ci.
+    const kept = new Set(parsed.map(normalizeGroupId));
+    return ALL_GROUP_IDS.filter((id) => kept.has(id));
   } catch {
     return null;
   }

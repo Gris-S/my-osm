@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { safeColor } from "../utils/safe";
-import type { FilterGroupId } from "../filters";
+import { normalizeGroupId, type FilterGroupId } from "../filters";
 import type { Place } from "../types";
 import { t } from "../i18n";
 
@@ -82,9 +82,13 @@ function readFolders(): BookmarkFolder[] {
         name: folder.name,
         color: safeColor(folder.color, FOLDER_COLORS[0]),
         places: Array.isArray(folder.places)
-          ? folder.places.filter(
-              (place) => place && typeof place.id === "string" && Number.isFinite(place.lon) && Number.isFinite(place.lat)
-            )
+          ? folder.places
+              .filter(
+                (place) => place && typeof place.id === "string" && Number.isFinite(place.lon) && Number.isFinite(place.lat)
+              )
+              // Catégorie retirée depuis l'enregistrement (« bakery ») : ramenée
+              // à celle d'aujourd'hui, sans quoi la pastille passerait au gris.
+              .map((place) => ({ ...place, group: normalizeGroupId(place.group) }))
           : [],
       }));
     return folders.length ? folders : defaultFolders();

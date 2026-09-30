@@ -10,7 +10,7 @@
 
 import { CONFIG } from "../../config";
 import type { Place } from "../../types";
-import type { FilterGroupId } from "../../filters";
+import { normalizeGroupId } from "../../filters";
 import type { PlaceDetails } from "../overpass";
 import { cacheKeyFor, type TileRef } from "./keys";
 import { assetPath, pathOf } from "./blobStore";
@@ -227,7 +227,7 @@ export async function searchOffline(query: string, limit = 8): Promise<Place[]> 
       return {
         id: e.id.slice(e.id.indexOf(":") + 1),
         name: exact ? `${exact.n} ${e.label}` : e.label,
-        group: e.group as FilterGroupId | null,
+        group: normalizeGroupId(e.group),
         rawType: e.rawType,
         lon: exact?.lon ?? e.lon,
         lat: exact?.lat ?? e.lat,

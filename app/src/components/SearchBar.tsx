@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X, MapPin, Store, Clock, Home, Briefcase, Globe, Crosshair, Navigation, TrainFront } from "lucide-react";
+import { Search, X, MapPin, Store, Clock, Home, Briefcase, Globe, Crosshair, Navigation, TrainFront, TriangleAlert } from "lucide-react";
 import type { LonLat, Place } from "../types";
 import { CONFIG } from "../config";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
@@ -80,7 +80,7 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
     onOpenChange?.(open);
     return () => onOpenChange?.(false);
   }, [open, onOpenChange]);
-  const { results, loading } = usePlaceSearch(query, near);
+  const { results, loading, degraded } = usePlaceSearch(query, near);
   const { history, remember } = useSearchHistory();
   /**
    * Le rôle qu'on est en train de définir. Comme dans les champs d'itinéraire,
@@ -333,6 +333,14 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
           shortcuts.length > 0 ||
           assigning !== null) && (
         <div className="search-results">
+          {/* Photon muet : ce qui suit ne vient que des adresses. Le dire, sans
+              quoi un commerce introuvable passerait pour un commerce absent. */}
+          {degraded && (
+            <div className="search-result-loading search-degraded" role="status">
+              <TriangleAlert size={14} />
+              {t("search.degraded")}
+            </div>
+          )}
           {assigning && (
             <div className="search-result-loading search-assigning">
               {t(assigning === "home" ? "itinerary.home" : "itinerary.work")} · {t("itinerary.roleAssigning")}

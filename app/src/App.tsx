@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapView } from "./components/MapView";
 import { SearchBar } from "./components/SearchBar";
 import { PlaceSheet, type DetailsStatus } from "./components/PlaceSheet";
@@ -46,6 +46,12 @@ import { useIncomingLinks } from "./hooks/useIncomingLinks";
 import { useLatest } from "./hooks/useLatest";
 import { useWideLayout, WIDE_COLUMN_PX } from "./hooks/useWideLayout";
 import { openWebSearch } from "./services/webSearch";
+import { groupFromTags } from "./filters";
+import { OSM_CATEGORIES } from "./services/osmEdit";
+
+// « + OSM » ne sert qu'à qui contribue, option éteinte par défaut : la fenêtre
+// est chargée à sa première ouverture, et le démarrage n'en porte rien.
+const OsmContribDialog = lazy(() => import("./components/OsmContribDialog").then((m) => ({ default: m.OsmContribDialog })));
 
 /** Ce que la carte reçoit à la place des calques pendant la navigation voiture. */
 const NOTHING_ON_MAP: never[] = [];
@@ -80,6 +86,7 @@ export default function App() {
   const homeWork = useHomeWork();
   // Lieu en cours d'enregistrement : la fenêtre s'ouvre par-dessus la fiche.
   const [placeToSave, setPlaceToSave] = useState<Place | null>(null);
+  const [placeToContribute, setPlaceToContribute] = useState<Place | null>(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   // Ouverture du menu des calques : son panneau se déploie sur le bouton des
   // catégories, qui s'efface le temps qu'il est ouvert.
@@ -889,6 +896,7 @@ export default function App() {
           onSave={() => setPlaceToSave(sheetPlace)}
           onUnsave={() => bookmarks.removePlace(sheetPlace.id)}
           onHeightChange={setSheetHeight}
+          onContribute={() => setPlaceToContribute(sheetPlace)}
         />
       )}
       {streetPhoto && (
@@ -903,6 +911,25 @@ export default function App() {
 
       {placeToSave && (
         <SavePlaceDialog place={placeToSave} bookmarks={bookmarks} onClose={() => setPlaceToSave(null)} />
+      )}
+
+      {placeToContribute && (
+        <Suspense fallback={null}>
+          <OsmContribDialog
+            place={placeToContribute}
+            theme={theme}
+            onClose={() => setPlaceToContribute(null)}
+            onPublished={(published) => {
+              setPlaceToContribute(null);
+              // La fiche reprend ce qui vient d'être écrit, catégorie comprise ;
+              // l'identifiant reste `web/…` : le point vient d'être créé, et les
+              // copies d'OSM (Overpass) ne le connaissent pas encore.
+              const category = OSM_CATEGORIES.find((c) => c.tag[1] === published.rawType);
+              const group = category ? groupFromTags({ [category.tag[0]]: category.tag[1] }) : null;
+              setSelectedPlace((current) => (current?.id === published.id ? { ...published, group } : current));
+            }}
+          />
+        </Suspense>
       )}
 
       {/* La fenêtre d'accueil vit **hors** des conditions d'affichage de la

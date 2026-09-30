@@ -34,6 +34,12 @@ export interface Place {
   wikipedia?: string;
   /** Une ville ou un quartier touché sur la carte : son contour et ses chiffres. */
   area?: AreaInfo;
+  /**
+   * Lieu trouvé sur le web : ce qui avait été tapé dans la recherche. Le nom
+   * du lieu vient souvent de la page (une adresse, faute de mieux) ; la saisie,
+   * elle, est le nom du commerce qu'on cherchait — « + OSM » la propose.
+   */
+  webQuery?: string;
 }
 
 /** Ce qu'on sait d'une ville ou d'un quartier (`services/areaInfo.ts`). */

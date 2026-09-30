@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CONFIG } from "../config";
-import { searchPlaces } from "../services/geocode";
+import { searchPlacesDetailed } from "../services/geocode";
 import type { LonLat, Place } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -11,7 +11,7 @@ import type { LonLat, Place } from "../types";
 
 export function usePlaceSearch(query: string, near?: LonLat) {
   // La dernière réponse, **avec la saisie qui l'a demandée**.
-  const [answer, setAnswer] = useState<{ query: string; results: Place[] } | null>(null);
+  const [answer, setAnswer] = useState<{ query: string; results: Place[]; degraded: boolean } | null>(null);
   const lat = near?.lat ?? CONFIG.DEFAULT_CENTER.lat;
   const lon = near?.lon ?? CONFIG.DEFAULT_CENTER.lon;
   const typed = query.trim() !== "";
@@ -24,12 +24,13 @@ export function usePlaceSearch(query: string, near?: LonLat) {
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
-        const found = await searchPlaces(query, { lon, lat }, controller.signal);
+        const { places: found, degraded } = await searchPlacesDetailed(query, { lon, lat }, controller.signal);
         if (controller.signal.aborted) return;
         // Photon renvoie parfois plusieurs entrées pour le même objet OSM.
         const seen = new Set<string>();
         setAnswer({
           query,
+          degraded,
           results: found.filter((p) => {
             if (seen.has(p.id)) return false;
             seen.add(p.id);
@@ -37,7 +38,7 @@ export function usePlaceSearch(query: string, near?: LonLat) {
           }),
         });
       } catch {
-        if (!controller.signal.aborted) setAnswer({ query, results: [] });
+        if (!controller.signal.aborted) setAnswer({ query, results: [], degraded: true });
       }
     }, 300);
     return () => {
@@ -52,5 +53,7 @@ export function usePlaceSearch(query: string, near?: LonLat) {
   return {
     results: typed && answer ? answer.results : [],
     loading: typed && answer?.query !== query,
+    /** Le moteur des commerces n'a pas répondu : seules des adresses sont proposées. */
+    degraded: typed && answer?.query === query && answer.degraded,
   };
 }

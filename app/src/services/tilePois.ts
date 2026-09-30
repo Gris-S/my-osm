@@ -140,6 +140,15 @@ function remember(id: string, entry: { place: Place; rank: number }) {
   }
 }
 
+/**
+ * Ajoute au souvenir des lieux venus d'ailleurs que des tuiles — ceux que le
+ * schéma des tuiles ne transporte pas (`services/tileGaps.ts`). Ils sont alors
+ * filtrés, triés et plafonnés exactement comme les autres.
+ */
+export function rememberPlaces(places: readonly Place[]): void {
+  for (const place of places) remember(place.id, { place, rank: place.rank ?? 999 });
+}
+
 interface CollectOptions {
   /** Catégories cochées dans le menu de filtres. */
   groups: readonly FilterGroupId[];

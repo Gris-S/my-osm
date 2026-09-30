@@ -19,7 +19,12 @@ import { useOfflineState } from "../hooks/useOfflineState";
 // ---------------------------------------------------------------------------
 
 /** `empty` : aucune catégorie cochée — la carte est vide, et le dit. */
-export type PoiStatus = "idle" | "loading" | "empty";
+/**
+ * `partial` : une partie des commerces n'a pas pu être chargée — ceux que les
+ * tuiles ne transportent pas et qu'Overpass n'a pas rendus (`tileGaps.ts`).
+ * Pas de manque silencieux : la carte le dit.
+ */
+export type PoiStatus = "idle" | "loading" | "empty" | "partial";
 
 interface MapStatusProps {
   status: PoiStatus;
@@ -60,6 +65,18 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
       clearTimeout(timer);
       // Le prochain « aucune catégorie » se redira.
       setEmptyExpired(false);
+    };
+  }, [status]);
+
+  // Le manque de certains commerces se dit, puis se tait : la carte reste
+  // utilisable, et il sera redit au prochain échec d'une autre zone.
+  const [partialExpired, setPartialExpired] = useState(false);
+  useEffect(() => {
+    if (status !== "partial") return;
+    const timer = setTimeout(() => setPartialExpired(true), 8000);
+    return () => {
+      clearTimeout(timer);
+      setPartialExpired(false);
     };
   }, [status]);
 
@@ -105,6 +122,15 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
       <div className="map-status" style={place} role="status">
         <SlidersHorizontal size={15} />
         {t("mapStatus.empty")}
+      </div>
+    );
+  }
+
+  if (status === "partial" && !partialExpired) {
+    return (
+      <div className="map-status is-warning" style={place} role="status">
+        <TriangleAlert size={15} />
+        {t("mapStatus.partial")}
       </div>
     );
   }

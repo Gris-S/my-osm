@@ -134,6 +134,83 @@ function removeHandle(handle: unknown) {
 /** La session en cours : les écouteurs du greffon sont communs, une seule à la fois. */
 let endSession: (() => void) | null = null;
 
+/** Vrai dans l'APK, où le navigateur intégré existe. */
+export function hasInAppBrowser(): boolean {
+  return plugin() !== null;
+}
+
+/**
+ * Ouvre `url` dans le navigateur intégré et attend qu'une page mène à une
+ * adresse qui commence par `redirect` : elle **n'est pas ouverte**, elle est
+ * rendue. Sert la connexion à OpenStreetMap (`services/osmLogin.ts`) : OSM
+ * renvoie vers l'adresse de retour avec le code, et l'application le lit.
+ *
+ * Deux écoutes, par prudence : `link` (le greffon retient les adresses qui
+ * répondent à `linkPatterns`) et `navigate` (début de chargement d'une page).
+ * Une redirection qui suit l'envoi d'un formulaire ne passe pas toujours par
+ * la première ; la seconde la voit dans tous les cas, et le chargement de
+ * `http://127.0.0.1` échoue de toute façon, faute d'autorisation du clair.
+ *
+ * Rend l'adresse de retour, ou `null` si la fenêtre est fermée avant.
+ */
+export function openAuthBrowser(url: string, redirect: string, hint: string): Promise<string | null> {
+  const browser = plugin();
+  if (!browser) return Promise.resolve(null);
+  endSession?.();
+  return new Promise((resolve) => {
+    const handles: unknown[] = [];
+    let settled = false;
+    const finish = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      handles.splice(0).forEach(removeHandle);
+      if (endSession === end) endSession = null;
+      if (value !== null) {
+        try {
+          void Promise.resolve(browser.close()).catch(() => {});
+        } catch {
+          /* déjà fermé */
+        }
+      }
+      resolve(value);
+    };
+    const end = () => finish(null);
+    endSession = end;
+    const onUrl = (data: unknown) => {
+      const address = (data as { url?: unknown } | null)?.url;
+      if (typeof address === "string" && address.startsWith(redirect)) finish(address);
+    };
+    const listen = (event: string, listener: (data: unknown) => void) => {
+      try {
+        const handle = browser.addListener(event, listener);
+        void Promise.resolve(handle).then((resolved) => {
+          if (settled) removeHandle(resolved);
+          else handles.push(resolved);
+        }, () => {});
+      } catch {
+        /* greffon incomplet */
+      }
+    };
+    listen("link", onUrl);
+    listen("navigate", onUrl);
+    listen("closed", () => finish(null));
+    try {
+      void Promise.resolve(
+        browser.open({
+          url,
+          dark: document.documentElement.dataset.theme === "dark",
+          script: "",
+          linkPatterns: [`^${redirect.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}`],
+          blockedHosts: WEB_BLOCKED_HOSTS,
+          labels: { close: t("webSearch.close"), back: t("webSearch.back"), hint },
+        })
+      ).catch(() => finish(null));
+    } catch {
+      finish(null);
+    }
+  });
+}
+
 /**
  * Ouvre la recherche `query` sur le web. `onPlace` reçoit le lieu retrouvé,
  * quand l'utilisateur touche « Voir sur la carte ».
@@ -193,8 +270,9 @@ export function openWebSearch(query: string, onPlace: (place: Place) => void): v
       }
       located = { ...located, lat: first.lat, lon: first.lon, name: located.name ?? first.name };
     }
-    const place = placeFromCandidate(located, query);
-    if (!place || mine !== turn) return;
+    const candidatePlace = placeFromCandidate(located, query);
+    if (!candidatePlace || mine !== turn) return;
+    const place = { ...candidatePlace, webQuery: query.trim() || undefined };
     found = place;
     show("found", place.name, place.address);
   }
