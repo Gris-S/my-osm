@@ -161,6 +161,10 @@ Parce qu'une carte ne devrait pas être le prix à payer pour savoir où l'on es
 Tout ce qui est affiché appartient à ses auteurs et suit sa propre licence ;
 l'application les crédite toutes dans *Menu › Sources et licences*.
 
+OSM et OpenStreetMap sont des marques de la Fondation OpenStreetMap, utilisées
+avec sa permission. MY OSM n'est ni approuvée par la Fondation OpenStreetMap, ni
+affiliée à elle.
+
 | | |
 | --- | --- |
 | Données de la carte, lieux, arrêts | contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright), ODbL |
@@ -171,7 +175,7 @@ l'application les crédite toutes dans *Menu › Sources et licences*.
 | Itinéraires | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) et [BRouter](https://brouter.de/brouter/) pour le vélo, TomTom (clé facultative) |
 | Transports | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (clé facultative) |
 | Météo et air | [Open-Meteo](https://open-meteo.com/), Météo-France (clé facultative) |
-| Imagerie et relief | Esri, [IGN](https://geoservices.ign.fr/), Mapzen/USGS/SRTM |
+| Imagerie et relief | Esri (vue en ligne seulement), [IGN](https://geoservices.ign.fr/) (aussi hors ligne, en France), Mapzen/USGS/SRTM |
 | Photos de rue | [Mapillary](https://www.mapillary.com/) (clé facultative) |
 
 Aucune clé n'est nécessaire. Sans elles l'application fonctionne — les transports

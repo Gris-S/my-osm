@@ -27,12 +27,13 @@ import {
   type SearchEntry,
   type StoredPlaceDetails,
 } from "./store";
-import { footprintChunks, footprintTiles, type Bbox, type Tile } from "./tiles";
+import { footprintChunks, footprintTiles, intersectsIgn, type Bbox, type Tile } from "./tiles";
 import { downloadAddresses } from "./addresses";
 import { anySignal } from "../../utils/signals";
 import { currentLang, currentLocale, t } from "../../i18n";
 import { downloadWiki } from "./wiki";
 import type { WikiRef } from "../wikipedia";
+import { osmFetch } from "../native";
 
 export interface Progress {
   phase: "style" | "tiles" | "places" | "wiki" | "addresses" | "done";
@@ -157,7 +158,6 @@ function tileUrl(ref: TileRef, vectorTemplate: string): string {
   const fill = (t: string) =>
     t.replace("{z}", String(ref.z)).replace("{x}", String(ref.x)).replace("{y}", String(ref.y));
   if (ref.kind === "vector") return fill(vectorTemplate);
-  if (ref.kind === "esri") return fill(CONFIG.SATELLITE_TILE_URL);
   if (ref.kind === "dem") return fill(CONFIG.TERRAIN_TILE_URL);
   if (ref.kind === "contour") return fill(CONFIG.CONTOUR_TILE_URL);
   return fill(CONFIG.SATELLITE_IGN_TILE_URL);
@@ -318,12 +318,18 @@ export function downloadRegion(
       const refs: TileRef[] = footprintTiles(region, region.vectorMaxZoom).map(
         (t: Tile) => ({ ...t, kind: "vector" as const }),
       );
-      if (region.satelliteMaxZoom !== null) {
+      // **L'IGN seul, et seulement là où il a des photos.** Esri n'est plus
+      // téléchargé (relecture F-Droid du 3 octobre 2026) : la fiche de World
+      // Imagery le dit sans détour — « This layer is not intended to be used
+      // to export tiles for offline » — et le service lui-même annonce
+      // `exportTilesAllowed: false`. La couche qu'Esri prévoit pour cela exige
+      // un compte ArcGIS et se réserve aux applications ArcGIS. La BD ORTHO,
+      // elle, est sous Licence Ouverte. Hors de France, l'IGN ne sert rien
+      // au-delà du zoom 12 (mesuré : 404 à Londres, New York, Tokyo, Nairobi) :
+      // il n'y a alors pas d'imagerie hors ligne, et le panneau le dit.
+      if (region.satelliteMaxZoom !== null && intersectsIgn(region.bbox)) {
         for (const t of footprintTiles(region, region.satelliteMaxZoom)) {
-          // Les deux fonds sont pris : l'IGN là où il existe, Esri partout —
-          // c'est la superposition de la vue satellite, et hors ligne on ne
-          // peut pas décider après coup.
-          refs.push({ ...t, kind: "esri" }, { ...t, kind: "ign" });
+          refs.push({ ...t, kind: "ign" });
         }
       }
       if (region.reliefMaxZoom !== null) {
@@ -402,7 +408,7 @@ export function downloadRegion(
         for (const [i, chunk] of chunks.entries()) {
           if (signal.aborted) return void (await save("paused"));
           try {
-            const res = await fetch(CONFIG.OVERPASS_URLS[0], {
+            const res = await osmFetch(CONFIG.OVERPASS_URLS[0], {
               method: "POST",
               body: overpassQuery(chunk),
               signal,

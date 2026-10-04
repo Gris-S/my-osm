@@ -1,4 +1,4 @@
-import { CONFIG } from "../config";
+import { appUserAgent } from "../services/native";
 import type { Capability } from "./provider";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ export const MEMORY_CACHE_MAX_ENTRIES = 400;
  * comme contact — jamais une adresse personnelle.
  */
 export function transportUserAgent(): string {
-  return `MY-OSM/${__APP_VERSION__} (+${CONFIG.PROJECT_URL})`;
+  return appUserAgent();
 }
 
 /**

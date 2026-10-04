@@ -65,3 +65,7 @@ This is alpha software: it works, it is used daily, and it still changes.
 
 Free software under the GNU General Public License v3.0 or later.
 Map data © OpenStreetMap contributors, ODbL.
+
+OSM and OpenStreetMap are trademarks of the OpenStreetMap Foundation, and are
+used with their permission. This app is not endorsed by or affiliated with the
+OpenStreetMap Foundation.

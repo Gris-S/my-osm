@@ -2,6 +2,7 @@ import { nominatimTurn } from "../nominatim";
 import { CONFIG } from "../../config";
 import { areaBbox, areaContains, type Area, type AreaGeometry } from "./area";
 import type { Bbox } from "./tiles";
+import { osmFetch } from "../native";
 
 // ---------------------------------------------------------------------------
 // Le contour de ce qu'on touche sur la carte : pays, région ou département.
@@ -120,7 +121,7 @@ export async function lookupBoundary(
     url.searchParams.set(key, value);
   }
 
-  const res = await fetch(url, { signal });
+  const res = await osmFetch(url, { signal });
   if (!res.ok) throw new Error(`Nominatim ${res.status}`);
   const data = (await res.json()) as NominatimReverse;
   const type = data.geojson?.type;

@@ -1,0 +1,3 @@
+Car navigation: the music buttons work with Qobuz; the map no longer stays empty when the app wrongly thinks it is offline; the next 15 km are loaded ahead; the map no longer turns before the car; passing the destination no longer restarts navigation.
+
+OSM services now receive a MY-OSM User-Agent. Offline satellite imagery comes from IGN only (France); Esri is no longer downloaded. Trademark notice added.

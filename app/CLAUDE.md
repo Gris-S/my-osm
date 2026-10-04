@@ -1471,6 +1471,136 @@ vers l'ouest cap à l'ouest, vers l'est cap à l'est.
   pour rien et un journal rempli en moins d'une heure. Un recalcul réussi remet
   le compte à zéro.
 
+##### Le trajet du 3 octobre 2026 : carte vide, carte qui pivote, boutons sans effet
+
+Trois défauts signalés après un même aller-retour en voiture, captures et
+journal à l'appui. Chacun a son scénario dans `outils/parcours.mjs`.
+
+- **La carte pivotait avant le virage** (`virage-arret`). Sous 7 km/h
+  (`HEADING_MIN_SPEED`), le cap du récepteur ne vaut rien et la caméra prenait
+  `progress.pathBearing` — le cap du tracé **cent mètres devant**. Vingt mètres
+  avant un virage, là où l'on freine et où l'on s'arrête, ces cent mètres sont
+  déjà dans la rue d'après : la carte tournait d'un quart de tour avant la
+  voiture, et « tournez à gauche » se lisait comme un tout-droit. La règle est
+  désormais `nextCameraBearing` (`car/heading.ts`, pure et testée) : le cap du
+  récepteur en roulant ; **tenu** à l'arrêt tant que la flèche n'a pas avancé de
+  15 m (`HELD_BEARING_METERS`) ; au-delà — bouchon dans une courbe, départ sans
+  avoir roulé — le cap du tracé **sous la flèche** (`bearingAround`, ±12 m),
+  celui que la flèche montre. Le cap et sa provenance vivent dans `pose`
+  (`useCarNavigation`), remis à zéro à chaque nouveau guidage. Mesuré sur le
+  téléphone : arrêté 25 m avant un virage de 276° vers 76°, la carte reste à
+  276° ; le virage pris, elle est à 97° comme la route. **Le guidage à pied a la
+  même règle d'origine** (`useNavigation.ts`, lissage de trente mètres) et n'a
+  pas été touché : personne ne l'a signalé, et la marche n'a pas d'arrêt au stop.
+- **La carte était vide sous le trait bleu, vingt minutes durant** (`secours-reseau`).
+  Le journal montre un `net.offline` à 13 h 31, en quittant le wifi de la
+  maison, et **aucun `net.online` ensuite** — alors que le téléphone était en 4G
+  (la musique arrivait par le réseau). Dans cet état, tout `fetch` de la WebView
+  échoue : tuiles vides, et chaque recalcul refusé avant même d'être tenté
+  (`if (!navigator.onLine) throw`). Un redémarrage de l'application en sort.
+  **La cause n'est pas établie** : couper le wifi au câble, application visible
+  ou cachée quatre secondes comme ce jour-là, donne une bascule propre vers la
+  4G. L'état se **simule** en revanche (`webviewHorsLigne` dans le parcours,
+  `Network.emulateNetworkConditions`) : drapeau faux, `fetch` en échec,
+  téléphone connecté. D'où `rescuedFetch` (`services/native.ts`) : `fetch`
+  d'abord, puis `CapacitorHttp` côté natif s'il échoue, pour le fond de carte
+  et le calcul d'itinéraire seulement (`RESCUE_HOSTS`). Trois pièges :
+  - **Le greffon rend trois formes de corps**, quoi qu'on lui demande : du
+    base64 pour une tuile, un **objet déjà lu** pour du JSON, du texte pour une
+    erreur. N'attendre que du base64 faisait passer les tuiles et rejeter chaque
+    recalcul comme illisible (`rescuedBody`).
+  - **Vraiment hors ligne, le natif met sept secondes à renoncer** : après un
+    échec, on ne le retente pas avant quinze (`RESCUE_RETRY_MS`), sans quoi
+    chaque tuile attendrait pour rien.
+  - **Le drapeau ne vaut plus preuve dans l'APK** : `getCarRoutes` et
+    `getRoute` essaient quand un secours existe (`hasNativeRescue`), et c'est
+    l'échec qui dit « hors ligne ». La recherche, elle, se fie toujours au
+    drapeau (`geocode.ts`) : dans cet état elle cherche dans les zones
+    téléchargées. Chaque recours est noté au journal (`net.native`, une fois par
+    minute au plus) — la preuve qui manquait.
+- **La carte des quinze kilomètres devant est chargée d'avance**
+  (`car/routeTiles.ts`, scénario `prechargement`) — demande explicite, pour les
+  tunnels et les zones blanches, que le secours natif ne couvre pas. Au départ,
+  à chaque nouveau tracé, puis tous les kilomètres, les tuiles de zoom 12, 13 et
+  14 du couloir sont demandées par un `fetch` ordinaire : elles tombent dans le
+  cache HTTP de la WebView (ou celui du Service Worker, version Docker), où la
+  carte les retrouve sans réseau — le serveur les déclare valables dix ans.
+  Mesuré : 19 tuiles pour 6,4 km de banlieue, 27 pour 7 km de Lozère. Le
+  scénario prouve **en mode avion**, sur un trajet tiré au hasard à chaque
+  passage (le cache garderait sinon les tuiles d'un passage précédent), que
+  l'arrivée se dessine et qu'un endroit hors trajet reste vide. Rien n'est
+  chargé si l'économiseur de données est actif, ni ce qu'une zone téléchargée
+  sert déjà.
+- **Les boutons de l'encart musique ne faisaient rien** (`musique-boutons`) :
+  voir la section de la musique. L'écran n'y était pour rien — de vrais appuis
+  atteignaient les boutons et l'ordre partait.
+- **L'arrivée dépassée relançait une rafale de recalculs** (`arrivee-depassee`).
+  Lu dans le journal du retour : `car.arrived` vingt fois de suite, puis, la
+  destination dépassée de cinquante mètres le temps de se garer, un recalcul
+  suivi d'une dizaine d'autres « à contresens » en trois secondes — chacun un
+  appel à TomTom. Trois causes, toutes corrigées :
+  - **L'arrivée était réévaluée à chaque relevé.** Elle est désormais
+    définitive : `status === "arrived"` arrête l'effet d'avancement jusqu'à
+    l'arrêt ou au prochain départ. Plus rien à recalculer une fois arrivé.
+  - **Le tracé repassait dans la même rue, et la position sautait dessus.** Le
+    nouveau trajet faisait le tour du pâté de maisons ; le relevé était à
+    1,75 m du second passage, un peu plus du départ, et `nearest`
+    (`progress.ts`) prenait le plus proche — donc 679 m plus loin, en sens
+    inverse. Dans la fenêtre, **le passage où l'on était l'emporte** désormais
+    sur un autre aussi proche (`SAME_PLACE_METERS`, dix mètres) : les tronçons
+    presque aussi près que le meilleur sont regroupés en suites contiguës, et
+    l'on garde celle qui est voisine du rang précédent. Vaut aussi pour la
+    marche, et pour tout aller-retour dans la même rue — un tracé qui finit où
+    il commence n'annonce plus l'arrivée au départ.
+  - **Un relevé comptait plusieurs fois.** L'effet se rejoue quand le tracé ou
+    l'état changent, avec le même relevé : les séries « deux relevés à
+    contresens » avançaient toutes seules (`countedFixRef`).
+- **Le bouton des calques recouvrait « Démarrer »** (`clavier-itineraire`), en
+  tapant une étape dans le panneau d'itinéraire : clavier ouvert, il reste
+  536 px sur 914, et les deux boutons du bord droit remontaient sur le panneau.
+  Ils s'effacent pendant la frappe (`typingInPanel` dans `App`), comme ils le
+  faisaient déjà pour la barre de recherche. Le clavier se reconnaît à la
+  hauteur visible tombée de plus de 150 px sous la plus grande vue
+  (`keyboardOpen`) — et non en comparant à `innerHeight`, qui rétrécit ou non
+  selon la version d'Android.
+
+##### La relecture F-Droid du 3 octobre 2026 (merge request !49227)
+
+Revue statique de l'alpha.85 par un relecteur de F-Droid : build reproduit,
+rien de propriétaire, et trois demandes. Chacune a son scénario.
+
+- **Les services d'OSM sont interrogés en se nommant** (`identite-osm`).
+  Nominatim, OSRM et Valhalla de la FOSSGIS, BRouter et Overpass partaient en
+  `fetch`, donc avec le `User-Agent` de série de la WebView — que la politique
+  de Nominatim refuse (« stock User-Agents will not do »). Une WebView ne peut
+  pas fixer cet en-tête ; dans l'APK, ces hôtes (`OSM_HOSTS`,
+  `services/native.ts`) passent donc **toujours** par `CapacitorHttp`, avec
+  `MY-OSM/<version> (+adresse du projet)` (`appUserAgent`). Un seul point
+  d'entrée, `osmFetch`, qui rend une vraie `Response` : **tout nouvel appel à
+  l'un de ces services passe par lui, jamais par `fetch`.** Vérifié sur le
+  téléphone par un service d'écho : le natif envoie bien `MY-OSM/…`, la WebView
+  `Mozilla/5.0 (Linux; Android…; wv)`. Dans un navigateur (Docker), `osmFetch`
+  est un `fetch` : le navigateur se nomme lui-même et envoie le `Referer` du
+  site, ce que ces politiques acceptent d'une page web. Le greffon ne sait pas
+  s'interrompre : une annulation rend la main tout de suite (`Promise.race`),
+  la requête allant à son terme dans le vide — les délais d'Overpass en
+  dépendent.
+- **Esri n'est plus téléchargé pour le hors-ligne** (`satellite-hors-ligne`).
+  Vérifié à la source : la fiche de World Imagery dit « This layer is not
+  intended to be used to export tiles for offline », le service annonce
+  `exportTilesAllowed: false`, et la couche prévue pour l'export exige un
+  compte ArcGIS. L'imagerie hors ligne vient de **l'IGN seul** (BD ORTHO,
+  Licence Ouverte), donc **de France seulement** : mesuré, l'IGN couvre le
+  monde jusqu'au zoom 12 et rend un 404 au-delà hors de ses emprises (Londres,
+  New York, Tokyo, Nairobi), or le hors-ligne commence au zoom 15. Hors de
+  France la case est grisée et le dit. En ligne, rien ne change : Esri reste
+  le fond mondial de la vue satellite. Les tuiles Esri d'anciennes zones ne
+  sont plus protégées à la suppression d'une zone (`removeRegion`) ; il n'y a
+  pas de purge d'office.
+- **La mention de marque** que la politique de la Fondation demande à qui porte
+  « OSM » dans son nom (§2.2, §3.3.6) : dans *Sources et licences*
+  (`sources.trademark`), la description F-Droid et les deux README.
+
 ##### Le journal de navigation (`navigation/journal.ts`)
 
 **Un trajet laisse désormais une trace** (demande explicite). Avant, rien : le
@@ -1745,6 +1875,18 @@ titre, artiste, et pause / précédent / suivant.
   (`apk/android/.../NowPlayingPlugin.java`) lit les sessions média d'Android
   (`MediaSessionManager`), ce qui couvre YouTube Music, Qobuz, Spotify ou un
   podcast. Il montre le lecteur qui joue, sinon le plus récent en pause.
+- **Les ordres partent en touches média, pas en commandes de transport.**
+  `TransportControls.pause()`, `skipToNext()`… sont **ignorées sans un mot** par
+  Qobuz quand elles viennent d'une autre application : l'appel aboutit, le
+  greffon répond « fait », rien ne se passe (signalé le 4 octobre 2026 ; mesuré
+  sur le téléphone, douze ordres sans effet). La touche média envoyée à la
+  session (`MediaController.dispatchMediaButtonEvent`, `KEYCODE_MEDIA_PAUSE` /
+  `PLAY` / `NEXT` / `PREVIOUS`) est ce qu'envoie un casque : les quatre ordres
+  sont suivis d'effet. Le transport ne reste qu'en repli, si la session refuse
+  la touche. **Un ordre qui part ne prouve rien** : le scénario
+  `musique-boutons` lit l'état du lecteur dans Android (`dumpsys
+  media_session`) quand une musique joue, et ne se contente de compter les
+  ordres que s'il n'y en a pas.
 - **Android exige « l'accès aux notifications »** pour voir ces sessions, même
   si aucune notification n'est lue : d'où le service vide
   `MediaNotificationListener` au manifeste, et la ligne « Musique pendant le

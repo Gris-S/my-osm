@@ -2,6 +2,7 @@ import { CONFIG, type RoadMode } from "../config";
 import type { LonLat, RouteResult } from "../types";
 import { t } from "../i18n";
 import { BikeRouteError, fetchBikeOptions } from "./bikeRouting";
+import { hasNativeRescue, rescuedFetch } from "./native";
 
 // Chaque mode a sa propre instance OSRM (profil dédié) + le segment "profile"
 // attendu dans l'URL. `routed-foot` route sur les chemins piétons et exclut
@@ -48,11 +49,14 @@ export async function getRoute(mode: RoadMode, points: LonLat[]): Promise<RouteR
   // l'application — sans ce test, le `TypeError` de `fetch` remontait tel quel
   // jusqu'au panneau, qui affichait « Failed to fetch » en anglais à quelqu'un
   // qui a précisément ses cartes téléchargées sous les yeux.
-  if (!navigator.onLine) throw new Error(t("error.routeOffline"));
+  //
+  // Dans l'APK, le drapeau ne vaut pas preuve (voir le secours natif de
+  // `services/native.ts`) : on essaie, et c'est l'échec qui dit « hors ligne ».
+  if (!navigator.onLine && !hasNativeRescue(url)) throw new Error(t("error.routeOffline"));
 
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await rescuedFetch(url);
   } catch {
     // `fetch` ne distingue pas le réseau coupé d'un serveur injoignable : dans
     // les deux cas, ce qui manque à l'utilisateur est une connexion.

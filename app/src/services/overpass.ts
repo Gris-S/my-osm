@@ -3,6 +3,7 @@ import { getOfflineDetails } from "./offline";
 import type { Place } from "../types";
 import { groupFromTags } from "../filters";
 import { matchesBrand, normalizeBrand } from "./geocode";
+import { osmFetch, type NativeInit } from "./native";
 
 // ---------------------------------------------------------------------------
 // Détails d'un lieu, demandés pour ce seul lieu à l'ouverture de sa fiche.
@@ -52,7 +53,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 /** `fetch` abandonné au bout de `CONFIG.OVERPASS_TIMEOUT_MS`, ou sur demande. */
 async function fetchJson(
   url: string,
-  init: RequestInit,
+  init: NativeInit,
   signal: AbortSignal,
   timeoutMs = CONFIG.OVERPASS_TIMEOUT_MS
 ): Promise<OsmResponse> {
@@ -61,7 +62,7 @@ async function fetchJson(
   const timer = setTimeout(abort, timeoutMs);
   signal.addEventListener("abort", abort);
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
+    const res = await osmFetch(url, { ...init, signal: controller.signal });
     if (!res.ok) throw new Error(`Réponse ${res.status} de ${url}`);
     return (await res.json()) as OsmResponse;
   } finally {
@@ -236,7 +237,7 @@ class RateLimited extends Error {}
  */
 async function slotWaitMs(url: string, signal?: AbortSignal): Promise<number> {
   try {
-    const res = await fetch(url.replace(/interpreter$/, "status"), { signal });
+    const res = await osmFetch(url.replace(/interpreter$/, "status"), { signal });
     const text = await res.text();
     if (/\d+ slots? available now/.test(text)) return 1000;
     const seconds = Number(text.match(/in (\d+) seconds/)?.[1]);
@@ -268,7 +269,7 @@ async function politeAnswer(query: string, signal: AbortSignal | undefined, time
       const timer = setTimeout(abort, timeoutMs);
       signal?.addEventListener("abort", abort);
       try {
-        const res = await fetch(url, {
+        const res = await osmFetch(url, {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
           body: query,

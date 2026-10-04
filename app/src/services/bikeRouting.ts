@@ -1,6 +1,7 @@
 import { CONFIG } from "../config";
 import type { LonLat } from "../types";
 import { decodePolyline } from "../transport/polyline";
+import { osmFetch } from "./native";
 
 // ---------------------------------------------------------------------------
 // L'itinéraire à vélo : Valhalla d'abord, BRouter en secours.
@@ -234,7 +235,7 @@ async function fromValhalla(points: LonLat[], profile: BikeProfile): Promise<Osr
   await politeSlot();
   let res: Response;
   try {
-    res = await fetch(CONFIG.BIKE_ROUTING.VALHALLA_URL, {
+    res = await osmFetch(CONFIG.BIKE_ROUTING.VALHALLA_URL, {
       method: "POST",
       // `X-Client-Id` est demandé par l'opérateur à qui se sert du serveur
       // public : il nomme l'application, rien de l'utilisateur.
@@ -286,7 +287,7 @@ async function fromBRouter(points: LonLat[], profile: BikeProfile): Promise<Osrm
   await politeSlot();
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await osmFetch(url);
   } catch {
     throw new BikeRouteError("offline");
   }
@@ -451,7 +452,7 @@ function meters(a: [number, number], b: [number, number]): number {
  */
 export async function fetchCycleways(line: Array<[number, number]>): Promise<CyclewayStretch> {
   await politeSlot();
-  const res = await fetch(CONFIG.BIKE_ROUTING.TRACE_ATTRIBUTES_URL, {
+  const res = await osmFetch(CONFIG.BIKE_ROUTING.TRACE_ATTRIBUTES_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Client-Id": CONFIG.BIKE_ROUTING.CLIENT_ID },
     body: JSON.stringify({

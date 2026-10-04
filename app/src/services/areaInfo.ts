@@ -3,6 +3,7 @@ import type { AreaInfo } from "../types";
 import type { TranslationKey } from "../i18n";
 import { readPersistent, writePersistent } from "../transport/persistentCache";
 import { nominatimTurn } from "./nominatim";
+import { osmFetch } from "./native";
 
 // ---------------------------------------------------------------------------
 // La fiche d'une ville ou d'un quartier dont on a touché le nom sur la carte
@@ -102,7 +103,7 @@ export function areaKm2(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): numbe
 
 async function nominatim(url: URL, signal: AbortSignal): Promise<unknown> {
   await nominatimTurn(signal);
-  const res = await fetch(url, { signal });
+  const res = await osmFetch(url, { signal });
   if (!res.ok) throw new Error(`Nominatim ${res.status}`);
   return res.json();
 }

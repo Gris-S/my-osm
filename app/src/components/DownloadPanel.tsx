@@ -302,6 +302,9 @@ function DownloadPanelContent({ center, onClose }: Props) {
     })();
   }, [selection]);
 
+  // L'imagerie hors ligne n'existe que là où l'IGN a des photos.
+  const satelliteOffered = selection ? intersectsIgn(selection.bbox) : true;
+
   // --- Estimation ----------------------------------------------------------
   const estimate = useMemo(() => {
     if (!selection) return { bytes: 0, vector: 0, raster: 0, dem: 0, addr: 0 };
@@ -333,7 +336,7 @@ function DownloadPanelContent({ center, onClose }: Props) {
       area: selection?.area,
       detail,
       vectorMaxZoom: vectorZoom,
-      satelliteMaxZoom: satellite ? satZoom : null,
+      satelliteMaxZoom: satellite && satelliteOffered ? satZoom : null,
       reliefMaxZoom: relief ? reliefZoom : null,
       addresses: addresses && detail !== "map" && !!addrCount,
       addressDepts: [],
@@ -463,11 +466,19 @@ function DownloadPanelContent({ center, onClose }: Props) {
               </>
             )}
 
+            {/* L'imagerie hors ligne est celle de l'IGN, donc française : hors
+                de sa couverture la case est grisée, et dit pourquoi. */}
             <label className="download-check">
-              <input type="checkbox" checked={satellite} onChange={(e) => setSatellite(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={satellite && satelliteOffered}
+                disabled={!satelliteOffered}
+                onChange={(e) => setSatellite(e.target.checked)}
+              />
               {t("download.satellite")}
             </label>
-            {satellite && (
+            {!satelliteOffered && <span className="settings-hint">{t("download.satelliteFranceOnly")}</span>}
+            {satellite && satelliteOffered && (
               <div className="download-zoom">
                 <label htmlFor="sat-zoom">{t("download.maxZoom", { zoom: satZoom })}</label>
                 <input

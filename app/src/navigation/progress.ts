@@ -166,28 +166,78 @@ export function locateOnPath(path: Path, position: LonLat, from = 0): PathMatch 
   return best.offset > OFF_ROUTE_METERS ? bestOf(best, nearest(path, position, 0, true)) : best;
 }
 
-/** Le point du tracé le plus proche, cherché dans une fenêtre ou en entier. */
+/**
+ * Écart en deçà duquel deux passages du tracé se valent, en mètres.
+ *
+ * Un tracé peut repasser au même endroit — un tour de pâté de maisons, un
+ * aller-retour dans la même rue. Les deux passages sont alors à un ou deux
+ * mètres près à la même distance du relevé, et c'est le bruit du GPS qui
+ * désignait « le plus proche ». Dix mètres : la largeur d'une rue, et l'ordre
+ * de grandeur de l'incertitude d'un bon relevé.
+ */
+export const SAME_PLACE_METERS = 10;
+
+/**
+ * Le point du tracé le plus proche, cherché dans une fenêtre ou en entier.
+ *
+ * Dans la fenêtre, **le passage où l'on était l'emporte** sur un autre passage
+ * aussi proche. Les tronçons presque aussi près que le meilleur sont regroupés
+ * en suites contiguës — une suite par passage — et l'on retient celle qui est
+ * la plus voisine du rang précédent, puis son point le plus proche.
+ *
+ * Constaté le 3 octobre 2026 : l'arrivée dépassée, le recalcul a rendu un tour
+ * de 730 m qui repassait dans la rue où roulait la voiture, en sens inverse.
+ * Le relevé était à 1,75 m de ce second passage, un peu plus du départ : la
+ * position a sauté à 679 m, « à contresens », d'où un recalcul — qui rendait
+ * le même tour. Une dizaine de recalculs en trois secondes.
+ */
 function nearest(route: Path, position: LonLat, from: number, whole = false): PathMatch {
   const start = whole ? 0 : Math.max(0, from - Math.round(SEARCH_WINDOW / 4));
   const end = whole
     ? route.points.length - 1
     : Math.min(route.points.length - 1, from + SEARCH_WINDOW);
 
-  let best: PathMatch = { index: start, measure: route.measures[start], offset: Infinity, point: route.points[start] };
+  const first: PathMatch = { index: start, measure: route.measures[start], offset: Infinity, point: route.points[start] };
+  const matches: PathMatch[] = [];
+  let closest = first;
   for (let i = start; i < end; i++) {
-    const a = route.points[i];
-    const b = route.points[i + 1];
-    const projection = projectOnSegment(position, a, b);
-    if (projection.offset >= best.offset) continue;
+    const projection = projectOnSegment(position, route.points[i], route.points[i + 1]);
     const span = route.measures[i + 1] - route.measures[i];
-    best = {
+    const match = {
       index: i,
       measure: route.measures[i] + span * projection.t,
       offset: projection.offset,
       point: projection.point,
     };
+    matches.push(match);
+    if (match.offset < closest.offset) closest = match;
   }
-  return best;
+  // Tracé entier : on a perdu le fil, le plus proche est tout ce qu'on sait.
+  if (whole || matches.length === 0) return closest;
+
+  const limit = closest.offset + SAME_PLACE_METERS;
+  let best: PathMatch | null = null;
+  let bestGap = Infinity;
+  let run: PathMatch | null = null;
+  let runGap = Infinity;
+  const close = () => {
+    if (run && runGap < bestGap) {
+      best = run;
+      bestGap = runGap;
+    }
+    run = null;
+    runGap = Infinity;
+  };
+  for (const match of matches) {
+    if (match.offset > limit) {
+      close();
+      continue;
+    }
+    if (!run || match.offset < run.offset) run = match;
+    runGap = Math.min(runGap, Math.abs(match.index - from));
+  }
+  close();
+  return best ?? closest;
 }
 
 /**

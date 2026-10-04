@@ -3,6 +3,7 @@ import { BikeRouteError, fetchBikeRoute, type BikeProfile, type BikeSource } fro
 import type { LonLat, RouteResult } from "../types";
 import { distance } from "./geo";
 import { navText } from "./strings";
+import { osmFetch } from "../services/native";
 
 // ---------------------------------------------------------------------------
 // Le trajet à guider : le même OSRM que `services/routing.ts`, mais interrogé
@@ -133,7 +134,7 @@ export async function getNavRoute(
     `${CONFIG.OSRM_ROUTING.walking}/route/v1/walking/${coords}` +
     `?overview=full&geometries=geojson&steps=true`;
 
-  const res = await fetch(url, { signal });
+  const res = await osmFetch(url, { signal });
   if (!res.ok) throw new Error(navText("nav.errorService", { status: String(res.status) }));
   const data: OsrmStepsResponse = await res.json();
   if (data.code !== "Ok" || !data.routes.length) throw new Error(navText("nav.errorNoRoute"));

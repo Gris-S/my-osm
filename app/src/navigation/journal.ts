@@ -22,6 +22,8 @@
 // `window.__myosm.journal`).
 // ---------------------------------------------------------------------------
 
+import { nativeRescueStats, onNativeRescue } from "../services/native";
+
 const STORAGE_KEY = "osm-local:nav-journal";
 
 /** Au-delà, les entrées les plus anciennes partent : quelques trajets, pas un historique. */
@@ -102,6 +104,15 @@ function listen() {
   window.addEventListener("pagehide", flush);
   window.addEventListener("online", () => note("net.online"));
   window.addEventListener("offline", () => note("net.offline"));
+  // Le secours natif (`services/native.ts`) : la WebView refusait le réseau et
+  // le téléphone l'avait. Une note par minute au plus, avec le compte — c'est
+  // la preuve qui manquait le 3 octobre 2026, où l'on ne pouvait que le déduire.
+  let rescueNotedAt = 0;
+  onNativeRescue(() => {
+    if (Date.now() - rescueNotedAt < 60_000) return;
+    rescueNotedAt = Date.now();
+    note("net.native", { used: nativeRescueStats.used, failed: nativeRescueStats.failed, onLine: navigator.onLine });
+  });
   // Lu par `outils/journal.sh` ; absent de la version release (`__DIAGNOSTICS__`).
   if (__DIAGNOSTICS__) {
     (window as unknown as { __myosm?: Record<string, unknown> }).__myosm = {

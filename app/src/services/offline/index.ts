@@ -95,7 +95,6 @@ export async function removeRegion(id: string): Promise<void> {
     }
     if (region.satelliteMaxZoom !== null) {
       for (const t of footprintTiles(region, region.satelliteMaxZoom)) {
-        keep.add(pathOf(cacheKeyFor({ ...t, kind: "esri" } as TileRef)));
         keep.add(pathOf(cacheKeyFor({ ...t, kind: "ign" } as TileRef)));
       }
     }

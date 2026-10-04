@@ -1,5 +1,6 @@
 import { CONFIG } from "../../config";
 import type { LonLat, RouteResult } from "../../types";
+import { hasNativeRescue, rescuedFetch } from "../../services/native";
 import { distance } from "../geo";
 import { navText } from "../strings";
 import { readTrafficSection, type TrafficSection } from "./carTraffic";
@@ -214,7 +215,14 @@ export async function getCarRoutes(
   // Les deux moteurs sont distants — TomTom comme OSRM. Hors ligne, le dire
   // dans la langue de l'application plutôt que de laisser remonter le
   // « Failed to fetch » du navigateur jusqu'à l'écran de choix.
-  if (!navigator.onLine) throw new Error(navText("nav.errorOffline"));
+  //
+  // **Sauf dans l'APK**, où le drapeau ne vaut pas preuve : il est resté faux
+  // tout un trajet alors que le téléphone avait du réseau (3 octobre 2026), et
+  // chaque recalcul était refusé ici sans même avoir été tenté. On essaie
+  // donc — `rescuedFetch` passe par le natif si la WebView refuse — et c'est
+  // l'échec, et non le drapeau, qui dit qu'on est hors ligne.
+  const engineUrl = hasLiveEngine() ? CONFIG.TOMTOM_ROUTING_URL : CONFIG.OSRM_ROUTING.driving;
+  if (!navigator.onLine && !hasNativeRescue(engineUrl)) throw new Error(navText("nav.errorOffline"));
   return hasLiveEngine() ? fetchTomTom(points, options) : [await fetchOsrm(points, options)];
 }
 
@@ -319,18 +327,27 @@ async function fetchTomTom(points: LonLat[], options: CarRouteOptions): Promise<
   // différence du point d'authentification de Météo-France, qui répond au
   // préflight sans en-tête d'origine croisée et oblige à un relais.
   const support = options.following?.length ? sample(options.following, SUPPORT_POINTS) : null;
-  const res = await fetch(`${CONFIG.TOMTOM_ROUTING_URL}/${path}/json?${query}`, {
-    signal: options.signal,
-    ...(support
-      ? {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            supportingPoints: support.map((p) => ({ latitude: p.lat, longitude: p.lon })),
-          }),
-        }
-      : {}),
-  });
+  let res: Response;
+  try {
+    res = await rescuedFetch(`${CONFIG.TOMTOM_ROUTING_URL}/${path}/json?${query}`, {
+      signal: options.signal,
+      ...(support
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              supportingPoints: support.map((p) => ({ latitude: p.lat, longitude: p.lon })),
+            }),
+          }
+        : {}),
+    });
+  } catch (error) {
+    // Une annulation n'est pas une panne de réseau : elle remonte telle quelle.
+    // Hors ligne — le natif a échoué lui aussi —, on le dit dans la langue de
+    // l'application ; en ligne, l'erreur d'origine garde son sens.
+    if (options.signal?.aborted || navigator.onLine) throw error;
+    throw new Error(navText("nav.errorOffline"));
+  }
   const data: TomTomResponse = await res.json().catch(() => ({}) as TomTomResponse);
   if (!res.ok || !data.routes?.length) {
     // Le message de l'API est en anglais et parle de paramètres : il n'a rien à
@@ -511,7 +528,7 @@ async function fetchOsrm(points: LonLat[], options: CarRouteOptions): Promise<Ca
 
   let res: Response;
   try {
-    res = await fetch(url, { signal: options.signal });
+    res = await rescuedFetch(url, { signal: options.signal });
   } catch (error) {
     // Une annulation n'est pas une panne de réseau : elle remonte telle quelle.
     if (options.signal?.aborted) throw error;

@@ -13,8 +13,10 @@ import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Base64;
+import android.view.KeyEvent;
 
 import androidx.core.app.NotificationManagerCompat;
 
@@ -159,6 +161,21 @@ public class NowPlayingPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Pause / lecture, suivant, précédent — **par la touche média**, envoyée à
+     * la session du lecteur montré.
+     *
+     * La première version passait par `TransportControls` (`pause()`,
+     * `skipToNext()`…). Qobuz les **ignore sans rien dire** quand elles viennent
+     * d'une autre application : l'appel aboutissait, et rien ne se passait
+     * (signalé le 4 octobre 2026, puis mesuré sur le téléphone — douze ordres,
+     * aucun effet). La touche média, elle, est ce qu'envoient un casque ou un
+     * volant : aucun lecteur ne peut se permettre de l'ignorer. Mesuré le même
+     * jour sur Qobuz, les quatre ordres suivis d'effet.
+     *
+     * Les commandes de transport ne restent qu'en repli, si la session refuse
+     * la touche.
+     */
     @PluginMethod
     public void control(PluginCall call) {
         String action = call.getString("action", "");
@@ -168,24 +185,37 @@ public class NowPlayingPlugin extends Plugin {
                 call.reject("Aucune musique en cours.");
                 return;
             }
-            MediaController.TransportControls transport = current.getTransportControls();
+            PlaybackState playback = current.getPlaybackState();
+            int state = playback != null ? playback.getState() : PlaybackState.STATE_NONE;
+            // Deux touches distinctes plutôt que la bascule : on demande ce que
+            // l'écran montre, pas « l'inverse de ce que le lecteur fait ».
+            boolean playing = state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING;
+            int key;
             switch (action) {
                 case "playPause":
-                    PlaybackState state = current.getPlaybackState();
-                    if (state != null && state.getState() == PlaybackState.STATE_PLAYING) transport.pause();
-                    else transport.play();
+                    key = playing ? KeyEvent.KEYCODE_MEDIA_PAUSE : KeyEvent.KEYCODE_MEDIA_PLAY;
                     break;
                 case "next":
-                    transport.skipToNext();
+                    key = KeyEvent.KEYCODE_MEDIA_NEXT;
                     break;
                 case "previous":
-                    transport.skipToPrevious();
+                    key = KeyEvent.KEYCODE_MEDIA_PREVIOUS;
                     break;
                 default:
                     call.reject("Action inconnue : " + action);
                     return;
             }
-            call.resolve();
+            long now = SystemClock.uptimeMillis();
+            boolean handled = current.dispatchMediaButtonEvent(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, key, 0));
+            handled = current.dispatchMediaButtonEvent(new KeyEvent(now, now, KeyEvent.ACTION_UP, key, 0)) && handled;
+            if (!handled) {
+                MediaController.TransportControls transport = current.getTransportControls();
+                if (key == KeyEvent.KEYCODE_MEDIA_PAUSE) transport.pause();
+                else if (key == KeyEvent.KEYCODE_MEDIA_PLAY) transport.play();
+                else if (key == KeyEvent.KEYCODE_MEDIA_NEXT) transport.skipToNext();
+                else transport.skipToPrevious();
+            }
+            call.resolve(new JSObject().put("via", handled ? "key" : "transport"));
         });
     }
 

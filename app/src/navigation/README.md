@@ -75,6 +75,8 @@ Et le sous-dossier `car/`, qui tient toute la navigation voiture :
 | `car/proposals.ts` | Les trois propositions, et pourquoi il n'y en a parfois qu'une. |
 | `car/tolls.ts` | Le prix du péage, quand il est officiellement publié. |
 | `car/radars.ts` | Les radars du parcours, et le seul son de l'application. |
+| `car/heading.ts` | Le contresens vu au cap, et le cap de la caméra — qui ne tourne que quand la voiture tourne. |
+| `car/routeTiles.ts` | La carte des quinze kilomètres devant, chargée d'avance. |
 | `car/useCarNavigation.ts` | La session de guidage voiture. |
 | `car/RouteChoice.tsx` | La barre du choix — les parcours, eux, sont sur la carte. |
 | `car/CarNavigationPanel.tsx` | Le bandeau, les voies, le compteur, la barre du bas. |

@@ -57,6 +57,10 @@ export function SourcesList() {
   return (
     <div className="sources">
       <p className="sources-intro">{t("sources.intro")}</p>
+      {/* La mention que demande la politique de marque de la Fondation (§2.2,
+          §3.3.6) à qui porte « OSM » dans son nom — relecture F-Droid du
+          3 octobre 2026. */}
+      <p className="sources-intro">{t("sources.trademark")}</p>
       {GROUPS.map((group) => (
         <section key={group.title} className="sources-group">
           <h3>{t(group.title)}</h3>

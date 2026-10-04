@@ -110,8 +110,13 @@ export function estimateVectorBytes(f: Footprint, maxZoom = CONFIG.OFFLINE.VECTO
   }, 0);
 }
 
-/** Poids estimé de l'imagerie satellite d'une zone, en octets. */
+/**
+ * Poids estimé de l'imagerie satellite d'une zone, en octets. Nul hors de
+ * France : seule l'IGN est téléchargée (voir `download.ts`), et elle n'a rien
+ * ailleurs.
+ */
 export function estimateRasterBytes(f: Footprint, maxZoom: number): number {
+  if (!intersectsIgn(f.bbox)) return 0;
   return footprintCount(f, maxZoom) * CONFIG.OFFLINE.BYTES_PER_RASTER_TILE;
 }
 

@@ -529,9 +529,26 @@ export default function App() {
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === "undefined" ? 800 : (window.visualViewport?.height ?? window.innerHeight)
   );
+  // Le clavier est-il déployé ? Il ampute l'écran de près de la moitié : la
+  // hauteur visible tombe alors bien en dessous de celle de la fenêtre.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const view = window.visualViewport;
-    const update = () => setViewportHeight(view?.height ?? window.innerHeight);
+    // La plus grande hauteur vue : selon la version d'Android, le clavier
+    // réduit la fenêtre entière ou seulement sa partie visible. Comparer à la
+    // hauteur d'origine marche dans les deux cas ; une rotation la remet à zéro.
+    let tallest = view?.height ?? window.innerHeight;
+    let width = window.innerWidth;
+    const update = () => {
+      const height = view?.height ?? window.innerHeight;
+      if (window.innerWidth !== width) {
+        width = window.innerWidth;
+        tallest = height;
+      }
+      tallest = Math.max(tallest, height);
+      setViewportHeight(height);
+      setKeyboardOpen(tallest - height > 150);
+    };
     view?.addEventListener("resize", update);
     window.addEventListener("resize", update);
     return () => {
@@ -562,6 +579,8 @@ export default function App() {
   // il est là — mesuré par le module (`useNavDockClearance`). Le 96 d'avant
   // n'est plus qu'un repli, le temps de la première mesure.
   const navDockClearance = useNavDockClearance();
+  // On tape dans le panneau d'itinéraire : clavier ouvert, panneau à l'écran.
+  const typingInPanel = keyboardOpen && itineraryOpen && !guiding;
   const locateButtonOffset = sheetHeight && !wide
     ? Math.min(sheetHeight + 16, ceiling)
     : guiding
@@ -858,11 +877,15 @@ export default function App() {
       {/* Ni position ni calques sur le panneau des transports : il occupe toute
           la hauteur, et les deux boutons se posaient sur le détail du trajet.
           En voiture et à pied, le panneau est court et les laisse libres. */}
-      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen)) && (
+      {/* Ni l'un ni l'autre quand on **tape** dans le panneau d'itinéraire :
+          clavier ouvert, il ne reste que la moitié de l'écran, et les deux
+          boutons remontaient sur « Démarrer » (capture du 3 octobre 2026).
+          Même règle que pour la barre de recherche (`searching`). */}
+      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen && !typingInPanel)) && (
         <LocateButton onClick={handleLocate} loading={geolocation.loading} offsetBottom={locateButtonOffset} />
       )}
 
-      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen)) && (
+      {!photoExpanded && !carGuiding && (wide || (!searching && !transitPanelOpen && !typingInPanel)) && (
       <MapOptionsMenu
         open={mapOptionsOpen}
         onOpenChange={setMapOptionsOpen}

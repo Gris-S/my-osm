@@ -157,6 +157,10 @@ Because a map should not be the price of knowing where you are.
 Everything displayed belongs to its authors and follows its own licence; the app
 credits them all under *Menu › Sources & licences*.
 
+OSM and OpenStreetMap are trademarks of the OpenStreetMap Foundation, and are
+used with their permission. MY OSM is not endorsed by or affiliated with the
+OpenStreetMap Foundation.
+
 | | |
 | --- | --- |
 | Map data, places, stops | [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL |
@@ -167,7 +171,7 @@ credits them all under *Menu › Sources & licences*.
 | Routing | [OSRM](https://routing.openstreetmap.de/), [Valhalla](https://github.com/valhalla/valhalla) and [BRouter](https://brouter.de/brouter/) for cycling, TomTom (optional key) |
 | Public transport | [Transitous](https://transitous.org/sources/), Île-de-France Mobilités (optional key) |
 | Weather & air | [Open-Meteo](https://open-meteo.com/), Météo-France (optional key) |
-| Imagery & terrain | Esri, [IGN](https://geoservices.ign.fr/), Mapzen/USGS/SRTM |
+| Imagery & terrain | Esri (online view only), [IGN](https://geoservices.ign.fr/) (also offline, France), Mapzen/USGS/SRTM |
 | Street photos | [Mapillary](https://www.mapillary.com/) (optional key) |
 
 No key is required. Without them the app still works — public transport falls

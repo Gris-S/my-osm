@@ -91,3 +91,13 @@ describe("area — le contour d'une zone en tuiles", () => {
     }
   });
 });
+
+describe("imagerie hors ligne : l'IGN seul, donc la France seule", () => {
+  it("compte l'imagerie d'une zone française, et rien à l'étranger", async () => {
+    const { estimateRasterBytes } = await import("../src/services/offline/tiles");
+    const paris = { bbox: [2.25, 48.81, 2.42, 48.9] as [number, number, number, number] };
+    const londres = { bbox: [-0.2, 51.45, 0.0, 51.55] as [number, number, number, number] };
+    expect(estimateRasterBytes(paris, 15)).toBeGreaterThan(0);
+    expect(estimateRasterBytes(londres, 15)).toBe(0);
+  });
+});

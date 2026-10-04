@@ -153,6 +153,30 @@ function js(expression) {
   });
 }
 
+/** Envoie une commande de débogage autre qu'une évaluation (émulation réseau…). */
+function commande(method, params = {}) {
+  return new Promise((ok, ko) => {
+    const id = prochainId++;
+    enAttente.set(id, { ok, ko });
+    ws.send(JSON.stringify({ id, method, params }));
+    setTimeout(() => {
+      if (enAttente.delete(id)) ko(new Error(`${method} : pas de réponse`));
+    }, 20_000);
+  });
+}
+
+/**
+ * Met la **WebView** hors ligne, le téléphone restant connecté.
+ *
+ * C'est l'état du 3 octobre 2026, qu'on ne sait pas provoquer autrement :
+ * `navigator.onLine` faux, tout `fetch` en échec, alors que le téléphone a du
+ * réseau. Le mode avion, lui, coupe tout — il ne distingue pas une application
+ * qui se trompe d'un téléphone vraiment isolé. L'émulation tombe avec la
+ * connexion de débogage : un rechargement la retire.
+ */
+const webviewHorsLigne = (offline) =>
+  commande("Network.emulateNetworkConditions", { offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+
 // --- Les gestes -------------------------------------------------------------
 
 const adb = (...args) => execFileSync("adb", args, { encoding: "utf8" });
@@ -268,14 +292,17 @@ const positionLeLongDe = (points, intervalle = 300) =>
     const cap=(a,b)=>{const y=Math.sin((b[0]-a[0])*Math.PI/180)*Math.cos(b[1]*Math.PI/180);
       const x=Math.cos(a[1]*Math.PI/180)*Math.sin(b[1]*Math.PI/180)-Math.sin(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.cos((b[0]-a[0])*Math.PI/180);
       return (Math.atan2(y,x)*180/Math.PI+360)%360};
-    let i=0, roule=false;
+    let i=0, roule=false, arrete=false, butee=pts.length-1, deport=[0,0];
+    // À l'arrêt, un récepteur ne donne ni vitesse ni cap : c'est ce que le
+    // guidage doit savoir traverser sans faire tourner la carte.
     const fixe=()=>{const p=pts[Math.min(i,pts.length-1)];const q=pts[Math.min(i+1,pts.length-1)];
-      return {coords:{latitude:p[1],longitude:p[0],accuracy:5,heading:cap(p,q),speed:13.9,
+      return {coords:{latitude:p[1]+deport[1],longitude:p[0]+deport[0],accuracy:5,
+        heading:arrete?null:cap(p,q),speed:arrete?0:13.9,
         altitude:null,altitudeAccuracy:null},timestamp:Date.now()}};
     window.__parcoursPosition=fixe();
     navigator.geolocation.getCurrentPosition=(ok)=>ok(window.__parcoursPosition);
     navigator.geolocation.watchPosition=(ok)=>{ok(window.__parcoursPosition);
-      return setInterval(()=>{if(roule)i=Math.min(i+1,pts.length-1);
+      return setInterval(()=>{if(roule&&!arrete){i=Math.min(i+1,pts.length-1);if(i>=butee)arrete=true}
         window.__parcoursPosition=fixe();ok(window.__parcoursPosition)},${intervalle})};
     navigator.geolocation.clearWatch=(id)=>clearInterval(id);
     // **Le départ est différé, et c'est tout l'intérêt.** Le guidage s'abonne à
@@ -284,8 +311,14 @@ const positionLeLongDe = (points, intervalle = 300) =>
     // figée là où elle était — le bandeau collé à sa première manœuvre. On pose
     // donc le conducteur **avant** de lancer la navigation, immobile, et on le
     // fait rouler une fois le guidage en route.
-    window.__parcoursRouler=()=>{roule=true};
+    window.__parcoursRouler=()=>{roule=true;arrete=false;butee=pts.length-1};
     window.__parcoursReste=()=>pts.length-i;
+    // Rouler jusqu'au point de rang donné, puis s'y arrêter (vitesse nulle, cap inconnu).
+    window.__parcoursArretA=(rang)=>{butee=rang;roule=true;arrete=i>=rang};
+    window.__parcoursArrete=()=>arrete;
+    window.__parcoursRang=()=>i;
+    // Se déporter du tracé, en degrés : de quoi provoquer un recalcul.
+    window.__parcoursDeport=(dLon,dLat)=>{deport=[dLon,dLat]};
     return true})()`);
 
 const positionSimulee = (lat, lon, cap = 95, vitesse = 13.9) =>
@@ -443,6 +476,122 @@ async function scene({ theme = "light", langue = "en", fond = "standard", filtre
   });
   await recharger();
 }
+
+// --- Conduire ---------------------------------------------------------------
+
+const capEntre = (a, b) => {
+  const rad = Math.PI / 180;
+  const y = Math.sin((b[0] - a[0]) * rad) * Math.cos(b[1] * rad);
+  const x =
+    Math.cos(a[1] * rad) * Math.sin(b[1] * rad) -
+    Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos((b[0] - a[0]) * rad);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+};
+const metresEntre = (a, b) =>
+  Math.hypot((a[0] - b[0]) * 111_320 * Math.cos((a[1] * Math.PI) / 180), (a[1] - b[1]) * 110_574);
+/** Le plus petit angle entre deux caps, de 0 à 180. */
+const angleEntre = (a, b) => {
+  const d = Math.abs((((a - b) % 360) + 360) % 360);
+  return d > 180 ? 360 - d : d;
+};
+
+/** Ce que le journal de navigation a noté depuis l'instant donné. */
+const journalDepuis = async (depuis) =>
+  JSON.parse((await js(`JSON.stringify((window.__myosm?.journal?.read()||[]).filter(e=>e.t>=${depuis}))`)) ?? "[]");
+
+/**
+ * Lance un guidage voiture le long d'un trajet de référence, conducteur posé
+ * au départ et **immobile** : `window.__parcoursRouler()` ou
+ * `window.__parcoursArretA(rang)` le mettent en route.
+ *
+ * Le tracé de référence est **resserré à quinze mètres** : OSRM ne rend qu'un
+ * point par changement de direction, et une ligne droite de trois cents mètres
+ * ne permettrait pas de s'arrêter « vingt mètres avant le virage ».
+ *
+ * Rend `{ trajet, points }`, ou `null` si une étape a manqué (déjà rapportée).
+ */
+async function partirEnVoiture(DEPART, ARRIVEE, intervalle = 700, { prolonger = 0 } = {}) {
+  const url =
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/` +
+    `${DEPART.join(",")};${ARRIVEE.join(",")}?steps=true&overview=full&geometries=geojson`;
+  let trajet = null;
+  try {
+    trajet = (await (await fetch(url)).json()).routes?.[0] ?? null;
+  } catch (erreur) {
+    verifier("le service de routage répond", false, String(erreur.message ?? erreur));
+    return null;
+  }
+  if (!verifier("un trajet de référence est obtenu", trajet !== null)) return null;
+
+  const points = [];
+  const brut = trajet.geometry.coordinates;
+  for (let k = 0; k < brut.length - 1; k++) {
+    const pas = Math.max(1, Math.ceil(metresEntre(brut[k], brut[k + 1]) / 15));
+    for (let j = 0; j < pas; j++) {
+      const t = j / pas;
+      points.push([
+        Number((brut[k][0] + (brut[k + 1][0] - brut[k][0]) * t).toFixed(6)),
+        Number((brut[k][1] + (brut[k + 1][1] - brut[k][1]) * t).toFixed(6)),
+      ]);
+    }
+  }
+  points.push(brut[brut.length - 1]);
+  const arrivee = points.length - 1;
+  // Continuer tout droit au-delà de l'arrivée, comme qui cherche à se garer.
+  if (prolonger > 0) {
+    const a = points[points.length - 3];
+    const z = points[points.length - 1];
+    const pas = metresEntre(a, z) || 1;
+    for (let d = 15; d <= prolonger; d += 15) {
+      points.push([
+        Number((z[0] + ((z[0] - a[0]) * d) / pas).toFixed(6)),
+        Number((z[1] + ((z[1] - a[1]) * d) / pas).toFixed(6)),
+      ]);
+    }
+  }
+
+  await positionLeLongDe(points, intervalle);
+  await carteVers(DEPART[0], DEPART[1], 15);
+  await cliquer(".locate-button");
+  if (
+    !verifier(
+      "l'application adopte la position injectée",
+      await attendreQue(
+        `(()=>{const c=window.__myosm?.map?.getCenter?.();if(!c)return false;
+          return Math.abs(c.lng-${DEPART[0]})<0.05 && Math.abs(c.lat-${DEPART[1]})<0.05})()`,
+        20_000
+      )
+    )
+  )
+    return null;
+  await saisir(`${ARRIVEE[1]}, ${ARRIVEE[0]}`);
+  if (!verifier("les coordonnées collées sont reconnues", await attendre(".search-result.is-brand", 12_000))) return null;
+  await cliquer(".search-result.is-brand");
+  if (!verifier("la fiche du lieu s'ouvre", await attendre(".sheet"))) return null;
+  await cliquer(".sheet-action-primary");
+  if (!verifier("le panneau d'itinéraire s'ouvre", await attendre(".itinerary-panel"))) return null;
+  await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[0])m[0].click();return true})()");
+  if (!verifier("un itinéraire voiture est calculé", await attendre(".itinerary-result", 30_000))) return null;
+  await cliquer(".nav-start");
+  if (!verifier("l'écran de choix paraît", await attendre(".car-choice-bar", 40_000))) return null;
+  if (!(await attendre(".route-choice-bubble", 40_000))) {
+    verifier("un parcours est proposé sur la carte", false, (await texte(".car-choice-bar")) ?? "");
+    return null;
+  }
+  await cliquer(".route-choice-bubble");
+  if (!verifier("toucher la bulle lance le guidage", await attendre(".car-banner", 25_000))) return null;
+  return { trajet, points, arrivee };
+}
+
+const arreterGuidage = async () => {
+  await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+  await dodo(1500);
+};
+
+// Évry → Corbeil : 6,4 km de banlieue, sans tunnel ni voie rapide — quel que
+// soit le moteur, on passe par les mêmes rues (voir le scénario `rond-point`).
+const EVRY = [2.43, 48.63];
+const CORBEIL = [2.48, 48.613];
 
 const SCENARIOS = [
   {
@@ -1576,6 +1725,616 @@ const SCENARIOS = [
 
       await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
       await dodo(1500);
+    },
+  },
+  {
+    id: "virage-arret",
+    titre: "Arrêté avant un virage, la carte ne pivote pas en avance",
+    // Défaut du 3 octobre 2026, capture à l'appui : à l'arrêt sur un pont, vingt
+    // mètres avant de tourner à gauche, la carte avait déjà pris le cap de la
+    // rue d'après. La flèche pointait vers la droite de l'écran et « tournez à
+    // gauche » se lisait comme un tout-droit. Sous 7 km/h, la caméra prenait le
+    // cap du tracé cent mètres devant — donc après le virage.
+    async executer() {
+      await scene();
+      const depart = await partirEnVoiture(EVRY, CORBEIL);
+      if (!depart) return;
+      const { trajet, points } = depart;
+
+      // Un vrai virage — pas un rond-point, dont le cap tourne sans cesse —
+      // d'au moins 60°, précédé d'assez de ligne droite pour que « le cap
+      // d'avant » ait un sens.
+      const etapes = trajet.legs.flatMap((l) => l.steps);
+      let virage = null;
+      for (let k = 1; k < etapes.length; k++) {
+        const m = etapes[k].maneuver;
+        if (!/^(turn|end of road)$/.test(m.type)) continue;
+        if (angleEntre(m.bearing_before, m.bearing_after) < 60) continue;
+        if (etapes[k - 1].distance < 120) continue;
+        virage = m;
+        break;
+      }
+      if (!virage) {
+        await arreterGuidage();
+        return verifier("ce trajet n'a plus de virage franc : rien à éprouver ici", true, "choisir un autre trajet de référence");
+      }
+      let rangVirage = 0;
+      for (let k = 1; k < points.length; k++) {
+        if (metresEntre(points[k], virage.location) < metresEntre(points[rangVirage], virage.location)) rangVirage = k;
+      }
+      // Deux points avant : entre quinze et trente mètres du carrefour.
+      const rangArret = rangVirage - 2;
+      const avant = capEntre(points[rangArret - 4], points[rangArret]);
+      const apres = capEntre(points[rangVirage + 1], points[rangVirage + 5]);
+      const recul = metresEntre(points[rangArret], virage.location);
+      verifier(
+        "le trajet de référence a un virage franc",
+        angleEntre(avant, apres) >= 55,
+        `cap ${Math.round(avant)}° puis ${Math.round(apres)}°, arrêt ${Math.round(recul)} m avant`
+      );
+
+      await js(`(()=>{window.__parcoursArretA(${rangArret});return true})()`);
+      if (!verifier("le conducteur arrive avant le virage et s'arrête", await attendreQue("window.__parcoursArrete()", 240_000))) {
+        return arreterGuidage();
+      }
+      // Dix relevés à l'arrêt : de quoi laisser la caméra finir tout pivot.
+      await dodo(8000);
+      const capCarte = (await js("((window.__myosm.map.getBearing()%360)+360)%360")) ?? NaN;
+      capture("33-virage-arret");
+      verifier(
+        "à l'arrêt, la carte regarde encore la route où l'on est",
+        angleEntre(capCarte, avant) < 25,
+        `carte ${Math.round(capCarte)}° · route ${Math.round(avant)}° · rue d'après ${Math.round(apres)}° · ${(await texte(".car-banner"))?.slice(0, 60) ?? ""}`
+      );
+
+      // Et elle tourne bien quand la voiture tourne.
+      await js(`(()=>{window.__parcoursArretA(${rangVirage + 6});return true})()`);
+      await attendreQue("window.__parcoursArrete()", 30_000);
+      await dodo(1500);
+      const capApres = (await js("((window.__myosm.map.getBearing()%360)+360)%360")) ?? NaN;
+      const attendu = capEntre(points[rangVirage + 4], points[rangVirage + 6]);
+      verifier(
+        "le virage pris, la carte a tourné avec la voiture",
+        angleEntre(capApres, attendu) < 30,
+        `carte ${Math.round(capApres)}° · route ${Math.round(attendu)}°`
+      );
+      await arreterGuidage();
+    },
+  },
+  {
+    id: "secours-reseau",
+    titre: "La WebView se croit hors ligne, le téléphone ne l'est pas : la carte et le recalcul passent quand même",
+    // Défaut du 3 octobre 2026 : vingt minutes de trajet sur un fond vide, tous
+    // les recalculs refusés (« needs a connection »), alors que le téléphone
+    // était en 4G. Le journal ne montrait qu'un `net.offline` au départ, jamais
+    // suivi d'un `net.online`. Depuis, ce que la WebView refuse passe par le
+    // natif (`services/native.ts`).
+    async executer() {
+      await scene();
+      await commande("Network.enable");
+      const debut = Date.now();
+      const sonde = `(async()=>{try{await fetch("https://tiles.openfreemap.org/planet?s="+Date.now(),{cache:"no-store"});return "passe"}catch{return "échoue"}})()`;
+
+      // 1. Le fond de carte, dans un endroit jamais vu (tiré au hasard dans le
+      //    Massif central : le cache ne peut pas l'avoir).
+      await webviewHorsLigne(true);
+      await dodo(600);
+      const etat = `${(await js("navigator.onLine")) ? "en ligne" : "hors ligne"}, fetch ${await js(sonde)}`;
+      if (!verifier("l'état du 3 octobre est bien simulé", etat === "hors ligne, fetch échoue", etat)) {
+        await webviewHorsLigne(false);
+        return;
+      }
+      const tuilesAvant = await js("({...window.__myosm.offlineTiles})");
+      const lon = 2.6 + Math.random() * 1.2;
+      const lat = 44.6 + Math.random() * 1.2;
+      await carteVers(Number(lon.toFixed(4)), Number(lat.toFixed(4)), 15);
+      await attendreQue("window.__myosm.map.areTilesLoaded()", 25_000);
+      await dodo(1500);
+      const tuilesApres = await js("({...window.__myosm.offlineTiles})");
+      const routes = await js(
+        "window.__myosm.map.querySourceFeatures('openmaptiles',{sourceLayer:'transportation'}).length"
+      );
+      capture("34-secours-carte");
+      verifier(
+        "les tuiles arrivent malgré tout",
+        tuilesApres.network > tuilesAvant.network && tuilesApres.empty === tuilesAvant.empty,
+        `${tuilesApres.network - tuilesAvant.network} servie(s), ${tuilesApres.empty - tuilesAvant.empty} vide(s), vers ${lat.toFixed(2)}, ${lon.toFixed(2)}`
+      );
+      verifier("la carte a de quoi dessiner des routes", routes > 0, `${routes} tronçon(s)`);
+      await webviewHorsLigne(false);
+      await dodo(800);
+
+      // 2. Le recalcul. Le guidage part en ligne, comme ce jour-là ; la WebView
+      //    décroche ensuite, et l'on s'écarte du tracé.
+      const depart = await partirEnVoiture(EVRY, CORBEIL);
+      if (!depart) return;
+      await js("(()=>{window.__parcoursArretA(12);return true})()");
+      await attendreQue("window.__parcoursArrete()", 30_000);
+      await webviewHorsLigne(true);
+      await dodo(600);
+      const depuis = Date.now();
+      // Deux cents mètres à côté de la route : hors parcours, sans discussion.
+      await js("(()=>{window.__parcoursDeport(0,0.0018);return true})()");
+      const recalcule = await attendreQue(
+        `(window.__myosm.journal.read()||[]).some(e=>e.t>=${depuis}&&(e.k==="car.route"||e.k==="car.route.error"))`,
+        40_000
+      );
+      const notes = await journalDepuis(depuis);
+      const erreur = notes.find((e) => e.k === "car.route.error");
+      const route = notes.find((e) => e.k === "car.route");
+      // Depuis le début du scénario : la note est espacée d'une minute, et les
+      // tuiles de la première partie l'ont déjà fait écrire.
+      const natif = (await journalDepuis(debut)).find((e) => e.k === "net.native");
+      verifier(
+        "le recalcul aboutit, WebView hors ligne",
+        recalcule && !!route && !erreur,
+        erreur ? `refusé : ${erreur.d?.message}` : route ? `${route.d?.km} km, ${Math.round(route.d?.minutes ?? 0)} min` : "aucun recalcul noté"
+      );
+      verifier("le journal garde la trace du secours", !!natif, natif ? JSON.stringify(natif.d) : "aucune note net.native");
+      await webviewHorsLigne(false);
+      await arreterGuidage();
+    },
+  },
+  {
+    id: "prechargement",
+    titre: "La carte des kilomètres à venir est chargée d'avance",
+    // Demande du 4 octobre 2026 : ne plus rouler sur un fond vide quand le
+    // réseau manque en route. Les tuiles des quinze kilomètres devant sont
+    // demandées dès le départ (`navigation/car/routeTiles.ts`).
+    //
+    // La preuve se fait **en mode avion**, là où rien ne peut tricher : un point
+    // du trajet jamais affiché doit se dessiner, et un point hors du trajet,
+    // jamais affiché non plus, doit rester vide — sans ce témoin, le premier
+    // constat ne prouverait rien.
+    //
+    // **Le trajet est tiré au hasard, en Lozère, à chaque passage.** Le cache
+    // HTTP garde une tuile dix ans : sur Évry → Corbeil, que d'autres scénarios
+    // parcourent, « la suite du trajet se dessine » passait au vert même si le
+    // préchargement n'avait rien fait — les tuiles étaient là depuis septembre.
+    // Et l'on regarde **l'arrivée** : c'est le seul endroit où le tracé de
+    // l'application et celui de la référence passent forcément tous les deux.
+    async executer() {
+      await scene();
+      const depuis = Date.now();
+      const DEPART = [Number((2.6 + Math.random() * 1.2).toFixed(4)), Number((44.6 + Math.random() * 1.2).toFixed(4))];
+      const ARRIVEE = [Number((DEPART[0] + 0.08).toFixed(4)), Number((DEPART[1] + 0.02).toFixed(4))];
+      console.log(`   · trajet tiré : ${DEPART[1]}, ${DEPART[0]} → ${ARRIVEE[1]}, ${ARRIVEE[0]}`);
+      const depart = await partirEnVoiture(DEPART, ARRIVEE);
+      if (!depart) return;
+      const { points } = depart;
+      const fini = await attendreQue(
+        `(window.__myosm.journal.read()||[]).some(e=>e.t>=${depuis}&&e.k==="car.preload")`,
+        60_000
+      );
+      const passe = (await journalDepuis(depuis)).find((e) => e.k === "car.preload");
+      verifier(
+        "les tuiles du trajet sont chargées au départ",
+        fini && passe?.d?.tiles > 0 && passe?.d?.failed === 0,
+        passe ? `${passe.d.tiles} tuile(s) sur ${passe.d.wanted}, ${passe.d.failed} échec(s)` : "aucune passe notée"
+      );
+      // On arrête : la caméra du guidage ramènerait la carte au conducteur.
+      await arreterGuidage();
+
+      adb("shell", "cmd", "connectivity", "airplane-mode", "enable");
+      try {
+        if (!verifier("le téléphone est hors ligne", await attendreQue("!navigator.onLine", 15_000))) return;
+        const loin = points[points.length - 1];
+        let avant = await js("({...window.__myosm.offlineTiles})");
+        await carteVers(loin[0], loin[1], 16);
+        await attendreQue("window.__myosm.map.areTilesLoaded()", 20_000);
+        await dodo(1200);
+        let apres = await js("({...window.__myosm.offlineTiles})");
+        const routes = await js(
+          "window.__myosm.map.querySourceFeatures('openmaptiles',{sourceLayer:'transportation'}).length"
+        );
+        capture("35-prechargement");
+        verifier(
+          "sans réseau, la suite du trajet se dessine",
+          apres.empty === avant.empty && apres.network > avant.network && routes > 0,
+          `${apres.network - avant.network} tuile(s) du cache, ${apres.empty - avant.empty} vide(s), ${routes} tronçon(s) de route`
+        );
+
+        // Le témoin : ailleurs, rien n'a été chargé, et rien ne se dessine.
+        avant = apres;
+        // Le témoin est pris dans une autre région que le trajet (Morbihan).
+        await carteVers(Number((-3.4 + Math.random() * 0.8).toFixed(4)), Number((47.8 + Math.random() * 0.4).toFixed(4)), 16);
+        // On attend le constat au lieu de parier sur un délai : le natif met
+        // un moment à renoncer quand il n'y a vraiment aucun réseau.
+        const quand = Date.now();
+        await attendreQue(`window.__myosm.offlineTiles.empty > ${avant.empty}`, 40_000);
+        apres = await js("({...window.__myosm.offlineTiles})");
+        verifier(
+          "témoin : hors du trajet, la carte reste vide",
+          apres.empty > avant.empty,
+          `${apres.empty - avant.empty} case(s) vide(s) après ${((Date.now() - quand) / 1000).toFixed(1)} s`
+        );
+      } finally {
+        adb("shell", "cmd", "connectivity", "airplane-mode", "disable");
+        await attendreQue("navigator.onLine", 30_000);
+      }
+    },
+  },
+  {
+    id: "musique-boutons",
+    titre: "Les boutons de l'encart musique répondent au doigt, en roulant",
+    // Signalé le 4 octobre 2026 : « les boutons pour gérer le son ne marchent
+    // pas », rien à l'écran ni sur la musique. Ce scénario n'a besoin d'aucun
+    // lecteur : il **fait dire au greffon** qu'un morceau joue (l'événement
+    // `change`, tel que le natif l'envoie), puis touche les boutons d'un vrai
+    // doigt (`adb shell input tap`, pas un `click()` de la page) et regarde si
+    // l'ordre part bien vers le natif.
+    async executer() {
+      await scene();
+      // Tout appel au pont natif est noté, et l'écoute du greffon retenue.
+      await js(`(()=>{
+        const cap=window.Capacitor; if(!cap||cap.__espion) return !!cap;
+        cap.__espion=true; window.__appels=[]; window.__ecoute=null;
+        const vers=cap.toNative.bind(cap);
+        cap.toNative=(plugin,methode,options,rappel)=>{
+          const id=vers(plugin,methode,options,rappel);
+          if(plugin==='NowPlaying'){
+            window.__appels.push({methode,action:options&&options.action,t:Date.now()});
+            if(methode==='addListener') window.__ecoute=id;
+          }
+          return id};
+        return true})()`);
+      const depart = await partirEnVoiture(EVRY, CORBEIL);
+      if (!depart) return;
+      if (!verifier("le guidage écoute le greffon de musique", await attendreQue("!!window.__ecoute", 10_000))) {
+        return arreterGuidage();
+      }
+      const morceau = (joue) =>
+        js(`(()=>{window.Capacitor.fromNative({callbackId:window.__ecoute,pluginId:'NowPlaying',methodName:'addListener',
+          save:true,success:true,data:{permission:true,track:{title:'Masterpiece',artist:'Gazebo',album:'',app:'Qobuz',
+          package:'com.qobuz.music',playing:${joue}}}});return true})()`);
+      // Un vrai lecteur fait paraître l'encart tout seul ; sinon, on le simule.
+      if (!(await attendre(".music-card:not(.is-notice)", 4000))) await morceau(true);
+      if (!verifier("l'encart paraît", await attendre(".music-card:not(.is-notice)", 6000))) return arreterGuidage();
+
+      // On roule : c'est en roulant que les boutons ont été essayés.
+      await js("(()=>{window.__parcoursRouler();return true})()");
+      await dodo(2500);
+
+      const densite = await js("window.devicePixelRatio");
+      const toucher = async (selecteur) => {
+        const r = await js(`(()=>{const e=document.querySelector(${JSON.stringify(selecteur)});if(!e)return null;
+          const b=e.getBoundingClientRect();const x=b.left+b.width/2,y=b.top+b.height/2;
+          const dessus=document.elementFromPoint(x,y);
+          return {x,y,dessus:dessus?(dessus.closest('button')===e?'le bouton':(dessus.className||dessus.tagName)):'rien'}})()`);
+        if (!r) return { dessus: "bouton introuvable" };
+        adb("shell", "input", "tap", String(Math.round(r.x * densite)), String(Math.round(r.y * densite)));
+        await dodo(900);
+        return r;
+      };
+      const ordres = async () => (await js("JSON.stringify(window.__appels.filter(a=>a.methode==='control').map(a=>a.action))")) ?? "[]";
+
+      capture("36-musique-boutons");
+
+      // **Avec un vrai lecteur, c'est lui qu'on regarde.** L'ordre qui part ne
+      // prouve rien : le 4 octobre 2026, les ordres partaient, le greffon
+      // répondait « fait », et Qobuz n'en tenait aucun compte. Seul l'état du
+      // lecteur, lu dans Android, dit si le bouton marche.
+      const lecteur = () => {
+        const dump = adb("shell", "dumpsys", "media_session");
+        const pile = /Sessions Stack[\s\S]*?(?=\nAudio playback|\nMedia session config|$)/.exec(dump)?.[0] ?? "";
+        for (const bloc of pile.split(/\n(?=\s{4}\S)/)) {
+          const etat = /state=PlaybackState \{state=(\w+)/.exec(bloc)?.[1];
+          const titre = /description=([^,\n]*)/.exec(bloc)?.[1];
+          if (etat && etat !== "NONE" && titre) return { paquet: /package=(\S+)/.exec(bloc)?.[1], etat, titre };
+        }
+        return null;
+      };
+      const reel = lecteur();
+      if (reel && (reel.etat === "PLAYING" || reel.etat === "BUFFERING")) {
+        console.log(`   · lecteur en cours : ${reel.paquet}, « ${reel.titre} »`);
+        await attendreQue(`(document.querySelector('.music-title')?.textContent||'')===${JSON.stringify(reel.titre)}`, 8000);
+        await toucher(".music-controls button.is-main");
+        await dodo(1200);
+        verifier("« pause » arrête vraiment la musique", lecteur()?.etat === "PAUSED", lecteur()?.etat ?? "?");
+        await toucher(".music-controls button.is-main");
+        await dodo(1200);
+        verifier("« lecture » la relance", /PLAYING|BUFFERING/.test(lecteur()?.etat ?? ""), lecteur()?.etat ?? "?");
+        await toucher(".music-controls button:nth-child(3)");
+        await dodo(2500);
+        const suivant = lecteur();
+        verifier("« suivant » change de morceau", !!suivant && suivant.titre !== reel.titre, `« ${reel.titre} » → « ${suivant?.titre} »`);
+        verifier(
+          "l'encart affiche le nouveau morceau",
+          await attendreQue(`(document.querySelector('.music-title')?.textContent||'')===${JSON.stringify(suivant?.titre ?? "")}`, 6000),
+          (await texte(".music-title")) ?? ""
+        );
+        // Dans les trois premières secondes d'un morceau, « précédent » revient au morceau d'avant.
+        await toucher(".music-controls button:nth-child(1)");
+        await dodo(2500);
+        verifier("« précédent » revient au morceau d'avant", lecteur()?.titre === reel.titre, `« ${lecteur()?.titre} »`);
+        capture("37-musique-reelle");
+        return arreterGuidage();
+      }
+      console.log("   · aucun lecteur en cours : on vérifie seulement que les ordres partent");
+
+      const essais = [
+        [".music-controls button:nth-child(1)", "previous", "précédent"],
+        [".music-controls button:nth-child(3)", "next", "suivant"],
+        [".music-controls button.is-main", "playPause", "pause"],
+      ];
+      for (const [selecteur, action, nom] of essais) {
+        const avant = JSON.parse(await ordres()).length;
+        const r = await toucher(selecteur);
+        const recus = JSON.parse(await ordres());
+        verifier(
+          `« ${nom} » : le doigt atteint le bouton et l'ordre part`,
+          recus.length === avant + 1 && recus[recus.length - 1] === action,
+          `sous le doigt : ${r.dessus} · ordres reçus : ${recus.slice(avant).join(", ") || "aucun"}`
+        );
+      }
+      verifier(
+        "la pause se voit tout de suite à l'écran",
+        /Play|Lecture/i.test((await js("document.querySelector('.music-controls .is-main')?.getAttribute('aria-label')")) ?? ""),
+        (await js("document.querySelector('.music-controls .is-main')?.getAttribute('aria-label')")) ?? ""
+      );
+      await arreterGuidage();
+    },
+  },
+  {
+    id: "arrivee-depassee",
+    titre: "Arrivé, on le reste : dépasser la destination ne relance rien",
+    // Défaut du 3 octobre 2026, lu dans le journal : l'arrivée notée vingt fois
+    // de suite, puis — la destination dépassée de cinquante mètres, le temps de
+    // se garer — un recalcul, et une dizaine d'autres dans les trois secondes,
+    // « à contresens », chacun étant un appel au moteur. Le nouveau tracé
+    // faisait le tour du pâté de maisons et repassait dans la même rue : la
+    // position sautait sur ce second passage (voir `nearest`, `progress.ts`).
+    async executer() {
+      await scene();
+      // Un trajet court : les 700 premiers mètres d'Évry → Corbeil.
+      let cible = null;
+      try {
+        const url =
+          `https://routing.openstreetmap.de/routed-car/route/v1/driving/` +
+          `${EVRY.join(",")};${CORBEIL.join(",")}?overview=full&geometries=geojson`;
+        const brut = (await (await fetch(url)).json()).routes[0].geometry.coordinates;
+        let fait = 0;
+        for (let k = 1; k < brut.length && !cible; k++) {
+          fait += metresEntre(brut[k - 1], brut[k]);
+          if (fait >= 700) cible = brut[k];
+        }
+      } catch (erreur) {
+        return verifier("le service de routage répond", false, String(erreur.message ?? erreur));
+      }
+      if (!verifier("une destination proche est choisie", cible !== null)) return;
+
+      const depuis = Date.now();
+      const depart = await partirEnVoiture(EVRY, cible, 500, { prolonger: 240 });
+      if (!depart) return;
+      const { points, arrivee } = depart;
+      await js(`(()=>{window.__parcoursArretA(${points.length - 1});return true})()`);
+      verifier(
+        "l'arrivée est annoncée",
+        await attendre(".nav-maneuver.is-arrival, .nav-maneuver-icon.is-arrival", 120_000),
+        (await texte(".car-banner"))?.slice(0, 50) ?? ""
+      );
+      const arriveA = Date.now();
+      if (!verifier("le conducteur dépasse la destination", await attendreQue("window.__parcoursArrete()", 60_000))) {
+        return arreterGuidage();
+      }
+      // Dix relevés de plus, à 240 m de là : de quoi laisser partir un recalcul.
+      await dodo(6000);
+      const notes = await journalDepuis(depuis);
+      const arrivees = notes.filter((e) => e.k === "car.arrived").length;
+      const recalculs = notes.filter((e) => e.t >= arriveA - 2000 && /^car\.(reroute|route)/.test(e.k));
+      capture("38-arrivee-depassee");
+      verifier("l'arrivée est notée une fois, pas à chaque relevé", arrivees === 1, `${arrivees} fois`);
+      verifier(
+        "aucun recalcul une fois arrivé",
+        recalculs.length === 0,
+        `${recalculs.length} note(s) de recalcul, ${Math.round(metresEntre(points[points.length - 1], points[arrivee]))} m après la destination`
+      );
+      verifier(
+        "le bandeau dit toujours l'arrivée",
+        await js("!!document.querySelector('.nav-maneuver.is-arrival, .nav-maneuver-icon.is-arrival')"),
+        (await texte(".car-banner"))?.slice(0, 50) ?? ""
+      );
+      await arreterGuidage();
+    },
+  },
+  {
+    id: "clavier-itineraire",
+    titre: "Clavier ouvert dans le panneau d'itinéraire, rien ne recouvre « Démarrer »",
+    // Capture du 3 octobre 2026 : en tapant une destination dans le panneau, le
+    // bouton des calques était posé sur « Start ». Clavier ouvert, il ne reste
+    // que la moitié de l'écran, et les deux boutons du bord droit remontaient
+    // sur le panneau. Le clavier ne s'ouvre que sous un **vrai doigt** : d'où
+    // `adb shell input tap`, et non un `click()` de la page.
+    async executer() {
+      await scene();
+      await positionSimulee(48.86, 2.3376, 95, 0);
+      await carteVers(2.3376, 48.86, 16);
+      await saisir("Bastille");
+      await attendre(".search-result");
+      if ((await cliquerPremierLieu()) === null) return;
+      await attendre(".sheet");
+      await cliquer(".sheet-action-primary");
+      if (!verifier("le panneau d'itinéraire s'ouvre", await attendre(".itinerary-panel"))) return;
+      await attendre(".itinerary-result", 25_000);
+      await dodo(800);
+
+      const recouvrements = () =>
+        js(`(()=>{const p=document.querySelector('.itinerary-panel');if(!p)return 'panneau absent';
+          const a=p.getBoundingClientRect();const out=[];
+          for(const s of ['.locate-button','.map-options-button']){const e=document.querySelector(s);if(!e)continue;
+            const b=e.getBoundingClientRect();
+            const w=Math.min(a.right,b.right)-Math.max(a.left,b.left),h=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+            if(w>2&&h>2)out.push(s)}
+          return out.join(', ')})()`);
+      const hauteur = () => js("Math.round(window.visualViewport?.height ?? window.innerHeight)");
+      const pleine = await hauteur();
+      verifier(
+        "clavier fermé, les deux boutons sont là et ne touchent pas le panneau",
+        (await js("!!document.querySelector('.locate-button') && !!document.querySelector('.map-options-button')")) &&
+          (await recouvrements()) === "",
+        (await recouvrements()) || "aucun recouvrement"
+      );
+
+      const densite = await js("window.devicePixelRatio");
+      const r = await js(`(()=>{const e=document.querySelector('.itinerary-add-step');if(!e)return null;
+        const b=e.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2}})()`);
+      if (!verifier("le panneau offre d'ajouter une étape", r !== null)) return;
+      adb("shell", "input", "tap", String(Math.round(r.x * densite)), String(Math.round(r.y * densite)));
+      await attendre(".itinerary-origin-field input", 6000);
+      const champ = await js(`(()=>{const e=document.querySelector('.itinerary-origin-field input');if(!e)return null;
+        const b=e.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2}})()`);
+      if (champ) adb("shell", "input", "tap", String(Math.round(champ.x * densite)), String(Math.round(champ.y * densite)));
+      const ouvert = await attendreQue(`(window.visualViewport?.height ?? window.innerHeight) < ${pleine - 150}`, 10_000);
+      await dodo(900);
+      capture("39-clavier-itineraire");
+      try {
+        if (!verifier("le clavier s'ouvre", ouvert, `hauteur visible ${await hauteur()} px sur ${pleine}`)) return;
+        verifier(
+          "clavier ouvert, rien ne recouvre le panneau",
+          (await recouvrements()) === "",
+          (await recouvrements()) || "aucun recouvrement"
+        );
+        verifier(
+          "les deux boutons se sont effacés",
+          !(await js("!!document.querySelector('.locate-button') || !!document.querySelector('.map-options-button')"))
+        );
+      } finally {
+        // Le geste retour referme le clavier, sans quitter le panneau.
+        adb("shell", "input", "keyevent", "4");
+      }
+      await attendreQue(`(window.visualViewport?.height ?? window.innerHeight) > ${pleine - 60}`, 8000);
+      await dodo(600);
+      verifier(
+        "clavier refermé, ils reviennent",
+        await attendreQue("!!document.querySelector('.locate-button') && !!document.querySelector('.map-options-button')", 5000),
+        `hauteur visible ${await hauteur()} px`
+      );
+    },
+  },
+  {
+    id: "identite-osm",
+    titre: "Les services d'OSM sont interrogés en se nommant (User-Agent MY-OSM)",
+    // Relecture F-Droid du 3 octobre 2026 : Nominatim, OSRM, Valhalla et
+    // Overpass recevaient le `User-Agent` de série de la WebView, que la
+    // politique de Nominatim refuse. Ils passent désormais par le greffon natif.
+    //
+    // Deux constats, et il faut les deux : chaque service a bien reçu un appel
+    // **natif portant le bon en-tête**, et la WebView, de son côté, **n'en a
+    // envoyé aucun** vers ces hôtes (la liste des ressources de la page).
+    async executer() {
+      await scene({ filtres: '["transport","food"]' });
+      await js(`(()=>{
+        const cap=window.Capacitor; if(!cap) return false;
+        window.__natifs=[];
+        if(!cap.__espionHttp){cap.__espionHttp=true;
+          const vers=cap.toNative.bind(cap);
+          cap.toNative=(plugin,methode,options,rappel)=>{
+            if(plugin==='CapacitorHttp'&&options&&options.url){
+              let hote='?';try{hote=new URL(options.url).host}catch{}
+              const h=options.headers||{};const cle=Object.keys(h).find(k=>k.toLowerCase()==='user-agent');
+              window.__natifs.push({hote,ua:cle?h[cle]:null,methode:options.method||'GET'})}
+            return vers(plugin,methode,options,rappel)}}
+        return true})()`);
+
+      await positionSimulee(48.86, 2.3376, 95, 0);
+      await cliquer(".locate-button");
+      await carteVers(2.3376, 48.86, 16);
+      await dodo(1500);
+      // Nominatim : toucher le **nom d'une commune** sur la carte ouvre sa fiche,
+      // qui demande son contour. Une recherche n'y mène pas — « Vincennes »
+      // rend la station du RER. On cherche donc une étiquette à l'écran, et on
+      // la touche d'un vrai doigt.
+      await carteVers(2.4395, 48.8475, 12.5);
+      await attendreQue("window.__myosm.map.areTilesLoaded()", 20_000);
+      await dodo(1500);
+      const densite = await js("window.devicePixelRatio");
+      const etiquette = await js(`(()=>{const m=window.__myosm.map;const h=window.innerHeight,w=window.innerWidth;
+        const f=m.queryRenderedFeatures([[40,h*0.3],[w-40,h*0.75]]).find(x=>x.sourceLayer==='place'&&x.geometry.type==='Point'&&/^(city|town|village|suburb)$/.test(x.properties.class||''));
+        if(!f)return null;const p=m.project(f.geometry.coordinates);return {x:p.x,y:p.y,nom:f.properties.name,classe:f.properties.class}})()`);
+      if (verifier("une commune est à l'écran", etiquette !== null, etiquette ? `${etiquette.nom} (${etiquette.classe})` : "")) {
+        adb("shell", "input", "tap", String(Math.round(etiquette.x * densite)), String(Math.round(etiquette.y * densite)));
+        await attendre(".sheet", 8000);
+        await dodo(5000);
+      }
+      // Overpass : le détail d'un lieu ; OSRM et Valhalla : le panneau d'itinéraire.
+      await saisir("Bastille");
+      await attendre(".search-result");
+      await cliquerPremierLieu();
+      await attendre(".sheet");
+      await dodo(3000);
+      await cliquer(".sheet-action-primary");
+      if (!verifier("le panneau d'itinéraire s'ouvre", await attendre(".itinerary-panel"))) return;
+      for (const rang of [0, 1, 2]) {
+        await js(`(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[${rang}])m[${rang}].click();return true})()`);
+        await attendre(".itinerary-result", 25_000);
+        await dodo(2500);
+      }
+
+      const natifs = (await js("JSON.stringify(window.__natifs)").then(JSON.parse)) ?? [];
+      const pages = (await js("JSON.stringify(performance.getEntriesByType('resource').map(e=>{try{return new URL(e.name).host}catch{return ''}}))").then(JSON.parse)) ?? [];
+      const attendu = /^MY-OSM\/\d+\.\d+\.\d+\S* \(\+https:\/\/\S+\)$/;
+      const services = [
+        ["Nominatim", /nominatim\.openstreetmap\.org$/],
+        ["OSRM", /routing\.openstreetmap\.de$/],
+        ["Valhalla", /valhalla\d*\.openstreetmap\.de$/],
+        ["Overpass", /overpass/],
+      ];
+      for (const [nom, motif] of services) {
+        const appels = natifs.filter((a) => motif.test(a.hote));
+        const bons = appels.filter((a) => attendu.test(a.ua ?? ""));
+        verifier(
+          `${nom} : interrogé par le natif, en se nommant`,
+          appels.length > 0 && bons.length === appels.length,
+          appels.length ? `${appels.length} appel(s), « ${appels[0].ua} »` : "aucun appel vu — le scénario ne l'a pas déclenché"
+        );
+        const fuites = pages.filter((h) => motif.test(h)).length;
+        verifier(`${nom} : aucun appel par la WebView`, fuites === 0, `${fuites} requête(s) de la page`);
+      }
+    },
+  },
+  {
+    id: "satellite-hors-ligne",
+    titre: "Le téléchargement d'une zone ne prend plus l'imagerie d'Esri",
+    // Relecture F-Droid du 3 octobre 2026. La fiche de World Imagery dit que la
+    // couche « is not intended to be used to export tiles for offline » :
+    // l'imagerie hors ligne vient de l'IGN seul, donc en France seulement.
+    //
+    // Deux petites zones, téléchargées pour de bon puis supprimées : Paris
+    // (l'IGN doit être demandé, Esri jamais) et Londres (aucune imagerie).
+    async executer() {
+      await scene();
+      const telecharger = (nom, bbox) =>
+        js(`(async()=>{
+          const m=await window.__myosm.offlineStore();
+          performance.clearResourceTimings();
+          const region=m.newRegion({name:${JSON.stringify(nom)},bbox:${JSON.stringify(bbox)},detail:"map",vectorMaxZoom:14,
+            satelliteMaxZoom:16,reliefMaxZoom:null,addresses:false,addressDepts:[]});
+          const handle=m.downloadRegion(region,()=>{});
+          const etat=await handle.promise;
+          const hotes=performance.getEntriesByType('resource').map(e=>e.name);
+          const zones=await m.listRegions();const faite=zones.find(z=>z.id===region.id);
+          await m.removeRegion(region.id);
+          return JSON.stringify({etat:String(etat??faite?.status),tuiles:faite?.tilesTotal??null,
+            esri:hotes.filter(u=>u.includes('arcgisonline.com')).length,
+            ign:hotes.filter(u=>u.includes('data.geopf.fr')&&u.includes('ORTHOPHOTOS')).length,
+            vecteur:hotes.filter(u=>u.includes('tiles.openfreemap.org/planet/')).length})})()`).then(JSON.parse);
+
+      const paris = await telecharger("essai-paris", [2.3370, 48.8598, 2.3384, 48.8606]);
+      verifier(
+        "Paris : l'IGN est téléchargé, Esri jamais",
+        paris.esri === 0 && paris.ign > 0 && paris.vecteur > 0,
+        `${paris.ign} tuile(s) IGN, ${paris.esri} Esri, ${paris.vecteur} vectorielle(s), ${paris.tuiles} prévue(s), fin : ${paris.etat}`
+      );
+      const londres = await telecharger("essai-londres", [-0.1283, 51.5068, -0.1269, 51.5076]);
+      verifier(
+        "Londres : aucune imagerie, la carte seule",
+        londres.esri === 0 && londres.ign === 0 && londres.vecteur > 0,
+        `${londres.ign} tuile(s) IGN, ${londres.esri} Esri, ${londres.vecteur} vectorielle(s), ${londres.tuiles} prévue(s), fin : ${londres.etat}`
+      );
+      verifier(
+        "les zones d'essai sont supprimées",
+        (await js("(async()=>{const m=await window.__myosm.offlineStore();return (await m.listRegions()).filter(z=>/^essai-/.test(z.name)).length})()")) === 0
+      );
     },
   },
   {

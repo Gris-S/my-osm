@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bearing, distance, interpolate, projectOnSegment } from "../src/navigation/geo";
-import { locateOnPath, OFF_ROUTE_METERS, type Path } from "../src/navigation/progress";
+import { locateOnPath, OFF_ROUTE_METERS, SAME_PLACE_METERS, type Path } from "../src/navigation/progress";
 import { bearingAround, computeCarProgress, isOffRoute, pointAtMeters } from "../src/navigation/car/carProgress";
 import type { CarRoute } from "../src/navigation/car/carRoute";
 
@@ -115,5 +115,62 @@ describe("carProgress", () => {
     const far = computeCarProgress(route, { lon: 2.03, lat: 48.02 });
     expect(far.remainingMeters).toBeLessThan(50);
     expect(far.arrived).toBe(false);
+  });
+});
+
+describe("locateOnPath — un tracé qui repasse au même endroit", () => {
+  // Le cas du 3 octobre 2026 : on roule vers l'est, le tracé part d'ici, fait
+  // le tour du pâté de maisons et revient **dans la même rue, en sens
+  // inverse**, deux mètres à côté. La vérité est connue : on est au départ.
+  const lat = 48.8;
+  const east = (meters: number) => meters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  const north = (meters: number) => meters / 110_574;
+  const at = (x: number, y: number) => ({ lon: 2.5 + east(x), lat: lat + north(y) });
+  const loop = pathOf([at(0, 0), at(200, 0), at(200, 150), at(-100, 150), at(-100, 2), at(150, 2)]);
+  const total = loop.measures[loop.measures.length - 1];
+
+  it("le tracé d'essai repasse bien au-dessus de son départ", () => {
+    expect(total).toBeGreaterThan(900);
+    // À 20 m du départ, le retour passe à deux mètres : dans la marge.
+    expect(2).toBeLessThan(SAME_PLACE_METERS);
+  });
+
+  it("au départ, on reste au départ même si le retour est un peu plus près", () => {
+    // 1,6 m au nord de l'aller : à 0,4 m du retour, à 1,6 m de l'aller.
+    const found = locateOnPath(loop, at(20, 1.6), 0);
+    expect(found.measure).toBeCloseTo(20, 0);
+    expect(found.index).toBe(0);
+  });
+
+  it("au fil des relevés, on avance sur l'aller sans jamais sauter au retour", () => {
+    let from = 0;
+    for (let x = 0; x <= 140; x += 10) {
+      const found = locateOnPath(loop, at(x, 1.6), from);
+      expect(found.measure, `à ${x} m`).toBeCloseTo(x, 0);
+      from = found.index;
+    }
+  });
+
+  it("revenu par le dernier tronçon, on est bien sur le retour", () => {
+    // On vient du tronçon qui descend (rang 3) : c'est le retour qui est voisin.
+    const found = locateOnPath(loop, at(60, 0.4), 4);
+    expect(found.index).toBe(4);
+    expect(found.measure).toBeCloseTo(total - 90, 0);
+  });
+
+  it("un passage nettement plus proche l'emporte toujours", () => {
+    // Douze mètres au nord de l'aller ? Non : ici, loin de l'aller (150 m au nord), seul un tronçon convient.
+    const found = locateOnPath(loop, at(50, 149), 0);
+    expect(found.index).toBe(2);
+  });
+
+  it("sur un tracé simple, rien ne change : on suit les sommets sans retard", () => {
+    const line = pathOf(Array.from({ length: 60 }, (_, k) => at(k * 5, 0)));
+    let from = 0;
+    for (let x = 0; x <= 290; x += 7) {
+      const found = locateOnPath(line, at(x, 4), from);
+      expect(found.measure, `à ${x} m`).toBeCloseTo(x, 0);
+      from = found.index;
+    }
   });
 });

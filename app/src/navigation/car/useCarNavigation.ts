@@ -14,7 +14,8 @@ import { useSimulatedDriver } from "./carSimulate";
 import { trafficOverlay, trafficSegments, type CarTraffic } from "./carTraffic";
 import { note } from "../journal";
 import { offlineTileStats } from "../../services/offline/nativeTiles";
-import { NO_STREAK, nextWrongWay } from "./heading";
+import { NO_STREAK, nextCameraBearing, nextWrongWay, type CameraBearing } from "./heading";
+import { createRoutePreloader, type RoutePreloader } from "./routeTiles";
 import { playRadarChime, radarAhead, radarsAlong, releaseRadarSound, type RouteRadar } from "./radars";
 import { ARROW_BACKTRACK_METERS, CAMERA_DEAD_ZONE, NAV_PITCH, ZOOM_DEFAULT, paddingTop, zoomFor } from "./carCamera";
 import { choiceDetail, durationLabel } from "./carLabels";
@@ -177,9 +178,11 @@ interface CarPose {
   route: CarRoute | null;
   arrow: { route: CarRoute; meters: number } | null;
   center: LonLat | null;
+  /** Le cap de la caméra et sa provenance (`nextCameraBearing`). */
+  bearing: CameraBearing | null;
 }
 
-const NO_POSE: CarPose = { fix: null, progress: null, route: null, arrow: null, center: null };
+const NO_POSE: CarPose = { fix: null, progress: null, route: null, arrow: null, center: null, bearing: null };
 
 export function useCarNavigation(): CarNavSession {
   const [active, setActive] = useState(false);
@@ -247,6 +250,10 @@ export function useCarNavigation(): CarNavSession {
   const [pose, setPose] = useState<CarPose>(NO_POSE);
   // Relevés consécutifs à contresens, et l'avancement sur le tracé au premier.
   const wrongWayRef = useRef(NO_STREAK);
+  // Le dernier relevé passé par les règles de recalcul.
+  const countedFixRef = useRef<NavFix | null>(null);
+  // La carte des kilomètres à venir, chargée d'avance (`routeTiles.ts`).
+  const preloaderRef = useRef<RoutePreloader | null>(null);
   // Le dernier relevé GPS noté au journal.
   const journalGpsRef = useRef(0);
 
@@ -279,6 +286,8 @@ export function useCarNavigation(): CarNavSession {
     if (points.length < 2) return;
     setActive(true);
     setStatus("choosing");
+    // Le cap tenu par la caméra est celui du trajet précédent : il ne vaut rien ici.
+    setPose(NO_POSE);
     setProposals(null);
     setProposalsAt(null);
     setChosen(null);
@@ -482,6 +491,12 @@ export function useCarNavigation(): CarNavSession {
       });
     }
 
+    // **L'arrivée est définitive.** Elle était réévaluée à chaque relevé : notée
+    // vingt fois au journal, puis démentie dès qu'on dépassait la destination
+    // de cinquante mètres — en cherchant où se garer — et le guidage repartait
+    // pour un tour du pâté de maisons (3 octobre 2026). Arrivé, on le reste
+    // jusqu'à l'arrêt ou au prochain départ ; il n'y a plus rien à recalculer.
+    if (status === "arrived") return;
     if (next.arrived) {
       note("car.arrived", { fait: next.traveledMeters });
       setStatus("arrived");
@@ -515,6 +530,13 @@ export function useCarNavigation(): CarNavSession {
     }
 
     // --- le recalcul -----------------------------------------------------
+    // **Un relevé ne compte qu'une fois.** L'effet se rejoue aussi quand le
+    // tracé ou l'état changent, avec le même relevé : les séries ci-dessous —
+    // « deux relevés à contresens », « tant de relevés hors parcours » —
+    // avançaient alors toutes seules, et un recalcul en appelait un autre dans
+    // la même seconde.
+    if (countedFixRef.current === fix) return;
+    countedFixRef.current = fix;
     const reroute = (reason: "offRoute" | "wrongWay") => {
       note("car.reroute", { reason, ecart: next.offsetMeters, cap: travelHeading(), fait: next.traveledMeters });
       offRouteRef.current = 0;
@@ -563,6 +585,20 @@ export function useCarNavigation(): CarNavSession {
       offRouteRef.current = 0;
     }
   }, [fix, route, active, radars, status, travelHeading, reroutingRef]);
+
+  // La carte des quinze kilomètres devant, demandée d'avance : au départ, à
+  // chaque nouveau tracé, puis tous les kilomètres (`routeTiles.ts`). Le
+  // chargeur décide seul s'il y a quelque chose à faire — l'appeler à chaque
+  // relevé ne coûte qu'une comparaison.
+  useEffect(() => {
+    if (!active || !route || status === "choosing") {
+      preloaderRef.current?.stop();
+      return;
+    }
+    preloaderRef.current ??= createRoutePreloader();
+    preloaderRef.current.update(route, progress?.traveledMeters ?? 0);
+  }, [active, route, progress, status]);
+  useEffect(() => () => preloaderRef.current?.stop(), []);
 
   /**
    * La réévaluation selon le trafic — la deuxième demande faite à ce chantier.
@@ -772,6 +808,7 @@ export function useCarNavigation(): CarNavSession {
   // rendu rejoué par React les faisait avancer deux fois.
   let arrowTrack = pose.arrow;
   let cameraCenter = pose.center;
+  let cameraBearing = pose.bearing;
   if (active && status !== "choosing" && fix && (pose.fix !== fix || pose.progress !== progress)) {
     // La flèche : aimantée au trait sur le parcours, où elle n'avance que vers
     // l'avant ; à sa vraie position dès qu'on s'en écarte, pour que le recalcul
@@ -790,7 +827,17 @@ export function useCarNavigation(): CarNavSession {
     // nouveau parcours repart du relevé.
     cameraCenter =
       pose.route === route && cameraCenter && distance(cameraCenter, reading) < CAMERA_DEAD_ZONE ? cameraCenter : reading;
-    setPose({ fix, progress, route, arrow: arrowTrack, center: cameraCenter });
+    // Le cap de la caméra (`nextCameraBearing`, dans `heading.ts`) : celui du
+    // récepteur quand on roule, tenu à l'arrêt, celui du tracé sous la flèche
+    // sinon. Un nouveau parcours compte ses mètres depuis un autre départ : le
+    // cap tenu perd son repère, pas sa valeur.
+    const heldBearing = pose.bearing && pose.route !== route ? { ...pose.bearing, atMeters: null } : pose.bearing;
+    cameraBearing = nextCameraBearing(heldBearing, {
+      gpsHeading: fix.heading !== null && (fix.speed ?? 0) > HEADING_MIN_SPEED ? fix.heading : null,
+      routeBearing: arrowTrack ? bearingAround(arrowTrack.route, arrowTrack.meters) : null,
+      meters: arrowTrack ? arrowTrack.meters : null,
+    });
+    setPose({ fix, progress, route, arrow: arrowTrack, center: cameraCenter, bearing: cameraBearing });
   }
 
   const map: NavMapState | null = useMemo(() => {
@@ -801,10 +848,11 @@ export function useCarNavigation(): CarNavSession {
       return { position: null, heading: 0, choices, boldRoute: false, camera: null, frame };
     }
     if (!active || !fix || !cameraCenter) return null;
-    const moving = fix.heading !== null && (fix.speed ?? 0) > HEADING_MIN_SPEED;
-    const heading = moving ? (fix.heading as number) : (progress?.pathBearing ?? 0);
     // `heading` n'oriente que la caméra ; la flèche prend le cap du tracé sous
-    // elle quand elle y est aimantée.
+    // elle quand elle y est aimantée. Surtout pas `progress.pathBearing` à
+    // l'arrêt : lissé sur cent mètres, il regarde déjà la rue d'après, et la
+    // carte pivotait avant le virage (voir `nextCameraBearing`).
+    const heading = cameraBearing?.bearing ?? progress?.pathBearing ?? 0;
     const arrow = arrowTrack ? pointAtMeters(arrowTrack.route, arrowTrack.meters) : { lon: fix.lon, lat: fix.lat };
     const arrowHeading = arrowTrack ? bearingAround(arrowTrack.route, arrowTrack.meters) : heading;
     const center = cameraCenter;
@@ -828,7 +876,7 @@ export function useCarNavigation(): CarNavSession {
         : null,
       frame: null,
     };
-  }, [active, fix, progress, follow, cameraMode, status, choices, frame, liveTraffic, arrowTrack, cameraCenter]);
+  }, [active, fix, progress, follow, cameraMode, status, choices, frame, liveTraffic, arrowTrack, cameraCenter, cameraBearing]);
 
   return {
     active,

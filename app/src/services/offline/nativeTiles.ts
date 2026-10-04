@@ -34,7 +34,7 @@
 // ---------------------------------------------------------------------------
 
 import * as maplibregl from "maplibre-gl";
-import { isNativeApp } from "../native";
+import { hasNativeRescue, isNativeApp, rescuedFetch } from "../native";
 import { cacheKeyFor, isStyleAssetUrl, tileRefFromUrl } from "./keys";
 import { assetPath, pathOf, readAnywhere } from "./blobStore";
 import { listRegions, prepareDeviceStorage, regionsRevisionNumber } from "./store";
@@ -144,6 +144,18 @@ function clampTileJson(url: string, data: unknown): unknown {
   return { ...tilejson, maxzoom: zonesMinZoom };
 }
 
+/**
+ * Vrai si une zone téléchargée sert déjà cette tuile : la précharger par le
+ * réseau ne servirait à rien (`navigation/car/routeTiles.ts`). Toujours faux
+ * dans un navigateur, où le Service Worker fait ce tri lui-même.
+ */
+export async function tileStoredInZone(url: string): Promise<boolean> {
+  if (!installed) return false;
+  const path = storedPath(url);
+  if (!path || !(await hasZones())) return false;
+  return (await readAnywhere(path).catch(() => undefined)) !== undefined;
+}
+
 type Wanted = "string" | "json" | "arrayBuffer" | "image" | undefined;
 
 /** Ce que MapLibre attend selon le type demandé — du binaire pour une image, qu'il décode lui-même. */
@@ -195,13 +207,18 @@ export function installOfflineTiles(): boolean {
     }
 
     try {
-      const res = await fetch(url, {
-        method: params.method ?? "GET",
-        headers: params.headers,
-        body: params.body,
-        credentials: params.credentials,
-        signal: abortController.signal,
-      });
+      // `rescuedFetch` : `fetch`, puis le natif si la WebView refuse un réseau
+      // que le téléphone a (voir `services/native.ts`). Hors du fond de carte,
+      // c'est un `fetch` ordinaire.
+      const res = hasNativeRescue(url)
+        ? await rescuedFetch(url, { method: params.method ?? "GET", headers: params.headers, signal: abortController.signal })
+        : await fetch(url, {
+            method: params.method ?? "GET",
+            headers: params.headers,
+            body: params.body,
+            credentials: params.credentials,
+            signal: abortController.signal,
+          });
       if (!res.ok) {
         // La forme d'une `AJAXError` de MapLibre : le statut reste lisible.
         throw Object.assign(new Error(`${res.status} ${res.statusText}: ${url}`), {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { angleBetween, NO_STREAK, nextWrongWay, WRONG_WAY_FIXES } from "../src/navigation/car/heading";
+import { angleBetween, HELD_BEARING_METERS, NO_STREAK, nextCameraBearing, nextWrongWay, WRONG_WAY_FIXES } from "../src/navigation/car/heading";
+import { bearingAround } from "../src/navigation/car/carProgress";
+import { distance } from "../src/navigation/geo";
 import { readTrafficSection, trafficOverlay, trafficSegments } from "../src/navigation/car/carTraffic";
 import type { CarRoute } from "../src/navigation/car/carRoute";
 
@@ -45,6 +47,78 @@ describe("nextWrongWay — le contresens se voit au cap", () => {
     const off = nextWrongWay(first.streak, { routeBearing: 90, offRoute: true, gpsHeading: 270, traveledMeters: 0 });
     expect(off.reroute).toBe(false);
     expect(off.streak).toEqual(NO_STREAK);
+  });
+});
+
+describe("nextCameraBearing — la carte ne tourne que quand la voiture tourne", () => {
+  // Le cas du 3 octobre 2026 : on roule plein est, on s'arrête vingt mètres
+  // avant de tourner à gauche (plein nord). Le tracé, cent mètres devant, est
+  // déjà dans la rue d'après.
+  const lat = 48.8;
+  const east = (meters: number) => meters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  const north = (meters: number) => meters / 110_574;
+  const points = [
+    { lon: 2.5, lat },
+    { lon: 2.5 + east(200), lat },
+    { lon: 2.5 + east(200), lat: lat + north(300) },
+  ];
+  const measures = [0];
+  for (let i = 1; i < points.length; i++) measures.push(measures[i - 1] + distance(points[i - 1], points[i]));
+  const route = { points, measures } as unknown as CarRoute;
+  const under = (meters: number) => bearingAround(route, meters);
+
+  it("le tracé d'essai va bien à l'est puis au nord", () => {
+    expect(under(100)).toBeCloseTo(90, 0);
+    expect(under(300)).toBeCloseTo(0, 0);
+  });
+
+  it("en roulant, suit le cap du récepteur", () => {
+    const moving = nextCameraBearing(null, { gpsHeading: 88, routeBearing: under(150), meters: 150 });
+    expect(moving).toEqual({ bearing: 88, fromGps: true, atMeters: 150 });
+  });
+
+  it("arrêté vingt mètres avant le virage, garde le cap qu'on avait — pas celui de la rue d'après", () => {
+    let camera = nextCameraBearing(null, { gpsHeading: 90, routeBearing: under(170), meters: 170 });
+    // Dix relevés à l'arrêt, la flèche glissant de quelques mètres sous le tremblement du GPS.
+    for (const meters of [176, 178, 180, 180, 181, 181, 182, 182, 182, 183]) {
+      camera = nextCameraBearing(camera, { gpsHeading: null, routeBearing: under(meters), meters });
+      expect(camera?.bearing).toBe(90);
+    }
+  });
+
+  it("au pas dans le virage, tourne avec le tracé sous la flèche — ni avant, ni d'un coup", () => {
+    let camera = nextCameraBearing(null, { gpsHeading: 90, routeBearing: under(170), meters: 170 });
+    const seen: number[] = [];
+    for (let meters = 172; meters <= 230; meters += 2) {
+      camera = nextCameraBearing(camera, { gpsHeading: null, routeBearing: under(meters), meters });
+      seen.push(camera?.bearing ?? NaN);
+    }
+    // Encore plein est tant que la flèche n'a pas avancé de la distance tenue…
+    expect(seen[0]).toBe(90);
+    expect(seen[Math.floor(HELD_BEARING_METERS / 2) - 2]).toBe(90);
+    // … plein nord une fois le virage passé, et jamais au-delà de l'intervalle.
+    expect(seen[seen.length - 1]).toBeCloseTo(0, 0);
+    for (const bearing of seen) expect(bearing).toBeLessThanOrEqual(90.5);
+    for (const bearing of seen) expect(bearing).toBeGreaterThanOrEqual(-0.5);
+    // Sans saut : deux mètres d'avance ne font jamais tourner d'un quart de tour.
+    for (let i = 1; i < seen.length; i++) expect(Math.abs(seen[i] - seen[i - 1])).toBeLessThan(25);
+  });
+
+  it("au départ, sans avoir jamais roulé, regarde le tracé sous la flèche et non cent mètres devant", () => {
+    const start = nextCameraBearing(null, { gpsHeading: null, routeBearing: under(180), meters: 180 });
+    expect(start?.fromGps).toBe(false);
+    expect(start?.bearing).toBeCloseTo(90, 0);
+  });
+
+  it("hors parcours et à l'arrêt, ne bouge pas", () => {
+    const held = { bearing: 125, fromGps: true, atMeters: 6459 };
+    expect(nextCameraBearing(held, { gpsHeading: null, routeBearing: null, meters: null })).toBe(held);
+  });
+
+  it("après un recalcul à l'arrêt, garde le cap et reprend son repère sur le nouveau tracé", () => {
+    const held = { bearing: 125, fromGps: true, atMeters: null };
+    const next = nextCameraBearing(held, { gpsHeading: null, routeBearing: 300, meters: 2 });
+    expect(next).toEqual({ bearing: 125, fromGps: true, atMeters: 2 });
   });
 });
 
