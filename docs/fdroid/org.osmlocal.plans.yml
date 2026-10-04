@@ -37,7 +37,9 @@
 # repassée. 0.1.0-alpha.81 à 85 (30 septembre 2026) n'ajoutent
 # aucune dépendance : scanner passé sur l'APK de chaque release, et **reproduites
 # sur leur CI** (pipelines 2897805868, 2897868224, 2897962311, 2898082850 et 2898154685 du fork : « compared built
-# binary to supplied reference binary successfully »). Attention : fdroidserver
+# binary to supplied reference binary successfully »). 0.1.0-alpha.87
+# (4 octobre 2026, après la relecture de F-Droid) : aucune dépendance de plus,
+# reproduite sur leur CI (pipeline 2910899307). Attention : fdroidserver
 # 2.4.5 en local remet `UpdateCheckData` sur une ligne, leur CI le veut sur deux
 # (échec de `rewritemeta` constaté) — garder la forme sur deux lignes.
 #
@@ -79,11 +81,11 @@ Repo: https://github.com/Gris-S/my-osm.git
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.85
-    versionCode: 1000085
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.85, pas le tag :
+  - versionName: 0.1.0-alpha.87
+    versionCode: 1000087
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.87, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: 8aa3223ff4293b59f4c210fcb5452e6702444141
+    commit: 314070049251b78ee1165b3bd7076be612b59afd
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -160,5 +162,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.85
-CurrentVersionCode: 1000085
+CurrentVersion: 0.1.0-alpha.87
+CurrentVersionCode: 1000087
