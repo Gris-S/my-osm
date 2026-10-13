@@ -1,4 +1,4 @@
-import { Camera, Crosshair, LoaderCircle, Play, Square, X } from "lucide-react";
+import { BellRing, Camera, Crosshair, LoaderCircle, Play, Square, Volume2, VolumeX, X } from "lucide-react";
 import { formatDistance } from "../../utils/format";
 import { useNavDockRef } from "../dockClearance";
 import { MusicCard } from "../music/MusicCard";
@@ -13,7 +13,9 @@ import {
 } from "./carManeuver";
 import { isOffRoute } from "./carProgress";
 import { lanesAt, type LaneAdvice } from "./carRoute";
+import { gaugeView, type GaugeView } from "./carTraffic";
 import { RouteChoice } from "./RouteChoice";
+import { cycleVoiceMode, useVoiceAvailable, useVoiceMode } from "../voice";
 import type { CarNavSession, RadarAlert, SpeedState } from "./useCarNavigation";
 
 // ---------------------------------------------------------------------------
@@ -69,6 +71,9 @@ export function CarNavigationPanel({ session }: { session: CarNavSession }) {
   const arrived = status === "arrived";
   const advice =
     route && progress && next ? lanesAt(route, progress.traveledMeters, LANES_AHEAD) : null;
+  // Les bouchons devant, en parts du trajet restant ; `null` s'il n'y en a pas.
+  const gauge =
+    route && progress && !arrived ? gaugeView(session.trafficSpans, progress.traveledMeters, route.distanceMeters) : null;
 
   return (
     <>
@@ -139,9 +144,11 @@ export function CarNavigationPanel({ session }: { session: CarNavSession }) {
           vision du conducteur quand la carte occupe le centre. */}
       <Speedometer speed={session.speed} />
 
+      {gauge && <TrafficGauge view={gauge} />}
+
       {session.alert && <RadarBanner alert={session.alert} />}
 
-      <div className="nav-dock" ref={dockRef}>
+      <div className="nav-dock is-car" ref={dockRef}>
         {!session.follow && (
           <button className="nav-recenter" onClick={session.recenter}>
             <Crosshair size={15} />
@@ -179,6 +186,8 @@ export function CarNavigationPanel({ session }: { session: CarNavSession }) {
                 </span>
               </span>
             </div>
+
+            <VoiceButton />
 
             {import.meta.env.DEV && route && (
               <button
@@ -259,6 +268,62 @@ function Maneuver({
             {then.action}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+const VOICE_ICONS = { all: Volume2, alerts: BellRing, off: VolumeX } as const;
+
+/**
+ * Le « blabla », à l'opposé du bouton d'arrêt : un appui passe au cran suivant
+ * — tout, alertes seulement, muet — et la voix dit lequel (`voice.ts`). Un
+ * rond jumeau du bouton d'arrêt, pictogramme seul (demande explicite).
+ */
+function VoiceButton() {
+  const { nav } = useNav();
+  const mode = useVoiceMode();
+  const available = useVoiceAvailable();
+  const Icon = available ? VOICE_ICONS[mode] : VolumeX;
+  const label = available ? nav(`voice.mode.${mode}`) : nav("voice.unavailable");
+  return (
+    <button className={`car-voice is-${available ? mode : "off"}`} onClick={cycleVoiceMode} disabled={!available} aria-label={label} title={label}>
+      <Icon size={22} />
+    </button>
+  );
+}
+
+/**
+ * La jauge des bouchons : le trajet **qui reste**, de la voiture (en bas) à
+ * l'arrivée (en haut), et ce qui ralentit dessus en orange et en rouge
+ * (demande explicite, 13 octobre 2026). Elle n'existe que s'il y a un
+ * ralentissement devant.
+ *
+ * Elle répond à deux questions qu'on se pose dans un bouchon et que la carte,
+ * cadrée sur le prochain carrefour, ne montre pas : **où en suis-je**, et **y
+ * en a-t-il d'autres après**. Debout sur le bord droit — la forme retenue par
+ * l'utilisateur après essai des deux ; la phrase (« bouchon dans 3 km ») n'est
+ * pas affichée, elle sert à la synthèse vocale de l'appareil.
+ */
+function TrafficGauge({ view }: { view: GaugeView }) {
+  const { nav } = useNav();
+  const next = view.next;
+  const minutes = next ? Math.round(next.delaySeconds / 60) : 0;
+  const text = next
+    ? nav(`car.${next.level}${next.inside ? "Inside" : "Ahead"}`, { distance: formatDistance(next.meters) }) +
+      (minutes >= 1 ? ` · ${nav("car.jamDelay", { minutes })}` : "")
+    : "";
+  return (
+    <div className="car-gauge" role="img" aria-label={`${nav("car.gauge")}. ${text}`} title={text || undefined}>
+      <div className="car-gauge-track">
+        {view.parts.map((part, index) => (
+          <span
+            key={index}
+            className={`car-gauge-part is-${part.level}`}
+            style={{ bottom: `${part.start * 100}%`, height: `${part.size * 100}%` }}
+          />
+        ))}
+        <span className="car-gauge-here" />
       </div>
     </div>
   );

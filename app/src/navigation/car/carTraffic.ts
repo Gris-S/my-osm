@@ -26,7 +26,8 @@ import type { CarRoute } from "./carRoute";
 /** Orange : ça roule mal. Rouge : ça bouche. */
 export type TrafficLevel = "slow" | "jam";
 
-export type IncidentKind = "roadworks" | "closure" | "accident" | "incident";
+/** `breakdown` ne vient que de la couche d'incidents (`incidents.ts`), jamais de l'itinéraire. */
+export type IncidentKind = "roadworks" | "closure" | "accident" | "incident" | "breakdown";
 
 /** Un tronçon de trafic de l'itinéraire, par rang de points sur son tracé. */
 export interface TrafficSection {
@@ -150,11 +151,12 @@ export function trafficSegments(route: CarRoute): TrafficSegment[] {
  */
 const INCIDENT_MERGE_METERS = 150;
 
-const INCIDENT_LABEL = {
+export const INCIDENT_LABEL = {
   roadworks: "car.incident.roadworks",
   closure: "car.incident.closure",
   accident: "car.incident.accident",
   incident: "car.incident.other",
+  breakdown: "car.incident.breakdown",
 } as const;
 
 /** Les couleurs et les repères d'un itinéraire, pour la navigation. */
@@ -168,4 +170,81 @@ export function trafficOverlay(route: CarRoute): CarTraffic {
     incidents.push({ lon: at.lon, lat: at.lat, kind, label: navText(INCIDENT_LABEL[kind]) });
   }
   return { segments: trafficSegments(route), incidents };
+}
+
+/** Un ralentissement repéré en **mètres le long du parcours suivi**, pour la jauge du bandeau. */
+export interface TrafficSpan {
+  fromMeters: number;
+  toMeters: number;
+  level: TrafficLevel;
+  delaySeconds: number;
+}
+
+/**
+ * Les ralentissements d'un itinéraire, en mètres depuis son départ.
+ *
+ * `offsetMeters` sert au parcours **épinglé** d'une réévaluation : il part de
+ * là où l'on était, pas du départ du trajet suivi, et ses mètres se décalent
+ * donc d'autant pour se lire sur la même règle.
+ */
+export function trafficSpans(route: Pick<CarRoute, "measures" | "traffic">, offsetMeters = 0): TrafficSpan[] {
+  const last = route.measures.length - 1;
+  const at = (index: number) => offsetMeters + (route.measures[Math.min(last, Math.max(0, index))] ?? 0);
+  const spans: TrafficSpan[] = [];
+  for (const section of route.traffic) {
+    if (!section.level) continue;
+    const fromMeters = at(section.startIndex);
+    const toMeters = at(section.endIndex);
+    if (toMeters > fromMeters) spans.push({ fromMeters, toMeters, level: section.level, delaySeconds: section.delaySeconds });
+  }
+  return spans.sort((a, b) => a.fromMeters - b.fromMeters);
+}
+
+/** En deçà de cette longueur restante, un ralentissement se dessine mais ne se dit pas, en mètres. */
+const GAUGE_TEXT_METERS = 200;
+
+/** Ce que la jauge dessine : des parts du trajet **restant**, de 0 (la voiture) à 1 (l'arrivée). */
+export interface GaugeView {
+  parts: { start: number; size: number; level: TrafficLevel }[];
+  /**
+   * Le ralentissement où l'on est, ou le prochain : sa distance, ce qu'il en
+   * reste, ce qu'il coûte. `null` si ceux qui restent sont trop courts pour
+   * mériter une phrase (`GAUGE_TEXT_METERS`).
+   */
+  next: { inside: boolean; meters: number; delaySeconds: number; level: TrafficLevel } | null;
+}
+
+/**
+ * La jauge, vue d'où l'on est. `null` s'il n'y a plus de ralentissement
+ * devant : elle n'existe que s'il y a quelque chose à montrer.
+ */
+export function gaugeView(spans: TrafficSpan[], traveledMeters: number, totalMeters: number): GaugeView | null {
+  const remaining = totalMeters - traveledMeters;
+  const ahead = spans.filter((span) => span.toMeters > traveledMeters);
+  if (remaining <= 0 || !ahead.length) return null;
+  const parts = ahead.map((span) => {
+    const from = Math.max(span.fromMeters, traveledMeters);
+    return {
+      start: (from - traveledMeters) / remaining,
+      size: Math.min(1, (span.toMeters - from) / remaining),
+      level: span.level,
+    };
+  });
+  // La phrase ne parle que de ce qui compte : constaté sur le téléphone, la
+  // jauge annonçait « encore 46 m » pour un feu au départ, alors que le vrai
+  // bouchon était à treize kilomètres.
+  const first = ahead.find((span) => span.toMeters - Math.max(span.fromMeters, traveledMeters) >= GAUGE_TEXT_METERS);
+  if (!first) return { parts, next: null };
+  const inside = first.fromMeters <= traveledMeters;
+  const length = first.toMeters - first.fromMeters;
+  return {
+    parts,
+    next: {
+      inside,
+      level: first.level,
+      meters: inside ? first.toMeters - traveledMeters : first.fromMeters - traveledMeters,
+      // Dans le bouchon, le retard qui reste est la part de sa longueur qui reste.
+      delaySeconds: inside ? first.delaySeconds * ((first.toMeters - traveledMeters) / length) : first.delaySeconds,
+    },
+  };
 }

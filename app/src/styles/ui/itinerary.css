@@ -359,6 +359,39 @@
   margin-top: 14px;
 }
 
+/* « Partir plus tard » (`WhenPicker`) : les deux champs du système, habillés
+   comme les pastilles de mode. */
+.itinerary-when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.itinerary-when :is(select, input) {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.itinerary-when input {
+  flex: 1;
+  min-width: 0;
+}
+
+.itinerary-when-result {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
 .itinerary-mode {
   width: 42px;
   height: 42px;

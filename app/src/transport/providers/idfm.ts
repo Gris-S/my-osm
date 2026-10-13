@@ -205,7 +205,8 @@ export const createIdfmProvider: ProviderFactory = (context) => ({
       fromHub ?? { lon: from[0], lat: from[1] },
       toHub ?? { lon: to[0], lat: to[1] },
       options.at === undefined ? undefined : new Date(options.at),
-      signal
+      signal,
+      options.arriveBy === true
     );
     const fetchedAt = Date.now();
     return journeys.map((journey) => toCanonicalJourney(journey, fetchedAt));

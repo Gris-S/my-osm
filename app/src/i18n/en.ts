@@ -379,6 +379,7 @@ export const en: Dict = {
   "vigilanceIn.orange": "Orange",
   "vigilanceIn.red": "Red",
 
+  "departures.yourJourney": "Your journey · leaves {time}",
   "departures.title": "Next departures",
   "departures.noKey": "Add a (free) Île-de-France Mobilités key in {file} to see live times.",
   "departures.loading": "Looking up the next departures…",
@@ -434,6 +435,12 @@ export const en: Dict = {
   "itinerary.computing": "Working out the route…",
   "itinerary.noTransit": "No public transport route for this trip.",
   "itinerary.noTransitSteps": "No public transport route serving every stop.",
+  "itinerary.when.label": "When to leave",
+  "itinerary.when.now": "Leave now",
+  "itinerary.when.depart": "Leave at",
+  "itinerary.when.arrive": "Arrive by",
+  "itinerary.whenResult": "Leave {depart} · arrive {arrive}, with the usual traffic at that time.",
+  "itinerary.transitNoteWhen": "{source} timetables, for the requested time.",
   "itinerary.transitNote": "{source} timetables, from the time of the request.",
   "itinerary.singleRoute": "Only one route is offered: each stop follows the previous one as soon as possible.",
 
@@ -577,6 +584,7 @@ export const en: Dict = {
   "download.redownload": "Download again",
   "download.failureStorageFull": "Storage full: free up some space, then resume.",
   "download.failureWrite": "The device refused to save the files. Resume to try again.",
+  "download.failureNetwork": "The network dropped: part of this area did not arrive. Resume to complete it.",
   "download.failureMoved": "Maps are now stored inside the app, safe from being cleared: download this area again.",
   "download.spaceShort": "Only {free} is free and this area weighs about {size}: the download may stop when space runs out.",
   "download.stop": "Stop",

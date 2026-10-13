@@ -1,6 +1,6 @@
 import { pickPoi, poiAllowOverlap, poiIconsOpacity, poiSortKey } from "./map/poiPick";
 import { installRoadShields } from "./map/roadShields";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as MLMap, MapMouseEvent } from "maplibre-gl";
 import { CONFIG } from "../config";
@@ -40,7 +40,7 @@ import { POI_SOURCE_ID, POI_LAYER_ID, POI_ICONS_LAYER_ID, LINE_SHAPE_SOURCE_ID, 
 import { subscribeCompass } from "../navigation/compass";
 import { useLatest } from "../hooks/useLatest";
 import { STOP_COLOR, pinElement, waypointPinElement, streetViewElement, dotElement, choiceBubbleElement, incidentElement, navArrowElement } from "./map/markers";
-import { NAV_GLIDE_MIN_MS, NAV_GLIDE_MAX_MS, NAV_GLIDE_JUMP_METERS, NAV_FRAME_MS, NAV_FRAME_SLACK_MS, NAV_PIXEL_RATIO_SHARE, NAV_CAMERA_EASE_MS, type NavCameraPose, type NavGlide, idleGlide, shortestTurn, lerp, easeInOut, samePose } from "./map/navGlide";
+import { NAV_GLIDE_MIN_MS, NAV_GLIDE_MAX_MS, NAV_GLIDE_JUMP_METERS, NAV_FRAME_SLACK_MS, navTuning, subscribeNavTuning, NAV_CAMERA_EASE_MS, type NavCameraPose, type NavGlide, idleGlide, shortestTurn, lerp, easeInOut, samePose } from "./map/navGlide";
 
 /** Pendant le glissement d'une navigation, les POI ne sont relus qu'à ce rythme. */
 const NAV_POI_REFRESH_MS = 1000;
@@ -565,6 +565,7 @@ export const MapView = memo(function MapView({
       (window as unknown as { __myosm?: Record<string, unknown> }).__myosm = {
         ...(window as unknown as { __myosm?: Record<string, unknown> }).__myosm,
         map,
+        navTuning,
       };
     }
     // Hors ligne, la carte se limite au zoom des zones téléchargées.
@@ -1204,7 +1205,7 @@ export const MapView = memo(function MapView({
       glide.frame = 0;
       return;
     }
-    if (glide.drawnAt > 0 && time - glide.drawnAt < NAV_FRAME_MS - NAV_FRAME_SLACK_MS) {
+    if (glide.drawnAt > 0 && time - glide.drawnAt < navTuning.frameMs - NAV_FRAME_SLACK_MS) {
       glide.frame = requestAnimationFrame(navGlideStep);
       return;
     }
@@ -1337,11 +1338,13 @@ export const MapView = memo(function MapView({
   const arrowFollowed = Boolean(navigation?.position);
   // La durée de fondu d'origine des libellés, rendue à la fin de la navigation.
   const labelFadeRef = useRef<number | null>(null);
+  // La définition du moment (`navTuning`) : le mode économe du guidage voiture la change.
+  const pixelShare = useSyncExternalStore(subscribeNavTuning, () => navTuning.pixelShare);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const full = window.devicePixelRatio || 1;
-    const wanted = arrowFollowed ? full * NAV_PIXEL_RATIO_SHARE : full;
+    const wanted = arrowFollowed ? full * pixelShare : full;
     if (Math.abs(map.getPixelRatio() - wanted) > 0.01) map.setPixelRatio(wanted);
     // **Pas de fondu des libellés** tant que la flèche est suivie. Carte en
     // mouvement, chaque image replace les libellés, et chaque placement relance
@@ -1357,7 +1360,7 @@ export const MapView = memo(function MapView({
       labelFadeRef.current ??= labels._fadeDuration;
       labels._fadeDuration = arrowFollowed ? 0 : labelFadeRef.current;
     }
-  }, [arrowFollowed]);
+  }, [arrowFollowed, pixelShare]);
 
   // Le glissement ne survit pas à la carte.
   useEffect(() => () => cancelAnimationFrame(navGlideRef.current.frame), []);
@@ -1564,11 +1567,19 @@ export const MapView = memo(function MapView({
     };
     map.on("dragstart", notify);
     map.on("rotatestart", notify);
+    // La fin du geste aussi : le recentrage automatique de la voiture compte
+    // ses secondes depuis le **dernier** contact, pas depuis le premier.
+    map.on("dragend", notify);
+    map.on("rotateend", notify);
     map.on("pitchstart", notify);
     map.on("zoomstart", notify);
+    map.on("zoomend", notify);
     return () => {
       map.off("dragstart", notify);
       map.off("rotatestart", notify);
+      map.off("dragend", notify);
+      map.off("rotateend", notify);
+      map.off("zoomend", notify);
       map.off("pitchstart", notify);
       map.off("zoomstart", notify);
     };

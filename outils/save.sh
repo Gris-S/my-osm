@@ -16,7 +16,7 @@ desc="${1:?Donne une description courte, ex. : outils/save.sh \"renommage my osm
 slug=$(printf '%s' "$desc" | tr '[:upper:]' '[:lower:]' | tr ' _' '--' | tr -cd 'a-z0-9-')
 
 dernier=$(find "$RACINE/saves" -mindepth 1 -maxdepth 1 -printf '%f\n' \
-  | sed -nE 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}_([0-9]{2})_.*/\1/p' | sort -n | tail -1)
+  | sed -nE 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}_([0-9]{2,})_.*/\1/p' | sort -n | tail -1)
 if [ -z "$dernier" ]; then numero=00; else numero=$(printf '%02d' $((10#$dernier + 1))); fi
 
 dest="$RACINE/saves/$(date +%F)_${numero}_${slug}"

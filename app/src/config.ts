@@ -721,6 +721,9 @@ export const CONFIG = {
   // rechange. Elle autorise l'origine croisée — contrairement à Bison Futé,
   // aucun relais à prévoir. Ce qu'elle ne donne **pas** : le prix des péages.
   TOMTOM_ROUTING_URL: "https://api.tomtom.com/routing/1/calculateRoute",
+  // Les incidents sans bouchon du parcours — accident, véhicule en panne —
+  // pendant la navigation voiture (`navigation/car/incidents.ts`). Même clé.
+  TOMTOM_INCIDENTS_URL: "https://api.tomtom.com/traffic/services/5/incidentDetails",
   // Le flux est republié en continu ; le relire plus souvent ne rendrait pas
   // des bouchons plus frais, et chaque lecture coûte deux cents kilo-octets.
   TRAFFIC_TTL_MS: 3 * 60 * 1000,

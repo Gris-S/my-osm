@@ -1,3 +1,4 @@
+import { setFollowedJourney } from "./transport/journeyFocus";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapView } from "./components/MapView";
 import { SearchBar } from "./components/SearchBar";
@@ -30,7 +31,7 @@ import { reverseGeocode } from "./services/geocode";
 // Navigation guidée pas à pas — voir `src/navigation/README.md`. Tout tient
 // dans ce dossier ; l'application ne fait que l'appeler, lui donner un parcours
 // et passer deux valeurs à la carte.
-import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarEta, useCarNavigation, useNavigation, RunButton, RunPanel, useNavDockClearance, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
+import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarEta, useCarNavigation, hasLiveEngine, withMargin, useNavigation, RunButton, RunPanel, useNavDockClearance, useNavBannerBottom, crampedLevel, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
 import { CONFIG } from "./config";
 import type { LonLat, Place, RouteStop } from "./types";
 import "./App.css";
@@ -134,6 +135,8 @@ export default function App() {
     journeys,
     journeyIndex,
     setJourneyIndex,
+    when,
+    setWhen,
     routeLoading,
     routeError,
     itineraryOpen,
@@ -161,7 +164,15 @@ export default function App() {
   // Le calcul n'est pas ajouté, il est **avancé** : le départ réutilise ce
   // résultat par le cache de `navigation/car/carEta.ts`, et coûte donc toujours
   // ses trois appels.
-  const carEta = useCarEta(routePoints, itineraryOpen && routeMode === "driving" && !carNav.active);
+  // Le trajet en transports suivi, ou retenu dans le panneau : la fiche d'un
+  // arrêt met en avant le passage qu'on y prend (`transport/journeyFocus.ts`).
+  const followedJourney = transitNav.active ? transitNav.journey : itineraryOpen ? selectedJourney : null;
+  useEffect(() => {
+    setFollowedJourney(followedJourney);
+    return () => setFollowedJourney(null);
+  }, [followedJourney]);
+
+  const carEta = useCarEta(routePoints, itineraryOpen && routeMode === "driving" && !carNav.active, when);
 
   const detailsRef = useRef(details);
   detailsRef.current = details;
@@ -547,7 +558,9 @@ export default function App() {
       }
       tallest = Math.max(tallest, height);
       setViewportHeight(height);
-      setKeyboardOpen(tallest - height > 150);
+      // Et un champ a le focus : sans cela, rétrécir la fenêtre d'un navigateur
+      // passait pour un clavier.
+      setKeyboardOpen(tallest - height > 150 && document.activeElement?.matches("input, textarea") === true);
     };
     view?.addEventListener("resize", update);
     window.addEventListener("resize", update);
@@ -579,6 +592,10 @@ export default function App() {
   // il est là — mesuré par le module (`useNavDockClearance`). Le 96 d'avant
   // n'est plus qu'un repli, le temps de la première mesure.
   const navDockClearance = useNavDockClearance();
+  // Et quand elle ne tient pas entre le bandeau et cette colonne, ses boutons
+  // les moins utiles s'effacent (`crampedLevel`).
+  const navBannerBottom = useNavBannerBottom();
+  const cramped = guiding ? crampedLevel(viewportHeight, navBannerBottom, navDockClearance) : 0;
   // On tape dans le panneau d'itinéraire : clavier ouvert, panneau à l'écran.
   const typingInPanel = keyboardOpen && itineraryOpen && !guiding;
   const locateButtonOffset = sheetHeight && !wide
@@ -639,7 +656,7 @@ export default function App() {
     <div
       className={`app-shell ${editingStop !== null ? "is-picking" : ""} ${
         guiding && !choosingRoute ? "is-navigating" : ""
-      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${searching ? "is-searching" : ""} ${run.active ? "is-running" : ""}`}
+      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${searching ? "is-searching" : ""} ${run.active ? "is-running" : ""} ${cramped ? `is-cramped-${cramped}` : ""}`}
     >
       {/* **Pendant la navigation voiture, aucun calque** (demande explicite) :
           ni POI (commerces, parkings, transports…), ni signets, ni relief,
@@ -822,7 +839,27 @@ export default function App() {
           onRemoveStop={handleRemoveStop}
           onMoveStop={handleMoveStop}
           route={route}
-          liveEta={carEta && { durationSeconds: carEta.durationSeconds, distanceMeters: carEta.distanceMeters }}
+          // La durée en voiture porte sa marge (`withMargin`), que le calcul
+          // vienne de TomTom ou, sans clé, d'OSRM.
+          liveEta={
+            carEta
+              ? { durationSeconds: withMargin(carEta.durationSeconds), distanceMeters: carEta.distanceMeters }
+              : routeMode === "driving" && route && route.distanceMeters !== null
+                ? { durationSeconds: withMargin(route.durationSeconds), distanceMeters: route.distanceMeters }
+                : null
+          }
+          when={when}
+          onWhenChange={setWhen}
+          // En transports, toujours ; une heure d'arrivée seulement sans étape
+          // (les tronçons s'enchaînent vers l'avant). En voiture, seulement
+          // avec TomTom, qui seul connaît le trafic habituel d'une heure donnée.
+          whenChoices={
+            routeMode === "transit"
+              ? { depart: true, arrive: stops.length <= 2 }
+              : routeMode === "driving" && hasLiveEngine()
+                ? { depart: true, arrive: true }
+                : { depart: false, arrive: false }
+          }
           journeys={journeys}
           journeyIndex={journeyIndex}
           onSelectJourney={setJourneyIndex}

@@ -1,0 +1,3 @@
+Offline areas no longer report "ready" when the network dropped part-way: they stop, say so, and resuming fetches only what is missing. Places for an area are retried when the server is busy.
+
+Cycling: the BRouter fallback works again in the app. Adding a place to OSM rechecks nearby places after a failed send, to avoid duplicates.

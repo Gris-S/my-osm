@@ -1,0 +1,1 @@
+Driving: battery-saver map rendering by default (30 frames/s, lower resolution), adjustable in settings. Choose the announcement voice among the phone's voices, with a listen button.

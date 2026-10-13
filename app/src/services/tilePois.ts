@@ -1,6 +1,7 @@
 import type { GeoJSONFeature, Map as MLMap } from "maplibre-gl";
 import { FILTER_GROUPS, groupFromTags, type FilterGroupId } from "../filters";
 import type { Place } from "../types";
+import { distance as metersBetween } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // Les commerces affichés sur la carte viennent des **tuiles vectorielles du
@@ -307,14 +308,6 @@ function normalizeStopName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-}
-
-function metersBetween(a: Place, b: Place): number {
-  const toRad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * toRad;
-  const dLon = (b.lon - a.lon) * toRad;
-  const lat = ((a.lat + b.lat) / 2) * toRad;
-  return Math.hypot(dLon * Math.cos(lat), dLat) * 6371000;
 }
 
 /**

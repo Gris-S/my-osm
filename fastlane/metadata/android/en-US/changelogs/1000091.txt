@@ -1,0 +1,1 @@
+Public transport: a blue dot on the station list shows where you are on the line and moves along with you.

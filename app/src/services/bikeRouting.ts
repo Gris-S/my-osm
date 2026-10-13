@@ -2,6 +2,7 @@ import { CONFIG } from "../config";
 import type { LonLat } from "../types";
 import { decodePolyline } from "../transport/polyline";
 import { osmFetch } from "./native";
+import { distance } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // L'itinéraire à vélo : Valhalla d'abord, BRouter en secours.
@@ -419,14 +420,9 @@ function cumulativeMeters(coords: Array<[number, number]>): number[] {
   return out;
 }
 
-/** Distance à vol d'oiseau (haversine), en mètres. */
+/** Distance à vol d'oiseau entre deux couples `[lon, lat]`, en mètres. */
 function meters(a: [number, number], b: [number, number]): number {
-  const R = 6371008.8;
-  const rad = Math.PI / 180;
-  const dLat = (b[1] - a[1]) * rad;
-  const dLon = (b[0] - a[0]) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  return distance({ lon: a[0], lat: a[1] }, { lon: b[0], lat: b[1] });
 }
 
 // --- Pistes et bandes cyclables le long d'un tracé ----------------------------

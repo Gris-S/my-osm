@@ -63,6 +63,7 @@ const FAILURE_TEXT = {
   "storage-full": "download.failureStorageFull",
   write: "download.failureWrite",
   moved: "download.failureMoved",
+  network: "download.failureNetwork",
 } as const;
 
 /**

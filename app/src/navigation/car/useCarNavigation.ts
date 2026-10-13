@@ -11,14 +11,20 @@ import { CAR_OFF_ROUTE_FIXES, bearingAround, computeCarProgress, isOffRoute, poi
 import { rerouteRetryDelayMs, REROUTE_MIN_GAP_MS } from "../progress";
 import { bubbleAnchors, getCarProposals, type CarProposal, type ProposalId } from "./proposals";
 import { useSimulatedDriver } from "./carSimulate";
-import { trafficOverlay, trafficSegments, type CarTraffic } from "./carTraffic";
+import { INCIDENT_LABEL, trafficOverlay, trafficSegments, trafficSpans, type CarTraffic, type TrafficIncident, type TrafficSpan } from "./carTraffic";
 import { note } from "../journal";
+import { setDrivingBrightness } from "../../services/ambientLight";
+import { setNavRendering } from "../../components/map/navGlide";
+import { fetchCorridorIncidents } from "./incidents";
+import { carManeuverAction, carManeuverRoad } from "./carManeuver";
+import { locateOnPath } from "../progress";
+import { NO_VOICE_MEMORY, inSpokenLanguage, maneuverSentence, nextAnnouncement, speak, spokenDistance, stopSpeaking } from "../voice";
 import { offlineTileStats } from "../../services/offline/nativeTiles";
 import { NO_STREAK, nextCameraBearing, nextWrongWay, type CameraBearing } from "./heading";
 import { createRoutePreloader, type RoutePreloader } from "./routeTiles";
 import { playRadarChime, radarAhead, radarsAlong, releaseRadarSound, type RouteRadar } from "./radars";
 import { ARROW_BACKTRACK_METERS, CAMERA_DEAD_ZONE, NAV_PITCH, ZOOM_DEFAULT, paddingTop, zoomFor } from "./carCamera";
-import { choiceDetail, durationLabel } from "./carLabels";
+import { choiceDetail, durationLabel, withMargin } from "./carLabels";
 import { HEADING_MAX_AGE_MS, HEADING_MIN_SPEED, useTravelHeading } from "./useTravelHeading";
 import { useSpeedState, type SpeedState } from "./useSpeedState";
 import { useLatest } from "../../hooks/useLatest";
@@ -146,6 +152,8 @@ export interface CarNavSession {
    */
   eta: { remainingSeconds: number; arrivalAt: Date } | null;
   follow: boolean;
+  /** Les ralentissements du parcours suivi, en mètres depuis son départ (`TrafficGauge`). */
+  trafficSpans: TrafficSpan[];
   destinationName: string | null;
   mapRoute: RouteResult | null;
   map: NavMapState | null;
@@ -170,6 +178,22 @@ interface Request {
 
 /** Aucun radar : une seule liste vide, pour ne pas en fabriquer une par rendu. */
 const NO_RADARS: RouteRadar[] = [];
+const NO_SPANS: TrafficSpan[] = [];
+const NO_INCIDENTS: TrafficIncident[] = [];
+
+/** Ce que la voix dit d'un radar : les libellés de l'encart. */
+const RADAR_VOICE = {
+  fixed: "car.radarFixed",
+  tower: "car.radarTower",
+  average: "car.radarAverage",
+  light: "car.radarLight",
+  crossing: "car.radarCrossing",
+} as const;
+
+/** À quelle distance un incident du parcours est annoncé à voix haute, en mètres. */
+const INCIDENT_VOICE_METERS = 1000;
+/** Et un bouchon : plus tôt, il se prépare — on lève le pied, on change de file. */
+const JAM_VOICE_METERS = 1500;
 
 /** La mémoire de la flèche et de la caméra, d'un relevé au suivant. */
 interface CarPose {
@@ -181,6 +205,13 @@ interface CarPose {
   /** Le cap de la caméra et sa provenance (`nextCameraBearing`). */
   bearing: CameraBearing | null;
 }
+
+/**
+ * Après un geste sur la carte, le temps sans y toucher au bout duquel elle
+ * revient à la voiture. Cinq secondes (huit d'abord, raccourci à la demande
+ * de l'utilisateur) : le temps d'un coup d'œil plus loin.
+ */
+export const RECENTER_AFTER_MS = 5000;
 
 const NO_POSE: CarPose = { fix: null, progress: null, route: null, arrow: null, center: null, bearing: null };
 
@@ -199,6 +230,8 @@ export function useCarNavigation(): CarNavSession {
   const [settledRequest, setSettledRequest] = useState<Request | null>(null);
   const rerouting = request?.reroute === true && settledRequest !== request;
   const [follow, setFollow] = useState(true);
+  // Le retour automatique à la position, après un geste sur la carte.
+  const recenterTimerRef = useRef<number | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [destinationName, setDestinationName] = useState<string | null>(null);
   // Les radars, rangés avec le parcours où ils ont été relevés.
@@ -215,9 +248,26 @@ export function useCarNavigation(): CarNavSession {
   // réévaluation par celui du parcours épinglé. Rangé avec le trajet auquel il
   // se rapporte : un nouveau parcours — départ, recalcul, meilleur trajet
   // adopté — repart de son propre trafic, sans effet qui le remette.
-  const [pinnedTraffic, setPinnedTraffic] = useState<{ route: CarRoute; traffic: CarTraffic } | null>(null);
+  const [pinnedTraffic, setPinnedTraffic] = useState<{ route: CarRoute; traffic: CarTraffic; spans: TrafficSpan[] } | null>(null);
   const routeTraffic = useMemo(() => (route ? trafficOverlay(route) : null), [route]);
   const liveTraffic = route && pinnedTraffic?.route === route ? pinnedTraffic.traffic : routeTraffic;
+  // Les mêmes ralentissements, en mètres le long du parcours : la jauge du bandeau.
+  const routeSpans = useMemo(() => (route ? trafficSpans(route) : NO_SPANS), [route]);
+  const liveSpans = route && pinnedTraffic?.route === route ? pinnedTraffic.spans : routeSpans;
+  // Les incidents sans bouchon du couloir devant — accident, véhicule en panne
+  // (`incidents.ts`) —, rangés avec le parcours où ils ont été relevés.
+  const [corridor, setCorridor] = useState<{ route: CarRoute; incidents: TrafficIncident[] } | null>(null);
+  const corridorIncidents = route && corridor?.route === route ? corridor.incidents : NO_INCIDENTS;
+  // Tout ce que la carte montre : le trafic de l'itinéraire, et ces incidents-là.
+  const mapTraffic = useMemo(
+    () => (liveTraffic && corridorIncidents.length ? { ...liveTraffic, incidents: [...liveTraffic.incidents, ...corridorIncidents] } : liveTraffic),
+    [liveTraffic, corridorIncidents],
+  );
+  // Les mêmes, avec leur avancement sur le tracé : c'est ce que la voix annonce.
+  const incidentsAhead = useMemo(
+    () => (route && mapTraffic ? mapTraffic.incidents.map((incident) => ({ incident, atMeters: locateOnPath(route, incident).measure })) : []),
+    [route, mapTraffic],
+  );
   // La proposition sous le doigt, tant qu'on n'a pas tranché. Elle n'engage
   // rien : elle décide seulement laquelle est tracée en plein et laquelle
   // s'efface, pour qu'on puisse comparer deux parcours du regard avant de
@@ -499,6 +549,7 @@ export function useCarNavigation(): CarNavSession {
     if (status === "arrived") return;
     if (next.arrived) {
       note("car.arrived", { fait: next.traveledMeters });
+      speak(inSpokenLanguage(() => navText("voice.arrived")), "guidance");
       setStatus("arrived");
       offRouteRef.current = 0;
       setAlert(null);
@@ -516,6 +567,17 @@ export function useCarNavigation(): CarNavSession {
       if (announcedRef.current !== ahead.index) {
         announcedRef.current = ahead.index;
         playRadarChime();
+        // Tout ce qui se dit se compose dans la langue de la voix (`inSpokenLanguage`).
+        speak(
+          inSpokenLanguage(() => {
+            const what = navText(RADAR_VOICE[ahead.radar.kind]);
+            return navText("voice.ahead", {
+              what: ahead.radar.kmh === null ? what : navText("voice.limit", { what, kmh: ahead.radar.kmh }),
+              distance: spokenDistance(ahead.distanceMeters),
+            });
+          }),
+          "alert",
+        );
       }
     } else {
       setAlert((current) => (current === null ? current : null));
@@ -585,6 +647,106 @@ export function useCarNavigation(): CarNavSession {
       offRouteRef.current = 0;
     }
   }, [fix, route, active, radars, status, travelHeading, reroutingRef]);
+
+  // Les incidents du couloir devant : au départ, à chaque nouveau tracé, puis à
+  // la cadence de la réévaluation. Un échec est silencieux — la carte garde ce
+  // qu'elle avait.
+  useEffect(() => {
+    if (!active || status !== "running" || !route || !hasLiveEngine()) return;
+    const controller = new AbortController();
+    const refresh = () => {
+      fetchCorridorIncidents(route, progressRef.current?.traveledMeters ?? 0, controller.signal)
+        .then((incidents) => {
+          if (controller.signal.aborted) return;
+          note("car.incidents", { trouves: incidents.length });
+          setCorridor({ route, incidents });
+        })
+        .catch((e: unknown) => {
+          if (!controller.signal.aborted) note("car.incidents.error", { message: e instanceof Error ? e.message : String(e) });
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, TRAFFIC_CHECK_MS);
+    return () => {
+      window.clearInterval(timer);
+      controller.abort();
+    };
+  }, [active, status, route, progressRef]);
+
+  // --- la voix (`voice.ts`) ----------------------------------------------
+  // Les manœuvres en mode « tout », les alertes — incident, bouchon — dès le
+  // mode « alertes ». Le radar, l'arrivée et le changement d'itinéraire se
+  // disent là où ils se décident, plus haut.
+  const voiceRef = useRef(NO_VOICE_MEMORY);
+  const saidAlertsRef = useRef(new Set<string>());
+  useEffect(() => {
+    // Un nouveau tracé renumérote ses manœuvres : la mémoire ne vaut plus.
+    voiceRef.current = NO_VOICE_MEMORY;
+  }, [route]);
+  useEffect(() => {
+    if (active) return;
+    saidAlertsRef.current.clear();
+    stopSpeaking();
+  }, [active]);
+  useEffect(() => {
+    if (!active || status !== "running" || !progress || isOffRoute(progress)) return;
+    const upcoming = progress.next;
+    if (upcoming) {
+      const result = nextAnnouncement(voiceRef.current, {
+        step: progress.stepIndex,
+        distanceMeters: upcoming.distanceMeters,
+        speedMps: fixRef.current?.speed ?? null,
+      });
+      voiceRef.current = result.memory;
+      const maneuver = upcoming.step.maneuver;
+      // L'arrivée s'annonce de loin, et se dit à l'arrivée elle-même.
+      if (result.announce && maneuver.kind === "arrive") {
+        if (!result.announce.now) {
+          speak(
+            inSpokenLanguage(() => navText("voice.ahead", { what: navText("voice.arrival"), distance: spokenDistance(upcoming.distanceMeters) })),
+            "guidance",
+          );
+        }
+      } else if (result.announce) {
+        const { road, street } = carManeuverRoad(maneuver);
+        const now = result.announce.now;
+        speak(
+          inSpokenLanguage(() =>
+            maneuverSentence(carManeuverAction(maneuver), [road, street].filter(Boolean).join(" "), upcoming.distanceMeters, now),
+          ),
+          "guidance",
+        );
+      }
+    }
+    const said = saidAlertsRef.current;
+    for (const { incident, atMeters } of incidentsAhead) {
+      const ahead = atMeters - progress.traveledMeters;
+      const key = `${incident.kind}:${incident.lon.toFixed(3)},${incident.lat.toFixed(3)}`;
+      if (ahead <= 0 || ahead > INCIDENT_VOICE_METERS || said.has(key)) continue;
+      said.add(key);
+      // Le libellé de la carte est dans la langue de l'interface : la voix refait le sien.
+      speak(
+        inSpokenLanguage(() => navText("voice.ahead", { what: navText(INCIDENT_LABEL[incident.kind]), distance: spokenDistance(ahead) })),
+        "alert",
+      );
+    }
+    for (const span of liveSpans) {
+      const ahead = span.fromMeters - progress.traveledMeters;
+      // Une réévaluation redécoupe les bouchons : la clé tolère cinq cents mètres.
+      const key = `jam:${Math.round(span.fromMeters / 500)}`;
+      if (span.level !== "jam" || ahead <= 0 || ahead > JAM_VOICE_METERS || said.has(key)) continue;
+      said.add(key);
+      const minutes = Math.round(span.delaySeconds / 60);
+      speak(
+        inSpokenLanguage(() =>
+          minutes >= 2
+            ? navText("voice.jamDelay", { distance: spokenDistance(ahead), minutes })
+            : navText("voice.jam", { distance: spokenDistance(ahead) }),
+        ),
+        "alert",
+      );
+    }
+  }, [active, status, progress, incidentsAhead, liveSpans, fixRef]);
 
   // La carte des quinze kilomètres devant, demandée d'avance : au départ, à
   // chaque nouveau tracé, puis tous les kilomètres (`routeTiles.ts`). Le
@@ -693,6 +855,7 @@ export function useCarNavigation(): CarNavSession {
             setAlert(null);
             setEtaDriftSeconds(0);
             setTrafficGainSeconds(Math.round(gain));
+            speak(inSpokenLanguage(() => navText("voice.rerouted", { minutes: Math.max(1, Math.round(gain / 60)) })), "alert");
             return;
           }
 
@@ -702,7 +865,12 @@ export function useCarNavigation(): CarNavSession {
           if (Math.abs(drift) >= ETA_DRIFT_SECONDS) setEtaDriftSeconds(Math.round(drift));
           // Et ce qui ralentit devant : le parcours épinglé revient avec le
           // trafic du moment, depuis l'endroit où l'on est.
-          setPinnedTraffic({ route: current, traffic: trafficOverlay(pinned) });
+          setPinnedTraffic({
+            route: current,
+            traffic: trafficOverlay(pinned),
+            // Le parcours épinglé part d'où l'on était : ses mètres se décalent d'autant.
+            spans: trafficSpans(pinned, where.traveledMeters),
+          });
         })
         .catch((e: unknown) => {
           note("car.reevaluate.error", { message: e instanceof Error ? e.message : String(e) });
@@ -739,7 +907,8 @@ export function useCarNavigation(): CarNavSession {
    */
   const eta = useMemo(() => {
     if (!progress || !fix) return null;
-    const remainingSeconds = Math.max(0, progress.remainingSeconds + etaDriftSeconds);
+    // Avec la marge de l'affichage (`withMargin`) : l'heure d'arrivée est une promesse.
+    const remainingSeconds = withMargin(Math.max(0, progress.remainingSeconds + etaDriftSeconds));
     // À partir de l'heure du relevé, qui est l'instant que décrit l'avancement —
     // et non de l'horloge au moment du rendu.
     return { remainingSeconds, arrivalAt: new Date(fix.at + remainingSeconds * 1000) };
@@ -764,7 +933,7 @@ export function useCarNavigation(): CarNavSession {
       geometry: proposal.route.result.segments[0].geometry,
       traffic: trafficSegments(proposal.route),
       at: anchors[index],
-      title: durationLabel(proposal.route.durationSeconds),
+      title: durationLabel(withMargin(proposal.route.durationSeconds)),
       detail: choiceDetail(proposal.toll, proposal.route.trafficDelaySeconds),
       active: proposal.id === front,
       // Le premier contact met la proposition en avant, le second la retient :
@@ -870,13 +1039,54 @@ export function useCarNavigation(): CarNavSession {
       // Le trait s'épaissit une fois qu'on roule dessus.
       boldRoute: true,
       largeArrow: true,
-      traffic: liveTraffic,
+      traffic: mapTraffic,
       camera: follow
         ? { center, bearing: heading, pitch: NAV_PITCH, zoom, paddingTop: paddingTop() }
         : null,
       frame: null,
     };
-  }, [active, fix, progress, follow, cameraMode, status, choices, frame, liveTraffic, arrowTrack, cameraCenter, cameraBearing]);
+  }, [active, fix, progress, follow, cameraMode, status, choices, frame, mapTraffic, arrowTrack, cameraCenter, cameraBearing]);
+
+  // **La carte revient seule à la voiture** (demande explicite, 13 octobre
+  // 2026) : au volant, on regarde plus loin d'un geste et l'on n'a pas la main
+  // libre pour toucher « Recentrer ». Chaque geste relance le délai — la carte
+  // ne se dérobe pas sous le doigt —, et le bouton reste pour qui est pressé.
+  const cancelRecenter = useCallback(() => {
+    if (recenterTimerRef.current !== null) window.clearTimeout(recenterTimerRef.current);
+    recenterTimerRef.current = null;
+  }, []);
+  const recenter = useCallback(() => {
+    cancelRecenter();
+    setFollow(true);
+  }, [cancelRecenter]);
+  const notifyPan = useCallback(() => {
+    cancelRecenter();
+    setFollow(false);
+    recenterTimerRef.current = window.setTimeout(() => {
+      recenterTimerRef.current = null;
+      setFollow(true);
+    }, RECENTER_AFTER_MS);
+  }, [cancelRecenter]);
+  // Guidage arrêté ou écran quitté : plus rien à recentrer.
+  useEffect(() => {
+    if (!active) cancelRecenter();
+    return cancelRecenter;
+  }, [active, cancelRecenter]);
+
+  // En voiture, le thème automatique suit la lumière de plus près (tunnels) :
+  // voir `setDrivingBrightness`.
+  const driving = active && status !== "choosing";
+  useEffect(() => {
+    setDrivingBrightness(driving);
+    return () => setDrivingBrightness(false);
+  }, [driving]);
+  // Et la carte s'y dessine à moitié de la définition et à 30 images par
+  // seconde : c'est la carte qui défile qui fait chauffer le téléphone
+  // (`setNavRendering`).
+  useEffect(() => {
+    setNavRendering(driving);
+    return () => setNavRendering(false);
+  }, [driving]);
 
   return {
     active,
@@ -894,6 +1104,7 @@ export function useCarNavigation(): CarNavSession {
     trafficGainSeconds,
     eta,
     follow,
+    trafficSpans: liveSpans,
     destinationName,
     // Pendant le choix, ce sont les propositions qui sont tracées (`choices`),
     // chacune à son état : rien à dessiner ici, sans quoi l'itinéraire retenu
@@ -903,8 +1114,8 @@ export function useCarNavigation(): CarNavSession {
     choose,
     start,
     stop,
-    recenter: useCallback(() => setFollow(true), []),
-    notifyPan: useCallback(() => setFollow(false), []),
+    recenter,
+    notifyPan,
     simulating,
     toggleSimulation: useCallback(() => setSimulating((current) => !current), []),
   };

@@ -16,6 +16,8 @@ export { useCarNavigation } from "./car/useCarNavigation";
 // calcul n'est pas ajouté : il est avancé, et le départ le réutilise.
 export { useCarEta } from "./car/carEta";
 export type { CarRoute } from "./car/carRoute";
+export { hasLiveEngine } from "./car/carRoute";
+export { withMargin } from "./car/carLabels";
 export type { CarNavSession } from "./car/useCarNavigation";
 export type { CarTraffic, TrafficIncident } from "./car/carTraffic";
 export { CarNavigationPanel } from "./car/CarNavigationPanel";
@@ -31,7 +33,7 @@ export { useRunModeEnabled } from "./settings";
 export const HistoryPanel = lazy(() => import("./HistoryPanel").then((m) => ({ default: m.HistoryPanel })));
 export { requestMotionAccess } from "./useStepCounter";
 export { navText } from "./strings";
-export { useNavDockClearance } from "./dockClearance";
+export { useNavDockClearance, useNavBannerBottom, crampedLevel } from "./dockClearance";
 export { useRunSession } from "./running/useRunSession";
 export type { RunSession } from "./running/useRunSession";
 export { RunPanel } from "./running/RunPanel";

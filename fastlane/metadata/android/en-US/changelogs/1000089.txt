@@ -1,0 +1,3 @@
+Driving: optional voice guidance (all, alerts only, mute), a traffic-jam gauge, accidents and broken-down vehicles on the route (TomTom), the map recentres by itself, faster dark theme in tunnels, scrolling song title.
+
+Public transport: guidance no longer jumps ahead, waits until you have boarded, and recalculates if you miss a vehicle or leave the route; station list; "leave at / arrive by".

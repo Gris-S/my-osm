@@ -21,6 +21,23 @@ export function durationLabel(seconds: number): string {
 }
 
 /**
+ * La durée d'un trajet en voiture **avec sa marge** (demande explicite,
+ * 13 octobre 2026) : trois à cinq minutes de plus que ce que le moteur
+ * annonce, pour le feu qui dure, le camion qu'on suit, la place qu'on cherche.
+ * Arriver en avance sur l'heure dite ne gêne personne ; l'inverse, si.
+ *
+ * Quinze pour cent, cinq minutes au plus : trois minutes sur un trajet de
+ * vingt, cinq dès trente-cinq — et presque rien à deux minutes de l'arrivée,
+ * où une marge fixe empêcherait le compte à rebours d'arriver à zéro.
+ * Appliquée **à l'affichage** (bulles de choix, panneau d'itinéraire, barre du
+ * guidage), jamais aux comparaisons entre itinéraires, qui se font sur les
+ * durées brutes.
+ */
+export function withMargin(seconds: number): number {
+  return seconds + Math.min(300, seconds * 0.15);
+}
+
+/**
  * Le péage, en une ligne.
  *
  * Trois formes seulement, et **aucune ne redit le libellé de la proposition** :

@@ -33,7 +33,7 @@ import { anySignal } from "../../utils/signals";
 import { currentLang, currentLocale, t } from "../../i18n";
 import { downloadWiki } from "./wiki";
 import type { WikiRef } from "../wikipedia";
-import { osmFetch } from "../native";
+import { politeAnswer } from "../overpass";
 
 export interface Progress {
   phase: "style" | "tiles" | "places" | "wiki" | "addresses" | "done";
@@ -48,6 +48,33 @@ const PARALLEL = 6;
 
 /** Sauvegarde de l'avancement — pas à chaque tuile, ce serait du gâchis. */
 const SAVE_EVERY = 40;
+
+/** Une maille de lieux est lourde (5,6 Mo mesurés) : la requête annonce 120 s, on en laisse un peu plus. */
+const PLACES_TIMEOUT_MS = 130_000;
+
+/**
+ * Le réseau a laissé des trous : la zone s'arrête au lieu de se dire prête.
+ *
+ * Avant, une tuile que le réseau ne rendait pas était comptée comme faite —
+ * le wifi coupé à 30 %, les 70 % restants échouaient en une seconde et la
+ * zone finissait « prête », vide là où l'on comptait sur elle. La reprise ne
+ * redemande que ce qui manque.
+ */
+export class NetworkGapError extends Error {
+  constructor(missed: number) {
+    super(`Réseau : ${missed} élément(s) non reçu(s)`);
+    this.name = "NetworkGapError";
+  }
+}
+
+/**
+ * Vrai si cette réponse dit « pas maintenant » plutôt que « il n'y a rien » :
+ * un 404 est une tuile absente (l'IGN hors de ses emprises), pas un trou ;
+ * un 429 ou une panne du serveur en est un.
+ */
+export function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
 
 function normalize(value: string): string {
   return value
@@ -357,6 +384,8 @@ export function downloadRegion(
       // ancienne, le téléchargement levait ici même, dès la première tuile.
       const working = anySignal([signal, stop.signal]);
       let writeFailure = null as StorageWriteError | null;
+      // Les tuiles que le réseau n'a pas rendues : à reprendre, pas à oublier.
+      let missed = 0;
       await pool(
         refs,
         async (ref) => {
@@ -371,9 +400,12 @@ export function downloadRegion(
             const res = await fetch(tileUrl(ref, template), { signal });
             if (res.ok) blob = await res.blob();
             // Une tuile absente n'est pas une erreur : l'IGN rend un 404 hors
-            // de ses emprises, et Esri au-delà de son zoom natif.
+            // de ses emprises.
+            else if (isRetryableStatus(res.status)) return void missed++;
           } catch {
-            /* réseau : la tuile sera reprise au prochain passage */
+            // Réseau : la tuile sera reprise à la reprise de la zone.
+            if (!working.aborted) missed++;
+            return;
           }
           if (blob && !working.aborted) {
             try {
@@ -397,40 +429,43 @@ export function downloadRegion(
       if (writeFailure) throw writeFailure;
       if (signal.aborted) return void (await save("paused"));
       report({ done, total: refs.length });
+      if (missed) throw new NetworkGapError(missed);
 
       // --- Détails de lieux -------------------------------------------------
       if (region.detail !== "map") {
         const chunks = footprintChunks(region);
         let places = 0;
+        let missedChunks = 0;
         const wikiRefs: WikiRef[] = [];
         report({ phase: "places", done: 0, total: chunks.length, label: t("progress.places") });
 
         for (const [i, chunk] of chunks.entries()) {
           if (signal.aborted) return void (await save("paused"));
           try {
-            const res = await osmFetch(CONFIG.OVERPASS_URLS[0], {
-              method: "POST",
-              body: overpassQuery(chunk),
-              signal,
-            });
-            if (res.ok) {
-              const data = (await res.json()) as { elements: OverpassElement[] };
-              const { places: p, entries, wiki } = harvest(data.elements, region.id);
-              wikiRefs.push(...wiki);
-              await putPlaces(p);
-              await putSearchEntries(entries);
-              places += entries.length;
-            }
+            // `politeAnswer` : attente du créneau sur un 429 ou un 504, puis
+            // l'instance suivante. Un simple `fetch` laissait la maille vide
+            // au premier « trop occupé », sans rien dire.
+            const data = (await politeAnswer(overpassQuery(chunk), signal, PLACES_TIMEOUT_MS)) as {
+              elements: OverpassElement[];
+            };
+            const { places: p, entries, wiki } = harvest(data.elements, region.id);
+            wikiRefs.push(...wiki);
+            await putPlaces(p);
+            await putSearchEntries(entries);
+            places += entries.length;
           } catch (err) {
-            // Une maille manquée laisse un trou, pas un échec — sauf si c'est
-            // la place qui manque : les suivantes échoueraient de même.
+            if (signal.aborted) return void (await save("paused"));
+            // La place qui manque arrête tout : les suivantes échoueraient de même.
             if (isQuotaError(err)) throw new StorageWriteError("storage-full", err);
+            // Une maille manquée, malgré les essais : la zone le dira.
+            missedChunks++;
           }
           report({ done: i + 1, total: chunks.length });
           // Overpass est un service public partagé : on ne le mitraille pas.
           await new Promise((r) => setTimeout(r, CONFIG.OFFLINE.OVERPASS_PAUSE_MS));
         }
         region.placesCount = places;
+        if (missedChunks) throw new NetworkGapError(missedChunks);
 
         // --- Wikipédia -------------------------------------------------------
         // Après les lieux, dont elle reprend les références. Interrompue, elle
@@ -492,7 +527,7 @@ export function downloadRegion(
         bytes,
         tilesDone: done,
         status: signal.aborted ? "paused" : "error",
-        failure: err instanceof StorageWriteError ? err.reason : undefined,
+        failure: err instanceof StorageWriteError ? err.reason : err instanceof NetworkGapError ? "network" : undefined,
         error: err instanceof Error ? err.message : String(err),
         updatedAt: Date.now(),
       });

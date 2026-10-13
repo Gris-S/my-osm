@@ -259,7 +259,7 @@ async function slotWaitMs(url: string, signal?: AbortSignal): Promise<number> {
  * ce jour-là, et l'échec se lisait « AbortError » au bout de 25 s — la case de
  * « Fromagerie Collet » ne se chargeait jamais.
  */
-async function politeAnswer(query: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<OsmResponse> {
+export async function politeAnswer(query: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<OsmResponse> {
   let lastError: unknown = new Error("Aucune instance Overpass configurée");
   for (const url of CONFIG.OVERPASS_URLS) {
     for (let attempt = 0; attempt < BUSY_ATTEMPTS; attempt++) {

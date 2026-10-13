@@ -232,6 +232,8 @@ export function connectionTo(steps: TransitStep[], index: number, legs: TransitL
 
 /** En deçà de cette distance du lieu d'une action voisine, on y est. */
 export const CONFIRM_METERS = 90;
+/** La fin d'une marche : il faut être à l'arrêt, pas en vue de l'arrêt. */
+export const WALK_END_METERS = 35;
 /** Plus serré pour une action lointaine : il faut être à l'arrêt, pas à côté. */
 export const FAR_METERS = 40;
 /** Temps passé près d'un arrêt lointain avant de s'y recaler. */
@@ -264,7 +266,10 @@ function matchesAt(steps: TransitStep[], legs: TransitLeg[], here: LonLat, from:
       const meters = distance(here, step.coord);
       // Être au lieu d'une marche ou d'une descente, c'est l'avoir **finie** :
       // l'action suivante commence.
-      if (meters <= radius) {
+      // La fin d'une marche se reconnaît de plus près : à 90 m de l'arrêt on
+      // marche encore, et le guidage passait déjà à la montée — la carte
+      // quittait le chemin à pied pour cadrer toute la ligne (8 octobre 2026).
+      if (meters <= (step.kind === "walk" ? Math.min(radius, WALK_END_METERS) : radius)) {
         found.push({ target: step.kind === "walk" || step.kind === "alight" ? Math.min(i + 1, steps.length - 1) : i, meters });
       }
     }

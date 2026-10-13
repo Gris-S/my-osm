@@ -105,6 +105,15 @@
         <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false" />
     </application>
 
+    <!-- Annonces vocales du guidage (`SpeechPlugin`) : depuis Android 11, une
+         application ne voit le moteur de synthèse vocale du téléphone que si
+         elle déclare vouloir s'y lier. Aucune permission n'en découle. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

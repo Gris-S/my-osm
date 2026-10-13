@@ -1,12 +1,12 @@
 // Généré par `scripts/build-apple-dark-style.mjs` — ne pas éditer à la main.
-// Style du mode sombre : OpenFreeMap Liberty recoloré façon Apple Plans.
+// Style du mode sombre : OpenFreeMap Liberty retouché façon Apple Plans.
 import type { StyleSpecification } from "maplibre-gl";
 
 export const APPLE_DARK_STYLE = {
   "version": 8,
   "name": "OSM Local — Apple Dark",
   "metadata": {
-    "osm-local:derived-from": "OpenFreeMap Liberty, recoloré façon Apple Plans (sombre)"
+    "osm-local:derived-from": "OpenFreeMap Liberty, retouché façon Apple Plans (sombre)"
   },
   "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
@@ -29,8 +29,9 @@ export const APPLE_DARK_STYLE = {
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#1a1a1d"
-      }
+        "background-color": "#292b30"
+      },
+      "layout": {}
     },
     {
       "id": "park",
@@ -38,10 +39,11 @@ export const APPLE_DARK_STYLE = {
       "source": "openmaptiles",
       "source-layer": "park",
       "paint": {
-        "fill-color": "#1a2a1c",
-        "fill-opacity": 0.9,
-        "fill-outline-color": "#2b4030"
-      }
+        "fill-color": "#22432e",
+        "fill-opacity": 0.85,
+        "fill-outline-color": "#325a40"
+      },
+      "layout": {}
     },
     {
       "id": "park_outline",
@@ -49,12 +51,13 @@ export const APPLE_DARK_STYLE = {
       "source": "openmaptiles",
       "source-layer": "park",
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#325a40",
         "line-dasharray": [
           1,
           1.5
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "landuse_residential",
@@ -71,8 +74,22 @@ export const APPLE_DARK_STYLE = {
         "residential"
       ],
       "paint": {
-        "fill-color": "#202023"
-      }
+        "fill-color": "#2e3036",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.9,
+          12,
+          0.4
+        ]
+      },
+      "layout": {}
     },
     {
       "id": "landcover_wood",
@@ -89,9 +106,22 @@ export const APPLE_DARK_STYLE = {
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "#18271c",
-        "fill-opacity": 0.9
-      }
+        "fill-color": "#20402c",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.85,
+          14,
+          0.7
+        ]
+      },
+      "layout": {}
     },
     {
       "id": "landcover_grass",
@@ -108,9 +138,10 @@ export const APPLE_DARK_STYLE = {
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "#1d2b1e",
-        "fill-opacity": 0.9
-      }
+        "fill-color": "#244630",
+        "fill-opacity": 0.85
+      },
+      "layout": {}
     },
     {
       "id": "landcover_ice",
@@ -127,9 +158,10 @@ export const APPLE_DARK_STYLE = {
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "#2b2f34",
+        "fill-color": "#353b42",
         "fill-opacity": 0.8
-      }
+      },
+      "layout": {}
     },
     {
       "id": "landcover_wetland",
@@ -149,8 +181,9 @@ export const APPLE_DARK_STYLE = {
         "fill-antialias": true,
         "fill-opacity": 0.5,
         "fill-translate-anchor": "map",
-        "fill-color": "#182422"
-      }
+        "fill-color": "#213836"
+      },
+      "layout": {}
     },
     {
       "id": "landuse_pitch",
@@ -166,8 +199,9 @@ export const APPLE_DARK_STYLE = {
         "pitch"
       ],
       "paint": {
-        "fill-color": "#233220"
-      }
+        "fill-color": "#284a30"
+      },
+      "layout": {}
     },
     {
       "id": "landuse_track",
@@ -183,8 +217,9 @@ export const APPLE_DARK_STYLE = {
         "track"
       ],
       "paint": {
-        "fill-color": "#233220"
-      }
+        "fill-color": "#284a30"
+      },
+      "layout": {}
     },
     {
       "id": "landuse_cemetery",
@@ -200,8 +235,9 @@ export const APPLE_DARK_STYLE = {
         "cemetery"
       ],
       "paint": {
-        "fill-color": "#1e251e"
-      }
+        "fill-color": "#283528"
+      },
+      "layout": {}
     },
     {
       "id": "landuse_hospital",
@@ -217,8 +253,9 @@ export const APPLE_DARK_STYLE = {
         "hospital"
       ],
       "paint": {
-        "fill-color": "#241d20"
-      }
+        "fill-color": "#322c34"
+      },
+      "layout": {}
     },
     {
       "id": "landuse_school",
@@ -234,8 +271,9 @@ export const APPLE_DARK_STYLE = {
         "school"
       ],
       "paint": {
-        "fill-color": "#24221b"
-      }
+        "fill-color": "#343126"
+      },
+      "layout": {}
     },
     {
       "id": "waterway_tunnel",
@@ -251,7 +289,7 @@ export const APPLE_DARK_STYLE = {
         "tunnel"
       ],
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#224a73",
         "line-dasharray": [
           3,
           3
@@ -284,7 +322,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "waterway_river",
@@ -314,20 +353,22 @@ export const APPLE_DARK_STYLE = {
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#224a73",
         "line-width": [
           "interpolate",
           [
             "exponential",
-            1.2
+            1.3
           ],
           [
             "zoom"
           ],
+          8,
+          1,
           11,
-          0.5,
+          2,
           20,
-          6
+          10
         ]
       }
     },
@@ -359,7 +400,7 @@ export const APPLE_DARK_STYLE = {
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#224a73",
         "line-width": [
           "interpolate",
           [
@@ -390,8 +431,9 @@ export const APPLE_DARK_STYLE = {
         "tunnel"
       ],
       "paint": {
-        "fill-color": "#182d40"
-      }
+        "fill-color": "#183352"
+      },
+      "layout": {}
     },
     {
       "id": "landcover_sand",
@@ -407,8 +449,9 @@ export const APPLE_DARK_STYLE = {
         "sand"
       ],
       "paint": {
-        "fill-color": "#272620"
-      }
+        "fill-color": "#36332a"
+      },
+      "layout": {}
     },
     {
       "id": "aeroway_fill",
@@ -429,9 +472,10 @@ export const APPLE_DARK_STYLE = {
         false
       ],
       "paint": {
-        "fill-color": "#2a2a31",
+        "fill-color": "#30333c",
         "fill-opacity": 0.7
-      }
+      },
+      "layout": {}
     },
     {
       "id": "aeroway_runway",
@@ -463,7 +507,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#474b57",
         "line-width": [
           "interpolate",
           [
@@ -478,7 +522,8 @@ export const APPLE_DARK_STYLE = {
           20,
           16
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "aeroway_taxiway",
@@ -510,7 +555,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#474b57",
         "line-width": [
           "interpolate",
           [
@@ -525,7 +570,8 @@ export const APPLE_DARK_STYLE = {
           20,
           6
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "tunnel_motorway_link_casing",
@@ -563,7 +609,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-dasharray": [
           0.5,
           0.25
@@ -621,7 +667,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#202126",
         "line-dasharray": [
           0.5,
           0.25
@@ -672,7 +718,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -726,7 +772,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#202126",
         "line-opacity": [
           "interpolate",
           [
@@ -793,7 +839,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -807,6 +853,19 @@ export const APPLE_DARK_STYLE = {
           1.5,
           20,
           17
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0,
+          13,
+          1
         ]
       }
     },
@@ -843,7 +902,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -861,6 +920,19 @@ export const APPLE_DARK_STYLE = {
           1.75,
           20,
           22
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          1
         ]
       }
     },
@@ -900,7 +972,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-dasharray": [
           0.5,
           0.25
@@ -967,7 +1039,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#474952",
         "line-dasharray": [
           1,
           0.75
@@ -986,7 +1058,8 @@ export const APPLE_DARK_STYLE = {
           20,
           10
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "tunnel_motorway_link",
@@ -1024,7 +1097,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -1078,7 +1163,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -1125,7 +1210,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#666872",
         "line-width": [
           "interpolate",
           [
@@ -1178,7 +1263,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -1230,7 +1315,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4b53",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          "#42444c",
+          13,
+          "#595b65"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -1246,6 +1343,19 @@ export const APPLE_DARK_STYLE = {
           0.5,
           20,
           10
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.35,
+          12,
+          1
         ]
       }
     },
@@ -1282,7 +1392,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#5d5d67",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          "#4a4c55",
+          13,
+          "#666872"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -1298,6 +1420,19 @@ export const APPLE_DARK_STYLE = {
           1,
           20,
           18
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.6,
+          12,
+          1
         ]
       }
     },
@@ -1337,7 +1472,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -1385,7 +1532,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -1402,7 +1549,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "tunnel_major_rail_hatching",
@@ -1429,7 +1577,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -1450,7 +1598,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "tunnel_transit_rail",
@@ -1481,7 +1630,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -1498,7 +1647,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "tunnel_transit_rail_hatching",
@@ -1525,7 +1675,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -1546,7 +1696,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_area_pattern",
@@ -1566,9 +1717,10 @@ export const APPLE_DARK_STYLE = {
         false
       ],
       "paint": {
-        "fill-color": "#202023",
+        "fill-color": "#2e3036",
         "fill-opacity": 0.5
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_motorway_link_casing",
@@ -1613,7 +1765,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-width": [
           "interpolate",
           [
@@ -1673,7 +1825,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#202126",
         "line-width": [
           "interpolate",
           [
@@ -1743,7 +1895,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -1822,7 +1974,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#202126",
         "line-opacity": [
           "interpolate",
           [
@@ -1903,7 +2055,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -1917,6 +2069,19 @@ export const APPLE_DARK_STYLE = {
           1.5,
           20,
           17
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0,
+          13,
+          1
         ]
       }
     },
@@ -1958,7 +2123,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -1976,6 +2141,19 @@ export const APPLE_DARK_STYLE = {
           1.75,
           20,
           22
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          1
         ]
       }
     },
@@ -2022,7 +2200,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-width": [
           "interpolate",
           [
@@ -2094,7 +2272,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#474952",
         "line-dasharray": [
           1,
           0.7
@@ -2158,7 +2336,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -2218,7 +2408,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -2288,7 +2478,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#666872",
         "line-width": [
           "interpolate",
           [
@@ -2359,7 +2549,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -2417,7 +2607,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4b53",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          "#42444c",
+          13,
+          "#595b65"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -2433,6 +2635,19 @@ export const APPLE_DARK_STYLE = {
           0.5,
           20,
           13
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.35,
+          12,
+          1
         ]
       }
     },
@@ -2474,7 +2689,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#5d5d67",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          "#4a4c55",
+          13,
+          "#666872"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -2490,6 +2717,19 @@ export const APPLE_DARK_STYLE = {
           1,
           20,
           18
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.6,
+          12,
+          1
         ]
       }
     },
@@ -2536,7 +2776,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -2585,7 +2837,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -2602,7 +2854,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_major_rail_hatching",
@@ -2634,7 +2887,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -2655,7 +2908,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_transit_rail",
@@ -2687,7 +2941,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -2704,7 +2958,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_transit_rail_hatching",
@@ -2736,7 +2991,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -2757,7 +3012,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "road_one_way_arrow",
@@ -2778,8 +3034,8 @@ export const APPLE_DARK_STYLE = {
         "symbol-placement": "line"
       },
       "paint": {
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -2802,8 +3058,8 @@ export const APPLE_DARK_STYLE = {
         "symbol-placement": "line"
       },
       "paint": {
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -2842,7 +3098,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-width": [
           "interpolate",
           [
@@ -2896,7 +3152,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#202126",
         "line-width": [
           "interpolate",
           [
@@ -2943,7 +3199,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -2997,7 +3253,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#202126",
         "line-opacity": [
           "interpolate",
           [
@@ -3073,7 +3329,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#474952",
         "line-dasharray": [
           1,
           0
@@ -3092,7 +3348,8 @@ export const APPLE_DARK_STYLE = {
           20,
           18
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "bridge_secondary_tertiary_casing",
@@ -3127,7 +3384,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -3141,6 +3398,19 @@ export const APPLE_DARK_STYLE = {
           1.5,
           20,
           17
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0,
+          13,
+          1
         ]
       }
     },
@@ -3177,7 +3447,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#121214",
+        "line-color": "#1d1e22",
         "line-width": [
           "interpolate",
           [
@@ -3195,6 +3465,19 @@ export const APPLE_DARK_STYLE = {
           1.75,
           20,
           22
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          1
         ]
       }
     },
@@ -3234,7 +3517,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4130",
+        "line-color": "#34324a",
         "line-width": [
           "interpolate",
           [
@@ -3297,7 +3580,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#474952",
         "line-dasharray": [
           1,
           0.3
@@ -3316,7 +3599,8 @@ export const APPLE_DARK_STYLE = {
           20,
           10
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "bridge_motorway_link",
@@ -3354,7 +3638,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -3408,7 +3704,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#35353d",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -3455,7 +3751,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#666872",
         "line-width": [
           "interpolate",
           [
@@ -3508,7 +3804,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#3e3e44",
+        "line-color": "#494b54",
         "line-width": [
           "interpolate",
           [
@@ -3560,7 +3856,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#4b4b53",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          "#42444c",
+          13,
+          "#595b65"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -3576,6 +3884,19 @@ export const APPLE_DARK_STYLE = {
           0.5,
           20,
           10
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.35,
+          12,
+          1
         ]
       }
     },
@@ -3612,7 +3933,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#5d5d67",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          "#4a4c55",
+          13,
+          "#666872"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -3628,6 +3961,19 @@ export const APPLE_DARK_STYLE = {
           1,
           20,
           18
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.6,
+          12,
+          1
         ]
       }
     },
@@ -3667,7 +4013,19 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#9a844f",
+        "line-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          "#66628a",
+          13,
+          "#7d79a3"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -3711,7 +4069,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -3728,7 +4086,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "bridge_major_rail_hatching",
@@ -3755,7 +4114,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -3776,7 +4135,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "bridge_transit_rail",
@@ -3803,7 +4163,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#3d3d44",
+        "line-color": "#54565f",
         "line-width": [
           "interpolate",
           [
@@ -3820,7 +4180,8 @@ export const APPLE_DARK_STYLE = {
           20,
           2
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "bridge_transit_rail_hatching",
@@ -3847,7 +4208,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#4c4c55",
+        "line-color": "#54565f",
         "line-dasharray": [
           0.2,
           8
@@ -3868,7 +4229,8 @@ export const APPLE_DARK_STYLE = {
           20,
           8
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "building",
@@ -3878,9 +4240,10 @@ export const APPLE_DARK_STYLE = {
       "minzoom": 13,
       "maxzoom": 14,
       "paint": {
-        "fill-color": "#26262c",
-        "fill-outline-color": "#31313a"
-      }
+        "fill-color": "#33353c",
+        "fill-outline-color": "#3f4149"
+      },
+      "layout": {}
     },
     {
       "id": "building-3d",
@@ -3893,13 +4256,14 @@ export const APPLE_DARK_STYLE = {
           "get",
           "render_min_height"
         ],
-        "fill-extrusion-color": "#26262c",
+        "fill-extrusion-color": "#383a42",
         "fill-extrusion-height": [
           "get",
           "render_height"
         ],
         "fill-extrusion-opacity": 0.8
-      }
+      },
+      "layout": {}
     },
     {
       "id": "boundary_3",
@@ -3950,7 +4314,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#6b4a66",
         "line-dasharray": [
           1,
           1
@@ -3968,8 +4332,10 @@ export const APPLE_DARK_STYLE = {
           1,
           11,
           2
-        ]
-      }
+        ],
+        "line-opacity": 0.55
+      },
+      "layout": {}
     },
     {
       "id": "boundary_2",
@@ -4015,7 +4381,7 @@ export const APPLE_DARK_STYLE = {
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#8a6a86",
         "line-opacity": [
           "interpolate",
           [
@@ -4071,7 +4437,7 @@ export const APPLE_DARK_STYLE = {
         ]
       ],
       "paint": {
-        "line-color": "#37373c",
+        "line-color": "#8a6a86",
         "line-dasharray": [
           1,
           2
@@ -4091,7 +4457,8 @@ export const APPLE_DARK_STYLE = {
           12,
           3
         ]
-      }
+      },
+      "layout": {}
     },
     {
       "id": "waterway_line_label",
@@ -4152,8 +4519,8 @@ export const APPLE_DARK_STYLE = {
         "text-size": 14
       },
       "paint": {
-        "text-color": "#5f7c9e",
-        "text-halo-color": "rgba(9,9,11,0.8)",
+        "text-color": "#5b8fc9",
+        "text-halo-color": "rgba(20,21,24,0.9)",
         "text-halo-width": 1.5
       }
     },
@@ -4225,10 +4592,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#5f7c9e",
-        "text-halo-color": "rgba(9,9,11,0.8)",
-        "text-halo-width": 1.5,
-        "icon-opacity": 0.9
+        "text-color": "#5b8fc9",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -4289,8 +4655,8 @@ export const APPLE_DARK_STYLE = {
         "text-size": 14
       },
       "paint": {
-        "text-color": "#5f7c9e",
-        "text-halo-color": "rgba(9,9,11,0.8)",
+        "text-color": "#5b8fc9",
+        "text-halo-color": "rgba(20,21,24,0.9)",
         "text-halo-width": 1.5
       }
     },
@@ -4385,10 +4751,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 12
       },
       "paint": {
-        "text-color": "#8c8c97",
-        "text-halo-blur": 0.5,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1,
+        "text-color": "#9a9aa5",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
         "icon-opacity": 0.9
       }
     },
@@ -4491,10 +4856,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 12
       },
       "paint": {
-        "text-color": "#8c8c97",
-        "text-halo-blur": 0.5,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1,
+        "text-color": "#9a9aa5",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
         "icon-opacity": 0.9
       }
     },
@@ -4597,10 +4961,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 12
       },
       "paint": {
-        "text-color": "#8c8c97",
-        "text-halo-blur": 0.5,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1,
+        "text-color": "#9a9aa5",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
         "icon-opacity": 0.9
       }
     },
@@ -4674,10 +5037,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 12
       },
       "paint": {
-        "text-color": "#8c8c97",
-        "text-halo-blur": 0.5,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1,
+        "text-color": "#9a9aa5",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
         "icon-opacity": 0.9
       }
     },
@@ -4746,9 +5108,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#9a9aa4",
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 0.5
+        "text-color": "#a0a0aa",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -4837,10 +5199,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#9a9aa4",
-        "text-halo-blur": 0.5,
-        "text-halo-width": 1,
-        "text-halo-color": "#0b0b0d"
+        "text-color": "#a0a0aa",
+        "text-halo-width": 1.5,
+        "text-halo-color": "rgba(20,21,24,0.9)"
       }
     },
     {
@@ -4915,10 +5276,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#9a9aa4",
-        "text-halo-blur": 0.5,
-        "text-halo-width": 1,
-        "text-halo-color": "#0b0b0d"
+        "text-color": "#a0a0aa",
+        "text-halo-width": 1.5,
+        "text-halo-color": "rgba(20,21,24,0.9)"
       }
     },
     {
@@ -4967,7 +5327,45 @@ export const APPLE_DARK_STYLE = {
       "layout": {
         "icon-image": [
           "concat",
-          "road_",
+          "fr-shield-",
+          [
+            "match",
+            [
+              "upcase",
+              [
+                "slice",
+                [
+                  "to-string",
+                  [
+                    "get",
+                    "ref"
+                  ]
+                ],
+                0,
+                1
+              ]
+            ],
+            [
+              "A",
+              "N"
+            ],
+            "red",
+            [
+              "D"
+            ],
+            "yellow",
+            [
+              "E",
+              "F"
+            ],
+            "green",
+            [
+              "M"
+            ],
+            "cyan",
+            "white"
+          ],
+          "-",
           [
             "get",
             "ref_length"
@@ -4993,15 +5391,58 @@ export const APPLE_DARK_STYLE = {
           ]
         ],
         "text-font": [
-          "Noto Sans Regular"
+          "Noto Sans Bold"
         ],
         "text-rotation-alignment": "viewport",
         "text-size": 10
       },
       "paint": {
-        "text-color": "#9a9aa4",
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": [
+          "match",
+          [
+            "match",
+            [
+              "upcase",
+              [
+                "slice",
+                [
+                  "to-string",
+                  [
+                    "get",
+                    "ref"
+                  ]
+                ],
+                0,
+                1
+              ]
+            ],
+            [
+              "A",
+              "N"
+            ],
+            "red",
+            [
+              "D"
+            ],
+            "yellow",
+            [
+              "E",
+              "F"
+            ],
+            "green",
+            [
+              "M"
+            ],
+            "cyan",
+            "white"
+          ],
+          [
+            "yellow",
+            "white"
+          ],
+          "#1c1c1e",
+          "#ffffff"
+        ]
       }
     },
     {
@@ -5086,9 +5527,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 10
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
+        "text-color": "#8e8e99"
       }
     },
     {
@@ -5172,9 +5613,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 10
       },
       "paint": {
-        "text-color": "#9a9aa4",
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5,
+        "text-color": "#8e8e99"
       }
     },
     {
@@ -5237,10 +5678,9 @@ export const APPLE_DARK_STYLE = {
         "text-size": 12
       },
       "paint": {
-        "text-color": "#8f8f9a",
-        "text-halo-blur": 0.5,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#6f9be0",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5248,7 +5688,7 @@ export const APPLE_DARK_STYLE = {
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "minzoom": 8,
+      "minzoom": 12,
       "filter": [
         "match",
         [
@@ -5318,10 +5758,9 @@ export const APPLE_DARK_STYLE = {
         "text-transform": "uppercase"
       },
       "paint": {
-        "text-color": "#8f8f9a",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#8e8e99",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5329,7 +5768,7 @@ export const APPLE_DARK_STYLE = {
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "minzoom": 9,
+      "minzoom": 10.5,
       "filter": [
         "==",
         [
@@ -5395,17 +5834,17 @@ export const APPLE_DARK_STYLE = {
           [
             "zoom"
           ],
-          7,
+          9,
           10,
-          11,
+          12,
           12
-        ]
+        ],
+        "text-padding": 6
       },
       "paint": {
-        "text-color": "#8f8f9a",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#a8a8b2",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5480,16 +5919,16 @@ export const APPLE_DARK_STYLE = {
             "zoom"
           ],
           7,
-          12,
+          11,
           11,
           14
-        ]
+        ],
+        "text-padding": 6
       },
       "paint": {
-        "text-color": "#bcbcc6",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#d8d8de",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5559,10 +5998,9 @@ export const APPLE_DARK_STYLE = {
         "text-transform": "uppercase"
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#8e8e99",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5635,7 +6073,7 @@ export const APPLE_DARK_STYLE = {
           ]
         ],
         "text-font": [
-          "Noto Sans Regular"
+          "Noto Sans Bold"
         ],
         "text-max-width": 8,
         "text-offset": [
@@ -5656,14 +6094,13 @@ export const APPLE_DARK_STYLE = {
           7,
           13,
           11,
-          18
+          19
         ]
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#f2f2f7",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5753,18 +6190,17 @@ export const APPLE_DARK_STYLE = {
             "zoom"
           ],
           4,
-          12,
+          13,
           7,
-          14,
+          16,
           11,
-          20
+          26
         ]
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#f2f2f7",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5843,10 +6279,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#8e8e99",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -5924,10 +6359,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#8e8e99",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     },
     {
@@ -6005,10 +6439,9 @@ export const APPLE_DARK_STYLE = {
         ]
       },
       "paint": {
-        "text-color": "#e8e8ee",
-        "text-halo-blur": 1,
-        "text-halo-color": "#0b0b0d",
-        "text-halo-width": 1
+        "text-color": "#8e8e99",
+        "text-halo-color": "rgba(20,21,24,0.9)",
+        "text-halo-width": 1.5
       }
     }
   ]

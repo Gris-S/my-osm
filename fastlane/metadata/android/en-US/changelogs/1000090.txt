@@ -1,0 +1,3 @@
+Dark map theme reworked to match the light one: calmer roads, clearer towns, French road shields.
+
+Driving: bigger music buttons, bigger speed, voice button mirrors the stop button, traffic gauge on the right, a few minutes of margin on arrival times. Public transport: next departure time in a blue pill.

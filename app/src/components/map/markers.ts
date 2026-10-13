@@ -119,6 +119,9 @@ export const INCIDENT_ICONS: Record<TrafficIncident["kind"], string> = {
   // Le triangle de danger.
   accident:
     '<path d="M12 4.5l8.5 15h-17z" fill="#fff"/><path d="M12 10v4.2" stroke="#ff3b30" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="#ff3b30"/>',
+  // Une voiture, vue de face.
+  breakdown:
+    '<path d="M5 13l1.6-4.2a2 2 0 0 1 1.9-1.3h7a2 2 0 0 1 1.9 1.3L19 13v4.5h-2.2V16H7.2v1.5H5z" fill="#fff"/><circle cx="8.3" cy="13.4" r="1.1" fill="#ff9f0a"/><circle cx="15.7" cy="13.4" r="1.1" fill="#ff9f0a"/>',
   incident:
     '<path d="M12 4.5l8.5 15h-17z" fill="#fff"/><path d="M12 10v4.2" stroke="#ff9f0a" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="#ff9f0a"/>',
 };

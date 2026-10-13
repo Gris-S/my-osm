@@ -4,7 +4,8 @@ import type { StationExit } from "./exits";
 import { useNavBannerRef, useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
 import type { TransitStep } from "./transitSteps";
-import type { TransitLine } from "../transport/journeyView";
+import type { TransitLine, TransitStop } from "../transport/journeyView";
+import { useTransitStationsEnabled } from "./settings";
 import { formatClock, navPlural, useNav } from "./strings";
 import type { TransitNavSession } from "./useTransitNavigation";
 
@@ -31,6 +32,7 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
   // Bas du bandeau, lu par la feuille de style pour y ranger le burger et la météo.
   const bannerRef = useNavBannerRef();
   const { current, upcoming, offset } = session;
+  const stationList = useTransitStationsEnabled();
 
   if (!session.active || !current) return null;
 
@@ -46,6 +48,15 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
         />
         {/* Le décalage manuel se dit : sans cela, un guidage volontairement
             décalé d'une étape passerait pour une erreur du calcul. */}
+        {/* Retenu par la porte de la montée, ou en plein recalcul : le bandeau
+            dit pourquoi il ne suit pas l'horaire (`transitGuide.ts`). */}
+        {session.replanning ? (
+          <p className="nav-banner-note">{nav("transit.replanning")}</p>
+        ) : session.hold ? (
+          <p className="nav-banner-note">{nav(session.hold === "waiting" ? "transit.holdWaiting" : "transit.holdWalking")}</p>
+        ) : session.replanned ? (
+          <p className="nav-banner-note">{nav("transit.replanned")}</p>
+        ) : null}
         {offset !== 0 && (
           <p className="nav-banner-note">
             {offsetText(offset, nav)}
@@ -61,6 +72,9 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
         <MusicCard />
         <div className="nav-bar is-transit">
           <div className="transit-remaining">
+            {stationList && session.rideStops.length > 1 && (
+              <Stations stops={session.rideStops} fraction={session.rideFraction} color={current.line?.color} />
+            )}
             <h3 className="transit-remaining-title">
               {upcoming.length ? nav("transit.remaining") : nav("transit.done")}
             </h3>
@@ -109,6 +123,46 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+/**
+ * Les stations de la ligne en cours, comme sur le plan au-dessus des portes
+ * (demande explicite, 13 octobre 2026 ; réglable dans « Modes ») : un trait à
+ * la couleur de la ligne, un point par station, l'heure de passage devant, et
+ * la descente en gras au bout. Une station passée disparaît, comme les
+ * actions de la liste : ce qui est écrit est ce qui reste.
+ *
+ * **Un point bleu dit où l'on est**, sans un mot (demande explicite) : posé sur
+ * la première station tant qu'on y est, il glisse le long du trait vers la
+ * suivante à mesure qu'on avance (`fraction`, de 0 à 1), puis la liste remonte
+ * d'un cran et il repart du haut.
+ */
+function Stations({ stops, fraction, color }: { stops: TransitStop[]; fraction: number; color: string | undefined }) {
+  const { nav } = useNav();
+  return (
+    <>
+      <h3 className="transit-remaining-title">{nav("transit.stations")}</h3>
+      <ol className="transit-stations" style={{ "--step-color": color } as CSSProperties}>
+        {stops.map((stop, rank) => {
+          const last = rank === stops.length - 1;
+          return (
+            <li key={`${stop.name}-${stop.at.getTime()}`} className={`transit-station ${last ? "is-last" : ""}`}>
+              <span className="transit-step-time">{formatClock(stop.at)}</span>
+              <span className="transit-station-dot" aria-hidden="true">
+                {rank === 0 && (
+                  <span className="transit-station-here" style={{ top: `${50 + Math.min(1, Math.max(0, fraction)) * 100}%` }} />
+                )}
+              </span>
+              <span className="transit-station-name">
+                {stop.name}
+                {last && <em>{nav("transit.stationGetOff")}</em>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </>
   );
 }
@@ -197,12 +251,14 @@ function Instruction({
       aside.push(nav("transit.board", { line: next.line.label, place: next.place }));
     }
     if (next.direction) aside.push(nav("transit.direction", { direction: next.direction }));
-    aside.push(nav("transit.departsAt", { time: formatClock(next.until) }));
   }
   if (step.kind === "board") {
     if (step.direction) aside.push(nav("transit.direction", { direction: step.direction }));
-    aside.push(nav("transit.departsAt", { time: formatClock(step.until) }));
   }
+  // **L'heure du prochain passage, dans sa capsule bleue** (demande explicite,
+  // 13 octobre 2026) : c'est le seul chiffre qui presse — on court ou non —, et
+  // noyé en gris au bout de la ligne de direction il ne se lisait pas en marchant.
+  const departure = step.kind === "board" ? step.until : step.kind === "walk" && next?.kind === "board" ? next.until : null;
   if (step.kind === "alight") {
     if (stopsLeft !== null) aside.push(navPlural("transit.stopsLeft", stopsLeft));
     aside.push(nav("transit.arriveAt", { time: formatClock(step.until) }));
@@ -222,6 +278,9 @@ function Instruction({
       <div className="nav-maneuver-text">
         <span className="nav-maneuver-instruction is-transit">{title}</span>
         {aside.length > 0 && <span className="transit-aside">{aside.join(" · ")}</span>}
+        {departure && (
+          <span className="transit-exit is-departure">{nav("transit.departsAt", { time: formatClock(departure) })}</span>
+        )}
         {/* La sortie n'apparaît que sur une descente, et seulement là où la
             station en déclare une : un arrêt de bus n'en a pas. */}
         {step.kind === "alight" && exit && <span className="transit-exit">{exitText(exit, nav)}</span>}

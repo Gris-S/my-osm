@@ -44,6 +44,48 @@ export const NAV_FRAME_SLACK_MS = 4;
 export const NAV_PIXEL_RATIO_SHARE = 0.85;
 
 /**
+ * Les deux réglages ci-dessus, **tels qu'ils valent à l'instant** : c'est cet
+ * objet que la carte lit, pas les constantes. Le guidage voiture les
+ * change (`setNavRendering`), et le parcours de mesure aussi (`window.__myosm`).
+ */
+export const navTuning = { frameMs: NAV_FRAME_MS, pixelShare: NAV_PIXEL_RATIO_SHARE };
+
+/**
+ * **Le rendu de la carte en voiture** (choisi le 13 octobre 2026, mesures à
+ * l'appui — voir « Performances » dans `app/CLAUDE.md`) :
+ *
+ * - **50 % de la définition, toujours**, dès qu'on est en navigation voiture
+ *   (demande explicite, « au pire on rechangera ») : sur un Pixel 8 la carte
+ *   est dessinée à 1,3 point par pixel, quatre fois moins de pixels qu'à
+ *   pleine définition. Cela ne soulage presque pas le processeur ; cela
+ *   soulage le processeur graphique, qui chauffe tout autant et qu'on ne sait
+ *   pas mesurer par le câble. À remonter si la carte paraît floue ;
+ * - **30 images par seconde** au lieu de 60. Mesuré en voiture simulée :
+ *   1,49 cœur au lieu de 1,94. Ce fut un réglage, le temps d'une version ;
+ *   l'utilisateur l'a fait retirer (13 octobre 2026) : pas de choix à faire.
+ */
+export const CAR_PIXEL_SHARE = 0.5;
+export const ECONOMY_FRAME_MS = 1000 / 30;
+
+const tuningListeners = new Set<() => void>();
+
+/** Règle le rendu : économe pendant un guidage voiture, ordinaire sinon. */
+export function setNavRendering(car: boolean): void {
+  const frameMs = car ? ECONOMY_FRAME_MS : NAV_FRAME_MS;
+  const pixelShare = car ? CAR_PIXEL_SHARE : NAV_PIXEL_RATIO_SHARE;
+  if (navTuning.frameMs === frameMs && navTuning.pixelShare === pixelShare) return;
+  navTuning.frameMs = frameMs;
+  navTuning.pixelShare = pixelShare;
+  tuningListeners.forEach((listener) => listener());
+}
+
+/** S'abonner au changement de réglage : la carte y reprend sa définition. */
+export function subscribeNavTuning(listener: () => void): () => void {
+  tuningListeners.add(listener);
+  return () => void tuningListeners.delete(listener);
+}
+
+/**
  * Durée d'un recadrage **sans glissement** de la flèche : un saut, un
  * changement de zoom, la reprise du suivi. Il passe par la même boucle, donc
  * sous le même plafond de 60 images, avec une courbe amortie. C'était un

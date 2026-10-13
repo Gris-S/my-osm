@@ -1,11 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { Activity, Flag, Footprints } from "lucide-react";
+import { Activity, Flag, Footprints, ListOrdered } from "lucide-react";
 import {
   setRunModeEnabled,
   setRunSummaryEnabled,
+  setTransitStationsEnabled,
   setWalkSummaryEnabled,
   useRunModeEnabled,
   useRunSummaryEnabled,
+  useTransitStationsEnabled,
   useWalkSummaryEnabled,
 } from "./settings";
 import { useNav, type NavKey } from "./strings";
@@ -27,6 +29,7 @@ export function ModesSettings() {
   const runMode = useRunModeEnabled();
   const walkSummary = useWalkSummaryEnabled();
   const runSummary = useRunSummaryEnabled();
+  const transitStations = useTransitStationsEnabled();
 
   return (
     <div className="modes-list">
@@ -46,6 +49,15 @@ export function ModesSettings() {
         hint="modes.walkSummary.hint"
         checked={walkSummary}
         onChange={setWalkSummaryEnabled}
+      />
+      {/* En transports : les stations de la ligne en cours, sous le bandeau du
+          bas (demande explicite, 13 octobre 2026). */}
+      <ModeRow
+        icon={ListOrdered}
+        label="modes.transitStations"
+        hint="modes.transitStations.hint"
+        checked={transitStations}
+        onChange={setTransitStationsEnabled}
       />
       {__RUN_MODE__ && (
         <ModeRow

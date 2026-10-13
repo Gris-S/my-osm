@@ -430,6 +430,7 @@ export const fr = {
   "vigilanceIn.red": "rouge",
 
   // Prochains passages
+  "departures.yourJourney": "Votre trajet · départ {time}",
   "departures.title": "Prochains passages",
   "departures.noKey": "Ajoutez une clé Île-de-France Mobilités (gratuite) dans {file} pour voir les horaires en temps réel.",
   "departures.loading": "Recherche des prochains passages…",
@@ -489,6 +490,12 @@ export const fr = {
   "itinerary.computing": "Calcul de l'itinéraire…",
   "itinerary.noTransit": "Aucun trajet en transports pour ce parcours.",
   "itinerary.noTransitSteps": "Aucun trajet en transports desservant toutes les étapes.",
+  "itinerary.when.label": "Quand partir",
+  "itinerary.when.now": "Partir maintenant",
+  "itinerary.when.depart": "Partir à",
+  "itinerary.when.arrive": "Arriver à",
+  "itinerary.whenResult": "Départ {depart} · arrivée {arrive}, au trafic habituel de cette heure.",
+  "itinerary.transitNoteWhen": "Horaires {source}, pour l'heure demandée.",
   "itinerary.transitNote": "Horaires {source}, au départ de l'heure du calcul.",
   "itinerary.singleRoute": "Un seul parcours est proposé : chaque étape est enchaînée au plus tôt.",
 
@@ -642,6 +649,7 @@ export const fr = {
   "download.redownload": "Retélécharger",
   "download.failureStorageFull": "Stockage plein : libérez de la place, puis reprenez.",
   "download.failureWrite": "L'appareil a refusé d'enregistrer les fichiers. Reprenez pour réessayer.",
+  "download.failureNetwork": "Le réseau a manqué : une partie de la zone n'est pas arrivée. Reprenez pour la compléter.",
   "download.failureMoved": "Les cartes sont maintenant rangées dans l'application, à l'abri d'un effacement : retéléchargez cette zone.",
   "download.spaceShort": "Il reste {free} de libre et cette zone pèse environ {size} : le téléchargement risque de s'arrêter faute de place.",
   "download.stop": "Interrompre",

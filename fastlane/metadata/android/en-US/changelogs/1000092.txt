@@ -1,0 +1,1 @@
+Dark map theme lightened. The compass button keeps a solid background.

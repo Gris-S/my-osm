@@ -5,7 +5,7 @@ import { journeyToRoute, type TransitJourney } from "../transport/journeyView";
 import { loadJourneys } from "../transport/journeys";
 import { isTransitStop } from "../services/idfm";
 import { t } from "../i18n";
-import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit } from "../types";
+import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit, TripWhen } from "../types";
 
 // ---------------------------------------------------------------------------
 // L'itinéraire : les points du parcours, le mode, le calcul, les étapes et leurs
@@ -33,6 +33,8 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   const [roadRoute, setRoadRoute] = useState<RouteResult | null>(null);
   const [journeys, setJourneys] = useState<TransitJourney[] | null>(null);
   const [journeyIndex, setJourneyIndex] = useState(0);
+  // « Partir plus tard » : l'heure de départ ou d'arrivée voulue, `null` pour maintenant.
+  const [when, setWhen] = useState<TripWhen>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
 
@@ -170,6 +172,7 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   // Renommer une étape ou remplacer un lieu par un autre au même point ne doit
   // pas coûter un appel — en transports, il est prélevé sur un quota.
   const routeKey = routePoints?.map((p) => `${p.lon},${p.lat}`).join(";") ?? null;
+  const whenKey = when ? `${when.kind}@${when.at}` : "";
 
   // Calcule / recalcule l'itinéraire quand le parcours ou le mode changent. En
   // transports, c'est la source de la région qui répond, sur les horaires du moment (voir
@@ -195,7 +198,8 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
               const stop = stopsRef.current[index];
               return stop?.kind === "place" && isTransitStop(stop.place) ? { ...point, station: stop.place } : point;
             }),
-            controller.signal
+            controller.signal,
+            when
           ).then((list) => {
             if (cancelled) return;
             setJourneys(list);
@@ -217,8 +221,10 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
       cancelled = true;
       controller.abort();
     };
+    // L'heure voulue ne recalcule que les transports : le tracé routier d'OSRM
+    // n'en dépend pas, et l'estimation TomTom a son propre appel (`useCarEta`).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeKey, routeMode]);
+  }, [routeKey, routeMode, routeMode === "transit" ? whenKey : ""]);
 
   // Trajet en transports retenu, et tracé qui en découle : un tronçon par
   // étape, à la couleur de la ligne. Mémorisé, faute de quoi la carte
@@ -283,6 +289,8 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
     journeys,
     journeyIndex,
     setJourneyIndex,
+    when,
+    setWhen,
     routeLoading,
     routeError,
     itineraryOpen,

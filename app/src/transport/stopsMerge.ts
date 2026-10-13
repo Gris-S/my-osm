@@ -2,6 +2,9 @@ import type { Place } from "../types";
 import type { Quay, RegionId, Station, TransitMode } from "./model";
 import { TRANSITOUS_STOPS } from "./policy";
 import type { ViewBbox } from "./tiles";
+import { distance as metersBetween } from "../navigation/geo";
+
+export { metersBetween };
 
 // ---------------------------------------------------------------------------
 // Un marqueur par station, et pas d'arrêt en double avec OSM.
@@ -62,13 +65,6 @@ export function similarNames(a: string, b: string): boolean {
   const set = new Set(longer);
   if (shorter.every((word) => set.has(word))) return true;
   return shorter.some((word) => word.length >= 4 && !GENERIC_WORDS.has(word) && set.has(word));
-}
-
-export function metersBetween(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
-  const rad = Math.PI / 180;
-  const x = (b.lon - a.lon) * rad * Math.cos(((a.lat + b.lat) / 2) * rad);
-  const y = (b.lat - a.lat) * rad;
-  return Math.sqrt(x * x + y * y) * 6_371_000;
 }
 
 /** Règle 1 : les quais d'une même station sous un seul objet. */

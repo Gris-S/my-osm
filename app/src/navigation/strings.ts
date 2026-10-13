@@ -1,4 +1,5 @@
 import { currentLang, currentLocale, useI18n } from "../i18n";
+import { SPOKEN_PHRASES } from "./voicePhrases";
 
 // ---------------------------------------------------------------------------
 // Les phrases du guidage.
@@ -112,6 +113,17 @@ const fr = {
 
   // Section « Navigation » de la fenêtre des paramètres
   "settings.section": "Navigation",
+  "settings.voice": "Voix des annonces",
+  "settings.voice.default": "Voix par défaut du téléphone",
+  "settings.voice.language": "Langue de la voix",
+  "settings.voice.item": "Voix {n}",
+  "settings.voice.foreign": "Les annonces ne sont pas traduites dans cette langue : cette voix lira celles de l'application, avec son accent.",
+  "settings.voice.listen": "Écouter",
+  "settings.voice.sample": "Dans 300 mètres, tournez à gauche.",
+  "settings.voice.download": "Télécharger des voix",
+  "settings.voice.hint": "Seules les langues déjà téléchargées sont proposées. Les annonces sont dites dans la langue de la voix choisie. Android ne dit pas si une voix est masculine ou féminine : écoutez-les.",
+  "settings.voice.hint.web": "Les voix sont celles du navigateur.",
+  "settings.voice.none": "Aucune synthèse vocale sur cet appareil.",
   "settings.camera": "Caméra navigation piéton",
   "settings.camera.adaptive": "Adaptatif",
   "settings.camera.fixed": "Fixe",
@@ -149,6 +161,10 @@ const fr = {
   "modes.run.hint": "Affiche le bouton orange sous le menu pour lancer une course.",
   "modes.walkSummary": "Résumé après une marche",
   "modes.walkSummary.hint": "La fiche de fin s'ouvre au terme d'une navigation à pied. Désactivé, le trajet est enregistré sans rien afficher.",
+  "modes.transitStations": "Liste des stations en transports",
+  "modes.transitStations.hint": "Pendant un trajet en transports, affiche les stations qui restent sur la ligne en cours, avec l'heure de passage.",
+  "transit.stations": "Stations sur la ligne",
+  "transit.stationGetOff": "Descendre ici",
   "modes.runSummary": "Résumé après une course",
   "modes.runSummary.hint": "La fiche de fin, avec le graphe de l'allure, s'ouvre quand on termine une course. Désactivé, la course est enregistrée sans rien afficher.",
   "history.title": "Historique",
@@ -263,6 +279,10 @@ const fr = {
   "transit.behind": "Reculé d'une étape à la main",
   "transit.behindMany": "Reculé de {count} étapes à la main",
   "transit.resync": "Suivre l'horaire",
+  "transit.holdWaiting": "L'heure du départ est passée — en attente de votre montée",
+  "transit.holdWalking": "L'heure du départ est passée — vous n'êtes pas encore à l'arrêt",
+  "transit.replanning": "Recalcul du trajet depuis votre position…",
+  "transit.replanned": "Trajet recalculé depuis votre position",
 
   // Simulation (développement seulement)
   "sim.start": "Simuler la marche",
@@ -313,6 +333,28 @@ const fr = {
   "car.remaining": "Temps restant",
   "car.distance": "Distance restante",
   "car.recenter": "Recentrer",
+  "voice.mode.all": "Toutes les annonces",
+  "voice.mode.alerts": "Alertes seulement",
+  "voice.mode.off": "Annonces coupées",
+  "voice.unavailable": "Pas de voix sur cet appareil",
+  "voice.meters": "{n} mètres",
+  "voice.km1": "1 kilomètre",
+  "voice.km": "{n} kilomètres",
+  "voice.in": "Dans {distance}, {action}",
+  "voice.ahead": "{what} dans {distance}",
+  "voice.limit": "{what}, limité à {kmh}",
+  "voice.jam": "Bouchon dans {distance}",
+  "voice.jamDelay": "Bouchon dans {distance}, {minutes} minutes de retard",
+  "voice.rerouted": "Itinéraire modifié, {minutes} minutes gagnées",
+  "voice.arrived": "Vous êtes arrivé",
+  "voice.arrival": "Arrivée",
+  "car.incident.breakdown": "Véhicule en panne",
+  "car.gauge": "Bouchons sur le trajet",
+  "car.jamAhead": "Bouchon dans {distance}",
+  "car.jamInside": "Bouchon : encore {distance}",
+  "car.slowAhead": "Ralentissement dans {distance}",
+  "car.slowInside": "Ralentissement : encore {distance}",
+  "car.jamDelay": "+{minutes} min",
   "car.stop": "Terminer",
   "car.kmh": "km/h",
   "car.limit": "Vitesse autorisée",
@@ -432,6 +474,17 @@ const en: NavDict = {
   "profile.axisEnd": "finish",
 
   "settings.section": "Navigation",
+  "settings.voice": "Announcement voice",
+  "settings.voice.default": "Phone's default voice",
+  "settings.voice.language": "Voice language",
+  "settings.voice.item": "Voice {n}",
+  "settings.voice.foreign": "Announcements are not translated into this language: this voice will read the app's, with its accent.",
+  "settings.voice.listen": "Listen",
+  "settings.voice.sample": "In 300 metres, turn left.",
+  "settings.voice.download": "Download voices",
+  "settings.voice.hint": "Only languages already downloaded are offered. Announcements are spoken in the chosen voice's language. Android does not say whether a voice is male or female: listen to them.",
+  "settings.voice.hint.web": "These are the browser's voices.",
+  "settings.voice.none": "No text-to-speech on this device.",
   "settings.camera": "Walking navigation camera",
   "settings.camera.adaptive": "Adaptive",
   "settings.camera.fixed": "Fixed",
@@ -467,6 +520,10 @@ const en: NavDict = {
   "modes.run.hint": "Shows the orange button under the menu to start a run.",
   "modes.walkSummary": "Summary after a walk",
   "modes.walkSummary.hint": "The end-of-trip card opens when a walking navigation ends. When off, the trip is saved without showing anything.",
+  "modes.transitStations": "Station list on public transport",
+  "modes.transitStations.hint": "During a public transport journey, shows the stations left on the current line, with the time at each.",
+  "transit.stations": "Stations on this line",
+  "transit.stationGetOff": "Get off here",
   "modes.runSummary": "Summary after a run",
   "modes.runSummary.hint": "The end card, with the pace chart, opens when you finish a run. When off, the run is saved without showing anything.",
   "history.title": "History",
@@ -577,6 +634,10 @@ const en: NavDict = {
   "transit.behind": "Moved one step back by hand",
   "transit.behindMany": "Moved {count} steps back by hand",
   "transit.resync": "Follow the timetable",
+  "transit.holdWaiting": "Departure time has passed — waiting for you to board",
+  "transit.holdWalking": "Departure time has passed — you are not at the stop yet",
+  "transit.replanning": "Working out a new journey from where you are…",
+  "transit.replanned": "Journey recalculated from where you are",
 
   "sim.start": "Simulate walking",
   "sim.stop": "Stop the simulation",
@@ -616,6 +677,28 @@ const en: NavDict = {
   "car.remaining": "Time left",
   "car.distance": "Distance left",
   "car.recenter": "Recentre",
+  "voice.mode.all": "All announcements",
+  "voice.mode.alerts": "Alerts only",
+  "voice.mode.off": "Announcements off",
+  "voice.unavailable": "No voice on this device",
+  "voice.meters": "{n} metres",
+  "voice.km1": "1 kilometre",
+  "voice.km": "{n} kilometres",
+  "voice.in": "In {distance}, {action}",
+  "voice.ahead": "{what} in {distance}",
+  "voice.limit": "{what}, limit {kmh}",
+  "voice.jam": "Traffic jam in {distance}",
+  "voice.jamDelay": "Traffic jam in {distance}, {minutes} minutes delay",
+  "voice.rerouted": "Route changed, {minutes} minutes saved",
+  "voice.arrived": "You have arrived",
+  "voice.arrival": "Destination",
+  "car.incident.breakdown": "Broken-down vehicle",
+  "car.gauge": "Traffic jams on the route",
+  "car.jamAhead": "Traffic jam in {distance}",
+  "car.jamInside": "Traffic jam: {distance} left",
+  "car.slowAhead": "Slow traffic in {distance}",
+  "car.slowInside": "Slow traffic: {distance} left",
+  "car.jamDelay": "+{minutes} min",
   "car.stop": "End",
   "car.kmh": "km/h",
   "car.limit": "Speed limit",
@@ -661,8 +744,35 @@ const DICTS: Record<string, NavDict> = { fr, en };
  * Traduit une clé du guidage. Utilisable partout, y compris hors de React :
  * la langue est lue à l'appel, comme le `t()` du projet.
  */
+/** La langue imposée le temps d'une phrase prononcée (`inLanguage`), sinon celle de l'interface. */
+let spoken: string | null = null;
+
+/**
+ * Compose dans une autre langue que celle de l'interface : **la voix parle sa
+ * langue** (`voicePhrases.ts`). `navText` et tout ce qui l'appelle — les
+ * libellés de manœuvre, de radar — suivent `lang` le temps de `compose`.
+ * Synchrone, donc sans fuite : la langue est rendue avant de sortir.
+ */
+export function inLanguage<T>(lang: string | null, compose: () => T): T {
+  const previous = spoken;
+  spoken = lang;
+  try {
+    return compose();
+  } finally {
+    spoken = previous;
+  }
+}
+
+function templateFor(key: NavKey): string {
+  const lang = spoken ?? currentLang();
+  const own = (DICTS as Record<string, Partial<NavDict> | undefined>)[lang];
+  if (own) return own[key] ?? fr[key];
+  // Une langue que seule la voix parle : ses phrases, sinon l'anglais.
+  return SPOKEN_PHRASES[lang]?.[key] ?? en[key] ?? fr[key];
+}
+
 export function navText(key: NavKey, vars?: Record<string, string | number>): string {
-  const template = DICTS[currentLang()]?.[key] ?? fr[key];
+  const template = templateFor(key);
   if (!vars) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in vars ? String(vars[name]) : match

@@ -1,6 +1,6 @@
 import { CONFIG } from "../config";
 import { t } from "../i18n";
-import type { LonLat, Place } from "../types";
+import type { LonLat, Place, TripWhen } from "../types";
 import { transport } from "./index";
 import { stitchJourneys, toTransitJourney, type TransitJourney } from "./journeyView";
 import { NoProviderError } from "./orchestrator";
@@ -35,7 +35,13 @@ function messageFor(error: NoProviderError): string {
  */
 export type JourneyPoint = LonLat & { station?: Place };
 
-async function journeysBetween(from: JourneyPoint, to: JourneyPoint, at: Date | undefined, signal?: AbortSignal): Promise<TransitJourney[]> {
+async function journeysBetween(
+  from: JourneyPoint,
+  to: JourneyPoint,
+  at: Date | undefined,
+  signal?: AbortSignal,
+  arriveBy = false,
+): Promise<TransitJourney[]> {
   const orchestrator = transport();
   orchestrator.updatePosition(from.lon, from.lat);
   try {
@@ -47,6 +53,7 @@ async function journeysBetween(from: JourneyPoint, to: JourneyPoint, at: Date | 
           [to.lon, to.lat],
           {
             at: at?.getTime(),
+            arriveBy,
             maxResults: CONFIG.TRANSIT_MAX_RESULTS,
             fromStation: from.station,
             toStation: to.station,
@@ -77,14 +84,17 @@ async function journeysBetween(from: JourneyPoint, to: JourneyPoint, at: Date | 
  * Un tronçon sans solution rend une liste vide pour le parcours entier — il
  * n'y a pas de demi-trajet à proposer.
  */
-export async function loadJourneys(points: JourneyPoint[], signal?: AbortSignal): Promise<TransitJourney[]> {
+export async function loadJourneys(points: JourneyPoint[], signal?: AbortSignal, when: TripWhen = null): Promise<TransitJourney[]> {
   if (points.length < 2) return [];
-  if (points.length === 2) return journeysBetween(points[0], points[1], undefined, signal);
+  const asked = when ? new Date(when.at) : undefined;
+  if (points.length === 2) return journeysBetween(points[0], points[1], asked, signal, when?.kind === "arrive");
 
   const parts: TransitJourney[] = [];
   // Séquentiel par nécessité : on ne peut pas demander le tronçon suivant avant
-  // de savoir à quelle heure on arrive au point de passage.
-  let at: Date | undefined;
+  // de savoir à quelle heure on arrive au point de passage. Pour la même
+  // raison, seule une heure de **départ** a un sens avec des étapes : une heure
+  // d'arrivée n'y est pas proposée (voir le panneau d'itinéraire).
+  let at: Date | undefined = when?.kind === "depart" ? asked : undefined;
   for (let index = 0; index < points.length - 1; index++) {
     const leg = await journeysBetween(points[index], points[index + 1], at, signal);
     if (!leg.length) return [];

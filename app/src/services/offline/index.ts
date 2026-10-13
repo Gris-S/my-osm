@@ -96,6 +96,9 @@ export async function removeRegion(id: string): Promise<void> {
     if (region.satelliteMaxZoom !== null) {
       for (const t of footprintTiles(region, region.satelliteMaxZoom)) {
         keep.add(pathOf(cacheKeyFor({ ...t, kind: "ign" } as TileRef)));
+        // Esri n'est plus téléchargé, mais une zone ancienne en a encore :
+        // supprimer une voisine ne doit pas la vider.
+        keep.add(pathOf(cacheKeyFor({ ...t, kind: "esri" } as TileRef)));
       }
     }
     if (region.reliefMaxZoom !== null) {

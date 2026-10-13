@@ -75,6 +75,10 @@ Et le sous-dossier `car/`, qui tient toute la navigation voiture :
 | `car/proposals.ts` | Les trois propositions, et pourquoi il n'y en a parfois qu'une. |
 | `car/tolls.ts` | Le prix du péage, quand il est officiellement publié. |
 | `car/radars.ts` | Les radars du parcours, et le seul son de l'application. |
+| `voicePhrases.ts` | Les phrases prononcées en espagnol, italien, portugais et allemand. |
+| `voice.ts` | La voix du guidage voiture : trois crans, deux moteurs, et ce qui se dit. |
+| `transitGuide.ts` | En transports : recalage par le GPS, porte de la montée, chemin quitté. |
+| `car/incidents.ts` | Accidents et véhicules en panne sur le couloir devant (TomTom). |
 | `car/heading.ts` | Le contresens vu au cap, et le cap de la caméra — qui ne tourne que quand la voiture tourne. |
 | `car/routeTiles.ts` | La carte des quinze kilomètres devant, chargée d'avance. |
 | `car/useCarNavigation.ts` | La session de guidage voiture. |

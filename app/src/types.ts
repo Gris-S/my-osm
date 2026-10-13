@@ -118,3 +118,10 @@ export interface RouteResult {
   durationSeconds: number;
   segments: RouteSegment[];
 }
+
+/**
+ * « Partir plus tard » : un trajet demandé pour une heure de départ ou
+ * d'arrivée, au lieu de maintenant (`null`). `at` est un instant, en
+ * millisecondes.
+ */
+export type TripWhen = { kind: "depart" | "arrive"; at: number } | null;

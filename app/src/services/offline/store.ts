@@ -97,10 +97,11 @@ export interface OfflineRegion {
   /**
    * Pourquoi la zone attend, quand ce n'est pas le réseau : `storage-full`
    * (plus de place), `write` (écriture refusée), `moved` (les cartes sont
-   * désormais rangées dans l'application : la zone est à retélécharger).
+   * désormais rangées dans l'application : la zone est à retélécharger),
+   * `network` (des tuiles ou des lieux n'ont pas été reçus : à reprendre).
    * Une clé et non une phrase, traduite à l'affichage.
    */
-  failure?: WriteFailure | "moved";
+  failure?: WriteFailure | "moved" | "network";
 }
 
 /** Une entrée de l'index de recherche hors ligne. */

@@ -197,6 +197,7 @@ function booleanSetting(key: string, fallback: boolean) {
 const runMode = booleanSetting("osm-local:run-mode", true);
 const walkSummary = booleanSetting("osm-local:walk-summary", true);
 const runSummary = booleanSetting("osm-local:run-summary", true);
+const transitStations = booleanSetting("osm-local:transit-stations", true);
 
 /** Le bouton de course apparaît-il sous le burger ? */
 export const runModeEnabled = runMode.get;
@@ -212,3 +213,7 @@ export const useWalkSummaryEnabled = walkSummary.useValue;
 export const runSummaryEnabled = runSummary.get;
 export const setRunSummaryEnabled = runSummary.set;
 export const useRunSummaryEnabled = runSummary.useValue;
+
+/** En transports, la liste des stations de la ligne en cours s'affiche-t-elle ? */
+export const setTransitStationsEnabled = transitStations.set;
+export const useTransitStationsEnabled = transitStations.useValue;

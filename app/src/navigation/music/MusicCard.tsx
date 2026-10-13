@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Music, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { useNav } from "../strings";
 import { controlMusic, openMusicPlayer, useNowPlaying } from "./nowPlaying";
@@ -61,7 +61,7 @@ export function MusicCard() {
       </button>
 
       <div className="music-text">
-        <span className="music-title">{track.title || track.artist}</span>
+        <Marquee className="music-title" text={track.title || track.artist} />
         {subtitle && <span className="music-artist">{subtitle}</span>}
       </div>
 
@@ -81,5 +81,51 @@ export function MusicCard() {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Vitesse du défilement, en pixels par seconde : assez lente pour se lire d'un coup d'œil. */
+const MARQUEE_SPEED = 28;
+
+/**
+ * Une ligne qui **défile si elle ne tient pas** (demande explicite,
+ * 13 octobre 2026 : « Mr. Jambo… » ne disait pas quelle chanson jouait).
+ *
+ * Un aller-retour, avec une pause à chaque bout, plutôt qu'une boucle sans
+ * fin : le début du titre — ce qu'on reconnaît — reste à l'écran le plus
+ * longtemps. Un texte qui tient ne bouge pas, et rien ne bouge non plus si
+ * l'appareil demande moins d'animations (voir la feuille de style).
+ */
+function Marquee({ text, className }: { text: string; className: string }) {
+  const outer = useRef<HTMLSpanElement>(null);
+  const inner = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!outer.current || !inner.current) return;
+      setOverflow(Math.max(0, Math.ceil(inner.current.scrollWidth - outer.current.clientWidth)));
+    };
+    measure();
+    // La place change quand l'écran tourne ou que la fenêtre est redimensionnée.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (outer.current) observer?.observe(outer.current);
+    return () => observer?.disconnect();
+  }, [text]);
+
+  return (
+    <span ref={outer} className={`${className} marquee ${overflow ? "is-scrolling" : ""}`} title={text}>
+      <span
+        ref={inner}
+        className="marquee-inner"
+        style={
+          overflow
+            ? ({ "--marquee-shift": `-${overflow}px`, "--marquee-time": `${Math.max(4, overflow / MARQUEE_SPEED + 3)}s` } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {text}
+      </span>
+    </span>
   );
 }

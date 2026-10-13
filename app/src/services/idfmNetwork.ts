@@ -1,6 +1,7 @@
 import { CONFIG } from "../config";
 import type { Place } from "../types";
 import type { LineChip } from "../utils/markerImage";
+import { distance as distanceMeters } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // Lignes desservant les arrêts visibles, pour les dessiner sur la carte.
@@ -233,14 +234,6 @@ function normalizeName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-}
-
-function distanceMeters(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
-  const toRad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * toRad;
-  const dLon = (b.lon - a.lon) * toRad;
-  const lat = ((a.lat + b.lat) / 2) * toRad;
-  return Math.hypot(dLon * Math.cos(lat), dLat) * 6371000;
 }
 
 /** Rayon de rattachement : un quai peut être à quelques dizaines de mètres du

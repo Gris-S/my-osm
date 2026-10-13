@@ -124,7 +124,13 @@ export function OsmContribDialog({ place, theme, onClose, onPublished }: OsmCont
   // --- Les lieux du même nom autour ------------------------------------------
   // Relus quand l'épingle bouge ou que le nom change (après une pause de
   // frappe) ; un résultat n'est montré que pour la question qui l'a demandé.
-  const dupeKey = `${pin.lat.toFixed(6)}|${pin.lon.toFixed(6)}|${form.name.trim()}`;
+  //
+  // Et **après un envoi en échec** (`recheck`) : le serveur a pu créer le point
+  // alors que la réponse s'est perdue ou a dépassé le délai. Renvoyer sans
+  // regarder poserait le même commerce deux fois sur la carte de tout le monde ;
+  // relus, les voisins le montrent, et l'envoi attend cette relecture.
+  const [recheck, setRecheck] = useState(0);
+  const dupeKey = `${pin.lat.toFixed(6)}|${pin.lon.toFixed(6)}|${form.name.trim()}|${recheck}`;
   useEffect(() => {
     if (!connected) return;
     const controller = new AbortController();
@@ -173,6 +179,7 @@ export function OsmContribDialog({ place, theme, onClose, onPublished }: OsmCont
       });
     } catch (error) {
       setFailure({ key: errorKey(error), detail: error instanceof Error ? error.message : undefined });
+      setRecheck((n) => n + 1);
     } finally {
       setSending(null);
     }

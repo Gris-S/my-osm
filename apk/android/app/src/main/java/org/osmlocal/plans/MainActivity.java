@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NowPlayingPlugin.class); // musique en cours, pendant le guidage
         registerPlugin(DeviceStoragePlugin.class); // place libre, pour les cartes hors ligne
         registerPlugin(WebSearchPlugin.class); // recherche sur le web, navigateur intégré
+        registerPlugin(SpeechPlugin.class); // annonces vocales du guidage voiture
         setIntent(asViewIntent(getIntent()));
         super.onCreate(savedInstanceState);
         hideStatusBar();

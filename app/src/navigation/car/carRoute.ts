@@ -1,5 +1,5 @@
 import { CONFIG } from "../../config";
-import type { LonLat, RouteResult } from "../../types";
+import type { LonLat, RouteResult, TripWhen } from "../../types";
 import { hasNativeRescue, rescuedFetch } from "../../services/native";
 import { distance } from "../geo";
 import { navText } from "../strings";
@@ -133,7 +133,21 @@ export interface CarRoute {
   result: RouteResult;
 }
 
+/** `2026-10-13T18:30:00+02:00` : l'instant, à l'heure de l'appareil, décalage compris. */
+export function rfc3339(at: number): string {
+  const date = new Date(at);
+  const pad = (value: number) => String(Math.trunc(Math.abs(value))).padStart(2, "0");
+  const offset = -date.getTimezoneOffset();
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:00` +
+    `${offset < 0 ? "-" : "+"}${pad(offset / 60)}:${pad(offset % 60)}`
+  );
+}
+
 export interface CarRouteOptions {
+  /** Une heure de départ ou d'arrivée autre que maintenant (`TripWhen`). TomTom seulement. */
+  when?: TripWhen;
   /** Écarte toute route à péage. */
   avoidTolls?: boolean;
   /** Nombre d'itinéraires de rechange demandés en plus du meilleur. */
@@ -305,6 +319,14 @@ async function fetchTomTom(points: LonLat[], options: CarRouteOptions): Promise<
     query.append("sectionType", "lanes");
   }
   if (options.avoidTolls) query.set("avoid", "tollRoads");
+  // « Partir plus tard » : l'heure voulue, avec le décalage de l'appareil.
+  // TomTom compte alors sur les vitesses habituelles de ce jour et de cette
+  // heure (documentation relue le 13 octobre 2026 ; `arriveAt` ne se combine
+  // pas avec `minDeviation…`, que seule la réévaluation envoie). Une heure
+  // déjà passée vaut « maintenant » : le service la refuserait.
+  if (options.when && options.when.at > Date.now() + 60_000) {
+    query.set(options.when.kind === "depart" ? "departAt" : "arriveAt", rfc3339(options.when.at));
+  }
   if (options.heading != null) query.set("vehicleHeading", String(headingParam(options.heading)));
   if (options.following?.length) {
     // Le moteur ne s'écarte du parcours suivi que s'il gagne au moins cela.

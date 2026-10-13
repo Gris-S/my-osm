@@ -24,6 +24,8 @@
 // zone neutre l'y laissait ensuite.
 // ---------------------------------------------------------------------------
 
+import { note } from "../navigation/journal";
+
 export type Brightness = "dark" | "light";
 
 /**
@@ -41,6 +43,42 @@ export const LIGHT_ABOVE_LUX = 15;
 export const SWITCH_DELAY_MS = 2000;
 /** Après le premier relevé, fenêtre pendant laquelle chaque relevé s'applique sans délai. */
 export const SETTLE_MS = 1500;
+
+/**
+ * **En voiture, d'autres seuils et un délai plus court** (demande explicite,
+ * 13 octobre 2026 : à l'entrée d'un tunnel, la carte restait claire
+ * longtemps). Les seuils d'intérieur sont faits pour ne jamais assombrir une
+ * pièce éclairée : sous 5 lux seulement. Or un tunnel **est** éclairé — la
+ * lecture y descend lentement, ou reste dans la zone neutre, et la carte
+ * éblouit. Au volant, la question n'est pas « pièce ou nuit noire » mais
+ * « plein jour ou non » : l'habitacle de jour se lit en centaines ou milliers
+ * de lux, un tunnel ou la nuit en dizaines au plus. D'où 30 / 100, et moins
+ * d'une seconde pour passer au sombre. Le retour au clair attend un peu plus :
+ * une trémie à ciel ouvert entre deux tunnels ne doit pas faire clignoter.
+ *
+ * Ces valeurs ne sont **pas mesurées en tunnel** : chaque bascule en voiture
+ * est notée au journal (`theme.auto`, avec les lux) pour les ajuster.
+ */
+export const DRIVING = { darkBelowLux: 30, lightAboveLux: 100, toDarkMs: 700, toLightMs: 1500 };
+
+let driving = false;
+
+/** Vrai pendant un guidage voiture (`useCarNavigation`) : le thème suit la lumière de plus près. */
+export function setDrivingBrightness(on: boolean): void {
+  driving = on;
+}
+
+/**
+ * Ce qu'un relevé demande : sombre, clair, ou rien (zone neutre), et le temps
+ * que cela doit tenir avant de basculer. Fonction pure, testée.
+ */
+export function brightnessTarget(lux: number, inCar: boolean): { target: Brightness | null; delayMs: number } {
+  const dark = inCar ? DRIVING.darkBelowLux : DARK_BELOW_LUX;
+  const light = inCar ? DRIVING.lightAboveLux : LIGHT_ABOVE_LUX;
+  const target: Brightness | null = lux < dark ? "dark" : lux > light ? "light" : null;
+  const delayMs = !inCar ? SWITCH_DELAY_MS : target === "dark" ? DRIVING.toDarkMs : DRIVING.toLightMs;
+  return { target, delayMs };
+}
 
 interface PluginListenerHandle {
   remove: () => Promise<void>;
@@ -105,7 +143,7 @@ export function watchBrightness(onChange: (brightness: Brightness) => void, onUn
 
   const onReading = ({ lux }: { lux: number }) => {
     if (stopped || !Number.isFinite(lux)) return;
-    const target: Brightness | null = lux < DARK_BELOW_LUX ? "dark" : lux > LIGHT_ABOVE_LUX ? "light" : null;
+    const { target, delayMs } = brightnessTarget(lux, driving);
 
     if (current === null || Date.now() - firstAt < SETTLE_MS) {
       // Ouverture : appliqué tout de suite. Entre les deux seuils, on tranche
@@ -131,8 +169,9 @@ export function watchBrightness(onChange: (brightness: Brightness) => void, onUn
       timer = null;
       pending = null;
       current = target;
+      if (driving) note("theme.auto", { lux: Math.round(lux), vers: target });
       onChange(target);
-    }, SWITCH_DELAY_MS);
+    }, delayMs);
   };
 
   /** Retire l'écouteur, quelle que soit la forme de la poignée reçue. */

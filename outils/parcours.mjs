@@ -2546,6 +2546,299 @@ const SCENARIOS = [
     },
   },
   {
+    id: "voiture-jauge-voix",
+    titre: "En voiture : la voix à trois crans, la jauge des bouchons, le recentrage tout seul",
+    /**
+     * Demandes du 13 octobre 2026. Le trajet longe le périphérique parisien,
+     * là où il y a le plus de chances de trouver un ralentissement à montrer :
+     * **sans bouchon, la jauge n'existe pas**, et le scénario le dit au lieu de
+     * conclure. Le conducteur reste immobile — rien ici ne demande de rouler.
+     */
+    async executer() {
+      await scene();
+      const depuis = Date.now();
+      const depart = await partirEnVoiture([2.3255, 48.8215], [2.4125, 48.8655]);
+      if (!depart) return;
+      await dodo(2500);
+
+      // --- la voix
+      const voix = await js(`(()=>{const b=document.querySelector('.car-voice');
+        return b?{coupe:b.disabled,texte:b.getAttribute('aria-label'),libelle:b.getAttribute('aria-label')}:null})()`);
+      if (verifier("le bouton de la voix est sur la barre du bas", voix !== null, JSON.stringify(voix))) {
+        verifier("le téléphone a une synthèse vocale (bouton actif)", voix.coupe === false, voix.libelle);
+        const crans = [voix.texte];
+        for (let k = 0; k < 3; k++) {
+          await cliquer(".car-voice");
+          await dodo(700);
+          crans.push((await js("document.querySelector('.car-voice')?.getAttribute('aria-label') ?? ''")) ?? "");
+        }
+        verifier("trois crans, puis retour au premier", new Set(crans.slice(0, 3)).size === 3 && crans[3] === crans[0], crans.join(" → "));
+        const dit = await js(`Promise.resolve(window.Capacitor?.Plugins?.Speech?.speak({text:'Essai',lang:'fr-FR',flush:true})).then(()=>'ok',e=>String(e?.message??e))`);
+        verifier("le greffon accepte une annonce", dit === "ok", dit);
+        // Le jumeau du bouton d'arrêt : même rond, même distance au bord, sans texte.
+        const jumeau = await js(`(()=>{const v=document.querySelector('.car-voice');const s=document.querySelector('.car-bar .nav-stop');
+          const b=document.querySelector('.car-bar .nav-bar-main')?.getBoundingClientRect();if(!v||!s||!b)return null;
+          const a=v.getBoundingClientRect(),z=s.getBoundingClientRect();
+          return {l:Math.round(a.width),h:Math.round(a.height),L:Math.round(z.width),H:Math.round(z.height),
+            gauche:Math.round(a.left-b.left),droite:Math.round(b.right-z.right),haut:Math.round(a.top-z.top),texte:v.innerText.trim()}})()`);
+        verifier(
+          "il est le jumeau du bouton d'arrêt : même taille, même marge, sans texte",
+          jumeau !== null && jumeau.l === jumeau.L && jumeau.h === jumeau.H && jumeau.gauche === jumeau.droite && jumeau.haut === 0 && jumeau.texte === "",
+          JSON.stringify(jumeau),
+        );
+      }
+
+      // --- le mode économe, par défaut en voiture
+      const rendu = await js("JSON.stringify({ms:Math.round(window.__myosm.navTuning.frameMs),part:window.__myosm.navTuning.pixelShare,ratio:+(window.__myosm.map.getPixelRatio()/window.devicePixelRatio).toFixed(2)})");
+      verifier("la carte est en mode économe : 30 images/s, moitié de la définition", rendu === '{"ms":33,"part":0.5,"ratio":0.5}', rendu);
+
+      // --- les incidents du couloir
+      await dodo(2500);
+      const journal = await journalDepuis(depuis);
+      const incidents = journal.filter((e) => e.k === "car.incidents");
+      const erreurs = journal.filter((e) => e.k === "car.incidents.error");
+      verifier(
+        "la couche d'incidents TomTom a répondu",
+        incidents.length > 0 && erreurs.length === 0,
+        incidents.length ? `${incidents[0].trouves ?? incidents[0].d?.trouves ?? "?"} sur le parcours` : JSON.stringify(erreurs[0] ?? "aucune réponse"),
+      );
+
+      // --- la jauge
+      const jauges = await js("document.querySelectorAll('.car-gauge').length");
+      if (!jauges) {
+        verifier("pas de bouchon sur ce trajet à cette heure : jauge non éprouvée", true, "elle n'existe que s'il y en a un");
+      } else {
+        const lue = await js(`(()=>{const g=document.querySelector('.car-gauge');const r=g.getBoundingClientRect();
+          return {n:document.querySelectorAll('.car-gauge').length,parts:g.querySelectorAll('.car-gauge-part').length,
+            hauteur:Math.round(r.height),bord:Math.round(window.innerWidth-r.right),dit:g.getAttribute('aria-label')??''}})()`);
+        verifier("une seule jauge, debout sur le bord droit", lue.n === 1 && lue.hauteur > 100 && lue.bord < 40, `${lue.hauteur} px de haut, à ${lue.bord} px du bord`);
+        verifier("elle montre les ralentissements", lue.parts > 0, `${lue.parts} tronçon(s) — « ${lue.dit} »`);
+        verifier("rien ne se recouvre", (await chevauchements()) === "", await chevauchements());
+      }
+      capture("40-voiture-jauge-voix");
+
+      // --- les cibles du lecteur (s'il y a de la musique)
+      const cibles = await js(`(()=>{const b=[...document.querySelectorAll('.nav-dock.is-car .music-controls button')];
+        if(!b.length)return null;const c=document.querySelector('.music-card').getBoundingClientRect();
+        const n=b[b.length-1];const r=n.getBoundingClientRect();const a=getComputedStyle(n,'::after');
+        return {bouton:Math.round(r.width),deborde:Math.round(r.right-parseFloat(a.right)-c.right),haut:Math.round(r.height-2*parseFloat(a.top))}})()`);
+      if (cibles === null) verifier("pas de musique en cours : cibles du lecteur non éprouvées", true, "lancer un lecteur");
+      else verifier("« suivant » se touche jusque hors de l'encart", cibles.bouton >= 60 && cibles.deborde >= 10 && cibles.haut >= 90, JSON.stringify(cibles));
+
+      // --- le recentrage automatique
+      adb("shell", "input", "swipe", "540", "1300", "300", "1050", "350");
+      await dodo(900);
+      verifier("un geste sur la carte fait paraître « Recentrer »", await js("!!document.querySelector('.nav-recenter')"));
+      const revenu = await attendreQue("!document.querySelector('.nav-recenter')", 12_000);
+      verifier("sans y toucher, la carte revient seule à la voiture", revenu);
+
+      await arreterGuidage();
+    },
+  },
+
+  {
+    id: "transports-guidage",
+    titre: "En transports : la liste des stations, et une colonne de droite qui tient",
+    /**
+     * Captures du 8 octobre 2026 : la météo et la boussole descendaient sur les
+     * signets et les catégories. Et demande du 13 : les stations de la ligne.
+     */
+    async executer() {
+      await scene();
+      await positionSimulee(48.8726, 2.3311); // Auber
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await carteVers(2.3311, 48.8726, 15);
+      await saisir("Nation");
+      await attendre(".search-result");
+      await cliquerPremierLieu();
+      if (!verifier("la fiche s'ouvre", await attendre(".sheet"))) return;
+      await cliquer(".sheet-action-primary");
+      await attendre(".itinerary-panel");
+
+      // --- partir plus tard, en voiture (le mode d'ouverture) : avec TomTom seulement
+      await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[0])m[0].click();return true})()");
+      await attendre(".itinerary-result", 30_000);
+      if (!(await js("!!document.querySelector('.itinerary-when select')"))) {
+        verifier("pas de clé TomTom : « partir plus tard » en voiture non éprouvé", true, "le sélecteur n'existe qu'avec elle");
+      } else {
+        await js(`(()=>{const s=document.querySelector('.itinerary-when select');
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'arrive');
+          s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+        const estime = await attendre(".itinerary-when-result", 25_000);
+        verifier("en voiture, une heure d'arrivée donne l'heure de départ estimée", estime, (await texte(".itinerary-when-result")) ?? "");
+        capture("41-partir-plus-tard-voiture");
+        await js(`(()=>{const s=document.querySelector('.itinerary-when select');
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'now');
+          s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      }
+
+      await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
+      if (!verifier("un trajet en transports est proposé", await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000))) return;
+
+      // --- partir plus tard : demain, huit heures
+      const demain = new Date(Date.now() + 86_400_000);
+      const valeur = `${demain.getFullYear()}-${String(demain.getMonth() + 1).padStart(2, "0")}-${String(demain.getDate()).padStart(2, "0")}T08:00`;
+      verifier("le sélecteur « partir plus tard » est là", await js("!!document.querySelector('.itinerary-when select')"));
+      await js(`(()=>{const s=document.querySelector('.itinerary-when select');
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'depart');
+        s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      await attendre(".itinerary-when input");
+      await js(`(()=>{const i=document.querySelector('.itinerary-when input');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'${valeur}');
+        i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      await dodo(1500);
+      const plusTard = await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
+      const heures = (await js("document.querySelector('.itinerary-journeys')?.innerText.replace(/\\n+/g,' ').slice(0,160) ?? ''")) ?? "";
+      verifier("les trajets sont recalculés pour demain huit heures", plusTard && /\b0?8[:h]\d\d/.test(heures), heures);
+      capture("41-partir-plus-tard");
+      // Retour à maintenant : c'est ce trajet-là qu'on va suivre.
+      await js(`(()=>{const s=document.querySelector('.itinerary-when select');
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'now');
+        s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      await dodo(1500);
+      if (!(await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000))) return verifier("retour à maintenant", false);
+
+      await cliquer(".nav-start");
+      if (!verifier("le guidage en transports démarre", await attendre(".nav-banner .nav-maneuver", 15_000))) return;
+      await dodo(1000);
+      verifier("au départ, rien ne se recouvre", (await chevauchements()) === "", await chevauchements());
+
+      // Jusqu'à la montée, à la main : la liste des stations paraît.
+      for (let k = 0; k < 4 && !(await js("!!document.querySelector('.transit-stations')")); k++) {
+        await js("(()=>{const b=document.querySelectorAll('.transit-nudge button')[1];if(b)b.click();return true})()");
+        await dodo(700);
+      }
+      const stations = await js(`(()=>{const l=[...document.querySelectorAll('.transit-station-name')].map(e=>e.innerText.replace(/\\n+/g,' — '));
+        return {n:l.length,derniere:l[l.length-1]??''}})()`);
+      verifier("les stations de la ligne s'affichent, la descente en dernier", stations.n >= 2, `${stations.n} stations, jusqu'à « ${stations.derniere} »`);
+      verifier("stations affichées, rien ne se recouvre", (await chevauchements()) === "", await chevauchements());
+      // Le point bleu : sur le quai, il est sur la première station, celle de la montée.
+      const point = await js(`(()=>{const p=document.querySelector('.transit-station-here');const d=document.querySelector('.transit-station-dot');
+        if(!p||!d)return null;const a=p.getBoundingClientRect(),b=d.getBoundingClientRect();
+        return {ecart:Math.round((a.top+a.height/2)-(b.top+b.height/2)),nombre:document.querySelectorAll('.transit-station-here').length}})()`);
+      verifier("un point bleu, posé sur la station où l'on est", point !== null && point.nombre === 1 && Math.abs(point.ecart) <= 2, JSON.stringify(point));
+      capture("42-transports-stations");
+      await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+      await dodo(1000);
+    },
+  },
+
+  {
+    id: "theme-sombre",
+    titre: "Le thème sombre, à l'échelle de la région, de la ville et de la rue",
+    // Refonte du 13 octobre 2026, sur le modèle du clair : ce scénario ne juge
+    // pas — une palette se regarde —, il prend les trois captures à comparer.
+    async executer() {
+      await scene({ theme: "dark", filtres: "[]" });
+      for (const [nom, zoom, lon, lat] of [
+        ["region", 9.5, 2.35, 48.85],
+        ["ville", 12.5, 2.35, 48.86],
+        ["rue", 15.5, 2.3376, 48.8606],
+      ]) {
+        await carteVers(lon, lat, zoom);
+        await dodo(4500);
+        capture(`43-sombre-${nom}`);
+      }
+      const fond = await js("window.__myosm?.map?.getPaintProperty('background','background-color') ?? ''");
+      verifier("la carte porte le style sombre refait", fond === "#292b30", String(fond));
+      const cartouche = await js("JSON.stringify(window.__myosm?.map?.getLayoutProperty('highway-shield-non-us','icon-image') ?? '').includes('fr-shield')");
+      verifier("les numéros de route prennent les cartouches français", cartouche === true);
+    },
+  },
+
+  {
+    id: "chauffe",
+    titre: "Ce que coûte la navigation voiture, et ce que rapportent moins d'images et moins de pixels",
+    /**
+     * Mesure, pas vérification (13 octobre 2026 : le téléphone chauffe en
+     * voiture). Voiture simulée à 50 km/h, vingt secondes par réglage : les
+     * cœurs occupés par l'application et son moteur de rendu
+     * (`/proc/<pid>/stat`), et les images produites (`dumpsys gfxinfo`).
+     */
+    async executer() {
+      await scene();
+      const depart = await partirEnVoiture(EVRY, CORBEIL, 1000);
+      if (!depart) return;
+      await js("(()=>{window.__parcoursRouler();return true})()");
+      await dodo(6000);
+      const pids = () =>
+        adb("shell", "ps", "-A", "-o", "PID,NAME").split("\n").filter((l) => /org\.osmlocal\.plans|webview.*sandboxed|com\.google\.android\.webview:sandboxed/.test(l))
+          .map((l) => l.trim().split(/\s+/)[0]);
+      const ticks = () => {
+        let total = 0;
+        for (const pid of pids()) {
+          try {
+            const f = adb("shell", "cat", `/proc/${pid}/stat`).split(") ")[1].split(" ");
+            total += Number(f[11]) + Number(f[12]);
+          } catch { /* processus parti */ }
+        }
+        return total;
+      };
+      const images = () => {
+        const m = /Total frames rendered: (\d+)/.exec(adb("shell", "dumpsys", "gfxinfo", PAQUET));
+        return m ? Number(m[1]) : 0;
+      };
+      const mesurer = async (libelle, frameMs, pixelShare) => {
+        await js(`(()=>{const t=window.__myosm.navTuning;t.frameMs=${frameMs};t.pixelShare=${pixelShare};
+          window.__myosm.map.setPixelRatio(window.devicePixelRatio*${pixelShare});return true})()`);
+        await dodo(3000);
+        const t0 = ticks(), i0 = images(), d0 = Date.now();
+        await dodo(20_000);
+        const secondes = (Date.now() - d0) / 1000;
+        const coeurs = (ticks() - t0) / 100 / secondes;
+        const ips = (images() - i0) / secondes;
+        verifier(libelle, true, `${coeurs.toFixed(2)} cœur(s), ${ips.toFixed(0)} images/s`);
+      };
+      const temp = () => Number(/temperature: (\d+)/.exec(adb("shell", "dumpsys", "battery"))?.[1] ?? 0) / 10;
+      verifier("température de la batterie au départ", true, `${temp()} °C`);
+      await mesurer("aujourd'hui : 60 images/s, 85 % des pixels", 1000 / 60, 0.85);
+      await mesurer("30 images/s, 85 % des pixels", 1000 / 30, 0.85);
+      await mesurer("30 images/s, 65 % des pixels", 1000 / 30, 0.65);
+      await mesurer("20 images/s, 65 % des pixels", 1000 / 20, 0.65);
+      await js("(()=>{window.__parcoursArretA(window.__parcoursRang());return true})()");
+      await mesurer("à l'arrêt (feu rouge), 60 images/s", 1000 / 60, 0.85);
+      capture("44-chauffe");
+      await arreterGuidage();
+    },
+  },
+
+  {
+    id: "voix-reglages",
+    titre: "Paramètres : le choix de la voix, et le rendu de la carte en voiture",
+    async executer() {
+      await scene({ langue: "fr" });
+      await js("(()=>{localStorage.removeItem('osm-local:nav-voice-name');return true})()");
+      await ouvrirMenu();
+      // La fenêtre des paramètres, par son libellé.
+      await js("(()=>{const b=[...document.querySelectorAll('.app-menu-panel button, .app-menu button')].find(e=>/Paramètres/i.test(e.innerText));if(b)b.click();return !!b})()");
+      if (!verifier("le sélecteur de langue de la voix s'affiche", await attendre("#nav-voice-language", 12_000))) return;
+      const langues = await js("[...document.querySelectorAll('#nav-voice-language option')].map(o=>o.textContent)");
+      verifier("il propose la voix du téléphone, puis les langues téléchargées", langues.length >= 2 && /défaut/.test(langues[0]) && /^Français/.test(langues[1]), langues.join(" | "));
+      verifier("rien n'est déplié tant qu'on n'a pas choisi de langue", (await js("document.querySelectorAll('.voice-row').length")) === 0);
+      await js(`(()=>{const s=document.querySelector('#nav-voice-language');
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,s.options[1].value);
+        s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      await dodo(500);
+      const lignes = await js("[...document.querySelectorAll('.voice-row')].map(r=>r.innerText.trim())");
+      verifier("choisir une langue déplie ses voix", lignes.length >= 1 && lignes.length <= 8, lignes.join(" | "));
+      await js("(()=>{document.querySelector('.voice-pick')?.click();return true})()");
+      await dodo(400);
+      const retenue = await js("localStorage.getItem('osm-local:nav-voice-name') ?? ''");
+      verifier("toucher une voix la retient, avec sa langue", /"name":"fr-.*"locale":"fr-FR"/.test(retenue), retenue);
+      // Interface en anglais, voix française : l'annonce doit se composer en français.
+      await js("(()=>{localStorage.setItem('osm-local:lang','en');return true})()");
+      verifier("chaque voix a son bouton d'écoute", (await js("document.querySelectorAll('.voice-listen').length")) === lignes.length);
+      verifier("plus de réglage des images par seconde", (await js("!!document.querySelector('#nav-car-render')")) === false);
+      await js("(()=>{document.querySelector('#nav-voice-language')?.scrollIntoView({block:'center'});return true})()");
+      await dodo(600);
+      capture("45-voix-reglages");
+      await js("(()=>{localStorage.removeItem('osm-local:nav-voice-name');return true})()");
+      await fermerModale();
+    },
+  },
+
+  {
     id: "chevauchements",
     titre: "Aucun bouton, menu ou panneau ne se recouvre, dans les états chargés",
     // Mesuré le 19 septembre 2026, sans que rien ne l'ait signalé : sur la

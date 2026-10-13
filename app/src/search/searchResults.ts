@@ -1,6 +1,7 @@
 import type { Place } from "../types";
 import { isTransitStop } from "../services/idfm";
 import { normalizeBrand } from "../services/geocode";
+import { distance as meters } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // Les résultats de recherche : ce qu'ils sont, et dans quel ordre.
@@ -20,13 +21,6 @@ export function resultKind(place: Place): ResultKind {
   if (isTransitStop(place)) return "transit";
   // Sans catégorie : une rue, un numéro, une commune, un lieu-dit.
   return place.group ? "place" : "address";
-}
-
-/** Distance en mètres, suffisante à l'échelle d'un quartier. */
-function meters(a: Place, b: Place): number {
-  const x = (b.lon - a.lon) * 111_320 * Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
-  const y = (b.lat - a.lat) * 110_540;
-  return Math.hypot(x, y);
 }
 
 /**

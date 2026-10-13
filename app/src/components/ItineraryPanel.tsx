@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, Bike, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MapPin, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
 import { CONFIG, type TravelMode } from "../config";
-import type { LonLat, Place, RouteResult, RouteStop, StopEdit } from "../types";
+import type { LonLat, Place, RouteResult, RouteStop, StopEdit, TripWhen } from "../types";
 import { getNextDepartures, type NextDeparture } from "../services/transit";
 import type { TransitJourney, TransitLeg } from "../transport/journeyView";
 import { sourceName } from "../transport/sources";
@@ -514,6 +514,15 @@ interface ItineraryPanelProps {
    * doit pas en dépendre pour rester compilable si le dossier disparaît.
    */
   liveEta?: { durationSeconds: number; distanceMeters: number } | null;
+  /**
+   * « Partir plus tard » (demande explicite, 13 octobre 2026) : l'heure de
+   * départ ou d'arrivée voulue, `null` pour maintenant. `whenChoices` dit ce
+   * que le mode en cours sait calculer — rien du tout pour la marche, le vélo,
+   * ou la voiture sans clé TomTom : le sélecteur n'apparaît alors pas.
+   */
+  when: TripWhen;
+  onWhenChange: (when: TripWhen) => void;
+  whenChoices: { depart: boolean; arrive: boolean };
   /** Trajets en transports proposés ; `null` tant qu'aucun calcul n'a abouti. */
   journeys: TransitJourney[] | null;
   journeyIndex: number;
@@ -548,6 +557,9 @@ export function ItineraryPanel({
   onMoveStop,
   route,
   liveEta,
+  when,
+  onWhenChange,
+  whenChoices,
   journeys,
   journeyIndex,
   onSelectJourney,
@@ -715,6 +727,8 @@ export function ItineraryPanel({
         ))}
       </div>
 
+      {whenChoices.depart && <WhenPicker when={when} onChange={onWhenChange} arrive={whenChoices.arrive} />}
+
       {/* Seul ce qui suit défile : départ, arrivée, modes et croix restent en
           haut. Faire tout monter d'un bloc emportait la croix avec le reste,
           et l'on ne savait plus d'où à où menait le trajet qu'on lisait. */}
@@ -747,7 +761,7 @@ export function ItineraryPanel({
           {/* Le calcul part de l'heure d'appel : les horaires ne se
               rafraîchissent pas tout seuls (quota Île-de-France Mobilités). */}
           <p className="itinerary-note">
-            {t("itinerary.transitNote", { source: sourceName(journeys?.[0]?.source) })}
+            {t(when ? "itinerary.transitNoteWhen" : "itinerary.transitNote", { source: sourceName(journeys?.[0]?.source) })}
             {/* Avec des étapes, chaque tronçon est calculé séparément et le
                 meilleur retenu : il n'y a donc qu'un parcours à montrer, et
                 mieux vaut le dire que laisser croire à un choix absent. */}
@@ -777,10 +791,71 @@ export function ItineraryPanel({
               les deux — le bloc entier est déjà réservé aux modes routiers — et
               les transports ont leur propre bouton, dans le trajet retenu. */}
           <StartNavigationButton mode={mode} onStart={onStartNavigation} />
+          {/* Pour une autre heure que maintenant : le départ et l'arrivée que
+              cela donne, au trafic habituel de ce jour et de cette heure. Tant
+              que TomTom n'a pas répondu, la durée affichée est celle d'OSRM,
+              sans trafic — on ne lui prête pas d'horaire. */}
+          {when && liveEta && whenChoices.depart && (
+            <p className="itinerary-when-result">
+              {t("itinerary.whenResult", {
+                depart: formatClock(new Date(when.kind === "depart" ? when.at : when.at - liveEta.durationSeconds * 1000)),
+                arrive: formatClock(new Date(when.kind === "arrive" ? when.at : when.at + liveEta.durationSeconds * 1000)),
+              })}
+            </p>
+          )}
         </div>
       )}
 
       </div>
+    </div>
+  );
+}
+
+/** `2026-10-13T18:30` : la valeur d'un champ `datetime-local`, à l'heure de l'appareil. */
+function toLocalInput(at: number): string {
+  const date = new Date(at);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * « Partir plus tard » : maintenant, partir à, arriver à — et l'heure.
+ *
+ * Deux champs du système (`select`, `datetime-local`) plutôt qu'un sélecteur
+ * maison : sur le téléphone, ce sont la roue et le calendrier d'Android, que
+ * chacun sait déjà manier, et il n'y a rien à entretenir. Passer de
+ * « maintenant » à une heure propose **dans une heure**, arrondi à cinq
+ * minutes : c'est une heure qu'on corrige, pas un champ vide qu'on remplit.
+ */
+function WhenPicker({ when, onChange, arrive }: { when: TripWhen; onChange: (when: TripWhen) => void; arrive: boolean }) {
+  const { t } = useI18n();
+  const kind = when?.kind ?? "now";
+  const inAnHour = () => Math.ceil((Date.now() + 3600_000) / 300_000) * 300_000;
+  return (
+    <div className="itinerary-when">
+      <select
+        value={kind}
+        aria-label={t("itinerary.when.label")}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(next === "depart" || next === "arrive" ? { kind: next, at: when?.at ?? inAnHour() } : null);
+        }}
+      >
+        <option value="now">{t("itinerary.when.now")}</option>
+        <option value="depart">{t("itinerary.when.depart")}</option>
+        {(arrive || kind === "arrive") && <option value="arrive">{t("itinerary.when.arrive")}</option>}
+      </select>
+      {when && (
+        <input
+          type="datetime-local"
+          value={toLocalInput(when.at)}
+          aria-label={t(when.kind === "arrive" ? "itinerary.when.arrive" : "itinerary.when.depart")}
+          onChange={(event) => {
+            const at = new Date(event.target.value).getTime();
+            if (Number.isFinite(at)) onChange({ kind: when.kind, at });
+          }}
+        />
+      )}
     </div>
   );
 }

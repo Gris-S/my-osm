@@ -92,8 +92,43 @@ export function useNavDockRef() {
 // sautent pas pour une ligne de moins.
 // ---------------------------------------------------------------------------
 
+let bannerBottom = 0;
+
 function setBannerBottom(px: number) {
-  document.documentElement.style.setProperty("--nav-banner-bottom", `${Math.max(0, Math.round(px))}px`);
+  const rounded = Math.max(0, Math.round(px));
+  document.documentElement.style.setProperty("--nav-banner-bottom", `${rounded}px`);
+  if (rounded === bannerBottom) return;
+  bannerBottom = rounded;
+  listeners.forEach((listener) => listener());
+}
+
+/** Le bas du bandeau de navigation, en pixels depuis le haut de l'écran ; 0 s'il ne le publie pas. */
+export function useNavBannerBottom(): number {
+  return useSyncExternalStore(subscribe, () => bannerBottom, () => 0);
+}
+
+/**
+ * Combien de boutons de la colonne de droite doivent s'effacer pour qu'elle
+ * tienne entre le bandeau et la colonne du bas : 0 (tout tient) à 3.
+ *
+ * Constaté le 8 octobre 2026, en transports : bandeau sur trois lignes en
+ * haut, musique et suite du trajet en bas — la météo et la boussole
+ * descendaient sur les signets et les catégories, qui montaient à leur
+ * rencontre. Rien ne peut rétrécir : ce sont donc les boutons les moins utiles
+ * pendant un guidage qui cèdent, dans cet ordre — signets, catégories,
+ * boussole. La position et les calques restent toujours.
+ *
+ * `top` est la hauteur prise sous le bandeau par la météo et la boussole,
+ * `column` celle des quatre boutons du bas, de 56 px chacun.
+ */
+export function crampedLevel(viewportHeight: number, banner: number, dock: number): 0 | 1 | 2 | 3 {
+  if (!banner || !dock) return 0;
+  const top = 12 + 116;
+  const column = 12 + 4 * 56;
+  const missing = banner + top + column + dock - viewportHeight;
+  if (missing <= 0) return 0;
+  if (missing <= 56) return 1;
+  return missing <= 112 ? 2 : 3;
 }
 
 /** À poser sur le `.nav-banner` d'un panneau de navigation (`ref={bannerRef}`). */

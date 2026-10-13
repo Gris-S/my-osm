@@ -9,6 +9,7 @@ import {
 } from "./settings";
 import { clearTrips, purgeTrips } from "./history";
 import { MusicSettings } from "./music/MusicSettings";
+import { VoiceSettings } from "./VoiceSettings";
 import { useNav } from "./strings";
 
 // ---------------------------------------------------------------------------
@@ -131,6 +132,8 @@ export function NavigationSettings() {
           suivi s'arrête avec elle. Le verrou d'éveil garde l'écran allumé tant
           que l'application est devant ; il ne peut rien de plus. */}
       <p className="settings-hint nav-settings-second">{nav("settings.background.hint")}</p>
+
+      <VoiceSettings />
 
       <MusicSettings />
     </div>

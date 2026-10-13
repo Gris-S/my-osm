@@ -181,12 +181,16 @@ function bytesFromBase64(text: string): Uint8Array<ArrayBuffer> {
  * de TomTom en **objet déjà lu**, et le corps d'un 401 en texte. La première
  * version n'attendait que du base64 : les tuiles passaient, et chaque recalcul
  * était rejeté comme illisible — puis annoncé « hors ligne ».
+ *
+ * **Le statut seul décide, pas le type annoncé.** « JSON » veut dire pour le
+ * greffon `application/json` à la lettre (`HttpRequestHandler.readData`) :
+ * le `application/vnd.geo+json` de BRouter et le `text/plain` de la page
+ * d'état d'Overpass arrivent donc en base64, et la deuxième version, qui se
+ * fiait au type, les rendait tels quels — plus de secours vélo dans l'APK.
  */
-function rescuedBody(res: CapacitorHttpResponse): BodyInit {
+export function rescuedBody(res: CapacitorHttpResponse): BodyInit {
   if (typeof res.data !== "string") return JSON.stringify(res.data ?? null);
-  const type = Object.entries(res.headers ?? {}).find(([name]) => name.toLowerCase() === "content-type")?.[1] ?? "";
-  const textual = /json|text|xml|html/i.test(type) || res.status < 200 || res.status >= 300;
-  if (textual) return res.data;
+  if (res.status < 200 || res.status >= 300) return res.data;
   try {
     return bytesFromBase64(res.data);
   } catch {
@@ -308,7 +312,15 @@ export async function osmFetch(url: string | URL, init: NativeInit = {}): Promis
     const { signal, ...rest } = init;
     return fetch(address, { ...rest, signal: signal ?? undefined });
   }
-  return nativeRequest(http, address, init);
+  // Drapeau « hors ligne » et natif en échec il y a un instant : le téléphone
+  // n'a vraiment pas de réseau, et chaque nouvel essai coûterait sept secondes.
+  if (!navigator.onLine && Date.now() < rescueDownUntil) throw new TypeError("Failed to fetch");
+  try {
+    return await nativeRequest(http, address, init);
+  } catch (error) {
+    if (!init.signal?.aborted && !navigator.onLine) rescueDownUntil = Date.now() + RESCUE_RETRY_MS;
+    throw error;
+  }
 }
 
 /**

@@ -38,9 +38,11 @@
 }
 
 /* Carte déjà au nord : l'aiguille reste lisible mais s'efface un peu, pour ne
-   pas réclamer un geste qui ne changerait rien. */
-.compass-button.is-aligned {
-  opacity: 0.65;
+   pas réclamer un geste qui ne changerait rien. **L'aiguille seule**, pas le
+   bouton : estompé tout entier, son fond laissait voir la carte à travers
+   (signalé le 13 octobre 2026, en thème clair). */
+.compass-button.is-aligned svg {
+  opacity: 0.55;
 }
 
 .compass-button svg {

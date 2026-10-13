@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { LonLat } from "../../types";
+import type { LonLat, TripWhen } from "../../types";
 import { getCarRoutes, hasLiveEngine, type CarRoute, type CarRouteOptions } from "./carRoute";
 
 // ---------------------------------------------------------------------------
@@ -57,7 +57,8 @@ const cache = new Map<string, Entry>();
 
 function keyOf(points: LonLat[], options: CarRouteOptions): string {
   const path = points.map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`).join(";");
-  return `${path}|${options.alternatives ?? 0}|${options.avoidTolls ? "sans-péage" : "péage"}`;
+  const when = options.when ? `${options.when.kind}@${Math.round(options.when.at / 60_000)}` : "maintenant";
+  return `${path}|${options.alternatives ?? 0}|${options.avoidTolls ? "sans-péage" : "péage"}|${when}`;
 }
 
 /**
@@ -100,8 +101,17 @@ export function cachedCarRoutes(points: LonLat[], options: CarRouteOptions = {})
  * une seconde l'ancienne durée sous la nouvelle adresse. C'est le patron du
  * projet — aucun `setState` en tête d'effet.
  */
-export function useCarEta(points: LonLat[] | null, active: boolean): CarRoute | null {
-  const key = points && active && hasLiveEngine() ? keyOf(points, { alternatives: ETA_ALTERNATIVES }) : null;
+export function useCarEta(points: LonLat[] | null, active: boolean, when: TripWhen = null): CarRoute | null {
+  // Pour une autre heure que maintenant (« partir plus tard »), une seule
+  // estimation suffit : ce calcul-là ne sera pas repris par le départ, qui se
+  // fait toujours au trafic du moment.
+  const whenKind = when?.kind;
+  const whenAt = when?.at;
+  const options: CarRouteOptions = useMemo(
+    () => (whenKind && whenAt ? { when: { kind: whenKind, at: whenAt } } : { alternatives: ETA_ALTERNATIVES }),
+    [whenKind, whenAt],
+  );
+  const key = points && active && hasLiveEngine() ? keyOf(points, options) : null;
   const [state, setState] = useState<{ key: string; route: CarRoute | null }>({ key: "", route: null });
 
   // Les points sont figés sur la clé : elle les encode entièrement, et en
@@ -113,7 +123,7 @@ export function useCarEta(points: LonLat[] | null, active: boolean): CarRoute | 
   useEffect(() => {
     if (!key || !stable) return;
     let cancelled = false;
-    cachedCarRoutes(stable, { alternatives: ETA_ALTERNATIVES })
+    cachedCarRoutes(stable, options)
       .then((routes) => {
         if (!cancelled) setState({ key, route: routes[0] ?? null });
       })
@@ -124,7 +134,7 @@ export function useCarEta(points: LonLat[] | null, active: boolean): CarRoute | 
     return () => {
       cancelled = true;
     };
-  }, [key, stable]);
+  }, [key, stable, options]);
 
   return key !== null && state.key === key ? state.route : null;
 }

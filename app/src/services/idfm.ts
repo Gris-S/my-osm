@@ -1,6 +1,7 @@
 import { CONFIG } from "../config";
 import type { Place } from "../types";
 import { t } from "../i18n";
+import { distance as distanceMeters } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // Prochains passages des transports franciliens.
@@ -232,15 +233,6 @@ function normalizeName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-}
-
-function distanceMeters(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
-  const toRad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * toRad;
-  const dLon = (b.lon - a.lon) * toRad;
-  const lat = ((a.lat + b.lat) / 2) * toRad;
-  const x = dLon * Math.cos(lat);
-  return Math.hypot(x, dLat) * 6371000;
 }
 
 interface StopCandidate {

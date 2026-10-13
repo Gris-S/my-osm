@@ -2,6 +2,7 @@ import { CONFIG } from "../config";
 import type { TranslationKey } from "../i18n";
 import { cleanAddress } from "./webPlace";
 import { timeoutSignal } from "../utils/signals";
+import { distance } from "../navigation/geo";
 
 // ---------------------------------------------------------------------------
 // Écrire dans OpenStreetMap : connexion OAuth 2, lieux voisins, création d'un
@@ -197,15 +198,6 @@ export function normalizeName(s: string): string {
     .trim();
 }
 
-function metres(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const r = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return 2 * r * Math.asin(Math.sqrt(a));
-}
-
 interface MapElement {
   type: string;
   id: number;
@@ -242,7 +234,7 @@ export function namedAround(elements: MapElement[], lat: number, lon: number, na
     const pos = e.type === "node" ? nodes.get(e.id) : e.nodes?.length ? nodes.get(e.nodes[0]) : undefined;
     if (!pos) continue;
     const similar = sameName(wanted, normalizeName(n));
-    out.push({ id: e.id, type: e.type, name: n, distance: Math.round(metres(lat, lon, pos.lat, pos.lon)), similar });
+    out.push({ id: e.id, type: e.type, name: n, distance: Math.round(distance({ lat, lon }, pos)), similar });
   }
   return out.sort((a, b) => Number(b.similar) - Number(a.similar) || a.distance - b.distance);
 }

@@ -3,7 +3,9 @@ import type { CarRoute } from "./carRoute";
 import type { RadarKind } from "./data/radars";
 
 // ---------------------------------------------------------------------------
-// Les radars du parcours, et le seul son de l'application.
+// Les radars du parcours, et leur son — longtemps le seul de l'application.
+// Depuis le 13 octobre 2026 elle parle aussi, si on le lui demande (`../voice.ts`,
+// trois crans) ; les deux notes ci-dessous restent quel que soit le cran.
 //
 // La source est la liste officielle des radars fixes publiée par le ministère
 // de l'Intérieur (décembre 2025, 3 309 radars, position, famille et vitesse

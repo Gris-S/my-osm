@@ -1594,12 +1594,154 @@ rien de propriétaire, et trois demandes. Chacune a son scénario.
   monde jusqu'au zoom 12 et rend un 404 au-delà hors de ses emprises (Londres,
   New York, Tokyo, Nairobi), or le hors-ligne commence au zoom 15. Hors de
   France la case est grisée et le dit. En ligne, rien ne change : Esri reste
-  le fond mondial de la vue satellite. Les tuiles Esri d'anciennes zones ne
-  sont plus protégées à la suppression d'une zone (`removeRegion`) ; il n'y a
-  pas de purge d'office.
+  le fond mondial de la vue satellite. Les tuiles Esri d'anciennes zones
+  **restent protégées** à la suppression d'une autre zone (`removeRegion`) :
+  l'alpha.87 les avait sorties de la liste, et supprimer une zone vidait alors
+  l'imagerie de ses voisines — une purge par accident, alors qu'il n'y en a pas
+  d'office (corrigé en alpha.88).
 - **La mention de marque** que la politique de la Fondation demande à qui porte
   « OSM » dans son nom (§2.2, §3.3.6) : dans *Sources et licences*
   (`sources.trademark`), la description F-Droid et les deux README.
+
+##### L'audit du 13 octobre 2026 (alpha.88)
+
+Relecture de l'alpha.87 puis du dépôt entier. Ce qui a changé :
+
+- **Une zone hors ligne ne se dit prête que complète** (`offline/download.ts`).
+  Une tuile que le réseau ne rendait pas était comptée comme faite : le wifi
+  coupé à 30 %, la zone finissait « prête » et trouée. Un échec réseau, un 408,
+  un 429 ou un 5xx (`isRetryableStatus`) compte désormais comme manque ; un 404
+  reste une tuile absente. S'il y a des manques, la zone finit en erreur avec
+  `failure: "network"` (`NetworkGapError`) et « Reprendre » ne redemande que ce
+  qui manque. Les mailles de lieux passent par `politeAnswer` (attente du
+  créneau, instance suivante) au lieu d'un `fetch` vers la seule première
+  instance ; une maille manquée malgré cela arrête la zone de la même façon.
+  Testé dans `tests/download.test.ts`, avec un faux réseau.
+- **`rescuedBody` ne se fie qu'au statut** (`services/native.ts`) : pour le
+  greffon, « JSON » veut dire `application/json` à la lettre, et le
+  `application/vnd.geo+json` de BRouter comme le `text/plain` de la page d'état
+  d'Overpass arrivent en base64. Se fier au type annoncé les rendait
+  illisibles : plus de secours vélo dans l'APK. Testé dans `tests/native.test.ts`.
+- **Hors ligne pour de bon, `osmFetch` ne réattend pas le natif** : après un
+  échec avec le drapeau « hors ligne », quinze secondes sans nouvel essai
+  (`rescueDownUntil`, le même que `rescuedFetch`).
+- **Après un envoi « + OSM » en échec, les voisins sont relus avant tout
+  nouvel envoi** (`recheck`, `OsmContribDialog`) : le serveur a pu créer le
+  point alors que la réponse s'est perdue, et renvoyer posait un doublon.
+- **Le clavier ne se reconnaît que champ de saisie actif** (`keyboardOpen`,
+  `App`) : rétrécir la fenêtre d'un navigateur passait pour un clavier.
+- **Une seule distance** : `distance` de `navigation/geo.ts`, importée partout
+  où une copie existait (huit fichiers).
+- **`outils/save.sh` numérote au-delà de 99** : il ne lisait que deux
+  chiffres, et toutes les sauvegardes depuis le 30 septembre portaient le 100.
+
+##### Les demandes du 13 octobre 2026 (alpha.89)
+
+Onze demandes après des trajets en voiture et en transports ; les scénarios
+`voiture-jauge-voix` et `transports-guidage` (`outils/parcours.mjs`) les
+éprouvent sur le téléphone.
+
+**En voiture**
+
+- **La voix, à trois crans** (`navigation/voice.ts`, bouton `VoiceButton` à
+  l'opposé du bouton d'arrêt) : tout, alertes seulement (radar, accident,
+  panne, bouchon, changement d'itinéraire), muet. Dans l'APK elle passe par le
+  greffon `Speech` (`SpeechPlugin.java`, `TextToSpeech` du téléphone — une
+  WebView n'a pas de `speechSynthesis`), dans un navigateur par
+  `speechSynthesis`. Sans moteur installé, le bouton est grisé. La musique
+  baisse pendant une annonce. Deux annonces par manœuvre, comptées **en
+  temps** (trente secondes avant, puis huit) : `nextAnnouncement`, pure et
+  testée. Les deux notes du radar restent à tous les crans. Le manifeste
+  déclare `<queries>` pour `TTS_SERVICE` : sans cela Android 11+ ne montre
+  aucun moteur.
+- **La jauge des bouchons** (`TrafficGauge`, `gaugeView` dans `carTraffic.ts`) :
+  le trajet restant, ce qui ralentit en orange et rouge, et une phrase pour le
+  premier ralentissement d'au moins 200 m. **Deux formes à l'essai** — couchée
+  sous le bandeau, debout sur le bord droit — en attendant que l'utilisateur
+  en retienne une : retirer l'autre (un appel dans `CarNavigationPanel`, et ses
+  règles `.is-vertical`). Les ralentissements d'une réévaluation se lisent sur
+  le parcours épinglé, décalés de l'avancement (`trafficSpans`).
+- **Accidents et véhicules en panne** (`car/incidents.ts`) : l'itinéraire de
+  TomTom ne rapporte que ce qui ralentit ; ceux-là viennent de l'API *Incident
+  Details* (v5, emprise de 10 000 km² au plus), sur les 40 km devant, à la
+  cadence de la réévaluation. Seuls ceux qui sont **sur** le tracé sont gardés
+  (40 m). TomTom n'a pas les signalements d'usagers : tout ce qu'on voit au
+  bord de la route n'y sera pas.
+- **La carte revient seule à la voiture** cinq secondes après le dernier geste
+  (`RECENTER_AFTER_MS`) ; `MapView` prévient aussi à la **fin** du geste, pour
+  que le délai parte du dernier contact.
+- **Le thème automatique suit la lumière de plus près en voiture**
+  (`setDrivingBrightness`, `DRIVING` dans `ambientLight.ts`) : seuils 30 / 100
+  lux au lieu de 5 / 15, 0,7 s vers le sombre. Un tunnel est éclairé, et la
+  lecture ne tombait pas sous 5 lux. **Non mesuré en tunnel** : chaque bascule
+  en voiture est notée au journal (`theme.auto`, avec les lux) pour ajuster.
+- **Le titre de la chanson défile** s'il ne tient pas (`Marquee`, `MusicCard`).
+
+**En transports**
+
+- **Un recalage par le GPS est une position, pas un décalage**
+  (`navigation/transitGuide.ts`, `anchoredStep`). Le 8 octobre, reconnu à 90 m
+  de l'arrêt, le guidage rangeait cela comme « avancé d'une étape à la main » ;
+  l'horaire avançait ensuite et le décalage s'y ajoutait : une étape trop loin.
+  La fin d'une marche se reconnaît désormais à 35 m (`WALK_END_METERS`).
+- **On n'est pas dans le bus tant qu'on est sur le trottoir** (`boardingGate`) :
+  avec un relevé frais (20 s) et précis, l'horaire ne fait passer à la descente
+  que si l'on a quitté l'arrêt le long de la ligne. Sinon le bandeau reste sur
+  la montée ou la marche, et le dit. Sans relevé — sous terre — l'horaire reste
+  seul maître. Un appui sur les flèches vaut preuve.
+- **Le trajet se recalcule depuis la position** (`replan`) : véhicule manqué
+  (deux minutes d'attente à l'arrêt, trente secondes si l'on marche encore) ou
+  chemin quitté (trois relevés, vingt secondes). Une fois par minute au plus,
+  jamais pour un parcours à étapes. Chaque changement d'action est noté au
+  journal (`tc.step`, `tc.replan`) — le 8 octobre, rien ne l'expliquait.
+- **La liste des stations** de la ligne en cours (`Stations`), réglable dans
+  « Modes ».
+- **La colonne de droite cède ses boutons** quand elle ne tient pas entre le
+  bandeau et la colonne du bas (`crampedLevel`) : signets, puis catégories,
+  puis boussole.
+- **La fiche d'un arrêt met en avant le passage du trajet suivi**
+  (`transport/journeyFocus.ts`) : sa ligne en tête, dépliée, cerclée.
+
+**Retouches du même jour (alpha.90)**, après essai : la jauge reste **debout
+à droite** seulement ; le bouton de la voix est le **jumeau du bouton d'arrêt**
+(même rond, pictogramme seul) ; le compteur est plus gros ; en voiture les
+boutons du lecteur grossissent et leur zone de toucher **déborde de l'encart**
+(`.nav-dock.is-car`) — « suivant », collé au bord, se manquait une fois sur
+deux ; les durées en voiture portent une **marge** de 15 %, cinq minutes au
+plus (`withMargin`, à l'affichage seulement) ; en transports, l'heure du
+prochain passage est dans une **capsule bleue** sous l'instruction.
+
+**Le point bleu de la liste des stations** (alpha.91, `ridePosition` dans
+`transitGuide.ts`) : où l'on est sur la ligne, sans texte. La liste commence à
+la station où l'on est ; le point glisse vers la suivante — au GPS quand on
+est sur la ligne, à l'horaire sinon, l'horloge redessinant à chaque quart de
+tronçon.
+
+**Le choix de la voix** (alpha.93, `VoiceSettings`, Paramètres › Navigation) :
+**une langue, puis ses voix** (alpha.94 : la liste à plat était trop longue).
+Le sélecteur ne propose que les langues **déjà téléchargées** ; en choisir une
+déplie ses voix, numérotées, chacune avec son bouton d'écoute — Android ne dit
+pas si une voix est masculine ou féminine. Les annonces ne sont écrites qu'en
+français et en anglais : une voix d'une autre langue les lit avec son accent,
+et un mot le dit. **La voix parle sa langue, pas celle de l'interface**
+(alpha.95, demande explicite : une voix française lisait de l'anglais,
+l'application étant en anglais). `spokenLanguage` tire la langue de la voix
+retenue ; tout ce qui se dit est composé sous `inSpokenLanguage`, qui fait
+suivre cette langue à `navText` le temps de la phrase (`inLanguage`,
+`strings.ts`). L'interface n'existe qu'en français et en anglais ; les phrases
+**prononcées** existent aussi en espagnol, italien, portugais et allemand
+(`voicePhrases.ts`). **Toute nouvelle annonce s'y ajoute**, et se compose sous
+`inSpokenLanguage`. Une langue sans phrases (le polonais) lit celles de
+l'interface, et les réglages le disent. Télécharger une
+voix est l'affaire du moteur : `installVoices` ouvre son écran
+(`ACTION_INSTALL_TTS_DATA`), la liste est relue au retour.
+
+**Partir plus tard** (`TripWhen`, `WhenPicker` dans le panneau d'itinéraire) :
+une heure de départ ou d'arrivée. En transports, toujours (Navitia
+`datetime_represents`, Transitous `arriveBy`) — sans heure d'arrivée s'il y a
+des étapes. En voiture, **seulement avec TomTom** (`departAt` / `arriveAt`),
+qui compte alors sur le trafic habituel de l'heure ; le guidage, lui, part
+toujours au trafic du moment.
 
 ##### Le journal de navigation (`navigation/journal.ts`)
 
@@ -2764,10 +2906,16 @@ villages et lieux-dits plus tard.
 ### Style sombre
 
 `src/styles/appleDark.ts` est **généré, ne pas l'éditer à la main** (6000 lignes).
-Il dérive du style OpenFreeMap Liberty en n'en recolorant que les couleurs, et
-réutilise les mêmes tuiles vectorielles que le mode clair. Pour retoucher la
-palette : constante `C` dans `scripts/build-apple-dark-style.mjs`, puis
-`npm run build:dark-style` (le script télécharge Liberty, donc réseau requis).
+**Refait le 13 octobre 2026 comme le jumeau du clair** (demande explicite) :
+`scripts/build-apple-dark-style.mjs` reprend toutes les règles de
+`build-apple-light-style.mjs` — routes qui s'éclaircissent en approchant,
+réseau secondaire et liserés absents aux zooms larges, banlieue en voile,
+villes en gras, villages plus tard, cartouches français — avec une palette de
+nuit (constante `C`). Seule différence de fond : de près, le clair fait toutes
+les routes blanches, le sombre garde trois gris, la clarté disant l'importance.
+**Les deux scripts se retouchent ensemble.** Puis `npm run build:dark-style`
+(le script télécharge Liberty, donc réseau requis). Le scénario `theme-sombre`
+prend les trois captures à comparer (région, ville, rue).
 
 ### Icônes de l'application
 
@@ -3574,6 +3722,19 @@ une mesure ; ne pas en défaire une sans la refaire.
 - **Les panneaux de navigation ont un fond plein, sans flou**
   (`backdrop-filter`) : le flou se recalcule à chaque image de la carte qui
   défile dessous.
+- **Mesure du 13 octobre 2026** (scénario `chauffe`, voiture simulée à
+  50 km/h, alpha.92) : **1,94 cœur à 60 images/s**, 1,49 à 30, 1,18 à 20, et
+  **0,21 à l'arrêt**. C'est donc la carte qui bouge qui coûte, pas le reste du
+  guidage. Réduire les pixels (85 % → 65 %) ne change presque rien au
+  processeur (1,49 → 1,46) ; son effet sur le processeur graphique n'est pas
+  mesuré ici. Les deux réglages se lisent dans `navTuning` (`map/navGlide.ts`),
+  modifiable à chaud par `window.__myosm.navTuning` en version de diagnostic.
+- **Le rendu en voiture** (alpha.93, `setNavRendering`) : **50 % de la
+  définition toujours** dès qu'on est en navigation voiture (`CAR_PIXEL_SHARE`,
+  valeur demandée par l'utilisateur, à remonter si la carte paraît floue), et
+  **30 images/s**. Ce fut un réglage le temps de l'alpha.93 ; retiré à la
+  demande de l'utilisateur (alpha.94) : pas de choix à faire. À pied, rien ne
+  change.
 - **Le journal écrit une queue de 500 entrées au plus**, versée dans l'archive
   quand elle déborde, au lieu de relire et réécrire les 5 000 entrées toutes
   les 5 s pendant la navigation.

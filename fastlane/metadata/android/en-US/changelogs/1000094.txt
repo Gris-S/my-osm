@@ -1,0 +1,1 @@
+Voice settings simplified: pick a downloaded language, then one of its voices.

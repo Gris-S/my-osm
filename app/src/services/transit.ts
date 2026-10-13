@@ -220,9 +220,9 @@ const cache = new Map<string, CacheEntry<TransitJourney[]>>();
 // tronçon part de l'arrivée du précédent, et deux calculs lancés à des heures
 // différentes n'ont pas la même réponse. Elle est arrondie à la minute — la
 // résolution des horaires, et celle du cache lui-même (TTL d'une minute).
-function cacheKey(from: JourneyEnd, to: JourneyEnd, at: Date | undefined): string {
+function cacheKey(from: JourneyEnd, to: JourneyEnd, at: Date | undefined, arriveBy: boolean): string {
   const when = at ? toNavitiaDate(at).slice(0, 13) : "now";
-  return `${navitiaPlace(from, 5)}>${navitiaPlace(to, 5)}@${when}`;
+  return `${navitiaPlace(from, 5)}>${navitiaPlace(to, 5)}@${when}${arriveBy ? ":arrivée" : ""}`;
 }
 
 /**
@@ -258,9 +258,11 @@ export async function getJourneysBetween(
   from: JourneyEnd,
   to: JourneyEnd,
   at: Date | undefined,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /** `at` est l'heure d'**arrivée** voulue (« partir plus tard »), et non celle du départ. */
+  arriveBy = false
 ): Promise<TransitJourney[]> {
-  const key = cacheKey(from, to, at);
+  const key = cacheKey(from, to, at, arriveBy);
   const cached = cache.get(key);
   if (cached && Date.now() - cached.at < CONFIG.IDFM_JOURNEYS_TTL_MS) return cached.value;
 
@@ -270,7 +272,7 @@ export async function getJourneysBetween(
   // Sans `datetime`, Navitia part de maintenant — ce qu'on veut du premier
   // tronçon. Les suivants partent de l'arrivée du précédent.
   if (at) url.searchParams.set("datetime", toNavitiaDate(at));
-  url.searchParams.set("datetime_represents", "departure");
+  url.searchParams.set("datetime_represents", arriveBy && at ? "arrival" : "departure");
   // Horaires du jour quand la ligne les diffuse, théoriques sinon.
   url.searchParams.set("data_freshness", "realtime");
   url.searchParams.set("max_nb_journeys", String(CONFIG.IDFM_MAX_JOURNEYS));

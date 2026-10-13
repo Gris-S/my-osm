@@ -1045,15 +1045,6 @@ export function currentBbox(map: MLMap): [number, number, number, number] {
   return [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()];
 }
 
-/** Distance approchée entre deux points, en mètres. */
-export function distanceBetween(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
-  const toRad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * toRad;
-  const dLon = (b.lon - a.lon) * toRad;
-  const lat = ((a.lat + b.lat) / 2) * toRad;
-  return Math.hypot(dLon * Math.cos(lat), dLat) * 6371000;
-}
-
 // ---------------------------------------------------------------------------
 // Le contour d'une ville ou d'un quartier touché sur la carte
 // (`services/areaInfo.ts`) : un voile léger dedans, un trait franc au bord.
@@ -1105,3 +1096,5 @@ export function applyAreaOutline(map: MLMap, outline: GeoJSON.Polygon | GeoJSON.
 function firstSymbolLayer(map: MLMap): string | undefined {
   return map.getStyle()?.layers?.find((layer) => layer.type === "symbol")?.id;
 }
+
+export { distance as distanceBetween } from "../../navigation/geo";
