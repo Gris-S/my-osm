@@ -1,11 +1,14 @@
-import { Fragment, useEffect, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowUp, Bike, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MapPin, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { ArrowDown, ArrowUp, Bike, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
 import { CONFIG, type TravelMode } from "../config";
 import type { LonLat, Place, RouteResult, RouteStop, StopEdit, TripWhen } from "../types";
 import { getNextDepartures, type NextDeparture } from "../services/transit";
 import type { TransitJourney, TransitLeg } from "../transport/journeyView";
 import { sourceName } from "../transport/sources";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
+import { groupStops, stationsFirst, stationsFirstEnabled } from "../search/searchResults";
+import { useStopBadges } from "../search/useStopBadges";
+import { KindIcon } from "./SearchBar";
 import { HOME_WORK_ROLES, type HomeWork, type HomeWorkRole } from "../hooks/useHomeWork";
 // Navigation guidée — voir `src/navigation/README.md`. Le bouton est fourni
 // par le module ; le panneau ne décide que du moment où il l'affiche.
@@ -373,6 +376,14 @@ function PlacePicker({
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const { results, loading } = usePlaceSearch(query, near);
+  // Comme la barre de recherche : un seul « Châtelet » pour ses quais, accès et
+  // arrêts de bus, la station en tête, et son pictogramme. La liste brute en
+  // alignait une dizaine, tous sous la même épingle (constaté le 14 octobre 2026).
+  const entries = useMemo(() => {
+    const grouped = groupStops(results).slice(0, CONFIG.SEARCH_SHOWN_RESULTS);
+    return stationsFirstEnabled() ? stationsFirst(grouped, query.trim()) : grouped;
+  }, [results, query]);
+  const badges = useStopBadges(entries);
 
   /**
    * Le rôle qu'on est en train de définir, s'il y en a un.
@@ -462,12 +473,14 @@ function PlacePicker({
 
         {loading && <div className="itinerary-origin-hint">{t("search.loading")}</div>}
         {!loading &&
-          results.map((r) => (
-            <button key={r.id} className="itinerary-origin-result" onClick={() => choose(r)}>
-              <MapPin size={15} />
+          entries.map((entry) => (
+            <button key={entry.place.id} className="itinerary-origin-result" onClick={() => choose(entry.place)}>
+              <span className="search-result-icon">
+                <KindIcon entry={entry} badges={badges} />
+              </span>
               <span className="itinerary-origin-result-text">
-                <span className="itinerary-origin-result-name">{r.name}</span>
-                {r.address && <span className="itinerary-origin-result-addr">{r.address}</span>}
+                <span className="itinerary-origin-result-name">{entry.place.name}</span>
+                {entry.place.address && <span className="itinerary-origin-result-addr">{entry.place.address}</span>}
               </span>
             </button>
           ))}
@@ -811,7 +824,7 @@ export function ItineraryPanel({
   );
 }
 
-/** `2026-10-13T18:30` : la valeur d'un champ `datetime-local`, à l'heure de l'appareil. */
+/** `2026-10-13T18:30` : la date et l'heure d'un instant, à l'heure de l'appareil. */
 function toLocalInput(at: number): string {
   const date = new Date(at);
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -821,40 +834,45 @@ function toLocalInput(at: number): string {
 /**
  * « Partir plus tard » : maintenant, partir à, arriver à — et l'heure.
  *
- * Deux champs du système (`select`, `datetime-local`) plutôt qu'un sélecteur
- * maison : sur le téléphone, ce sont la roue et le calendrier d'Android, que
- * chacun sait déjà manier, et il n'y a rien à entretenir. Passer de
- * « maintenant » à une heure propose **dans une heure**, arrondi à cinq
- * minutes : c'est une heure qu'on corrige, pas un champ vide qu'on remplit.
+ * Le choix se fait aux segments de la maison : un `select` ouvrait la vieille
+ * liste d'Android. La date et l'heure restent au système, mais **en deux
+ * champs** : un `datetime-local` ouvre dans la WebView un dialogue à roues
+ * d'Android 6 (constaté le 14 octobre 2026), quand `date` et `time` ouvrent le
+ * calendrier et l'horloge Material. Passer de « maintenant » à une heure
+ * propose **dans une heure**, arrondi à cinq minutes : c'est une heure qu'on
+ * corrige, pas un champ vide qu'on remplit.
  */
 function WhenPicker({ when, onChange, arrive }: { when: TripWhen; onChange: (when: TripWhen) => void; arrive: boolean }) {
   const { t } = useI18n();
   const kind = when?.kind ?? "now";
   const inAnHour = () => Math.ceil((Date.now() + 3600_000) / 300_000) * 300_000;
+  const kinds: ("now" | "depart" | "arrive")[] = ["now", "depart", ...(arrive || kind === "arrive" ? ["arrive" as const] : [])];
+  const [day, time] = when ? toLocalInput(when.at).split("T") : ["", ""];
+  const set = (nextDay: string, nextTime: string) => {
+    const at = new Date(`${nextDay}T${nextTime}`).getTime();
+    // Le bouton « Effacer » du système rend un champ vide : on garde l'heure d'avant.
+    if (when && Number.isFinite(at)) onChange({ kind: when.kind, at });
+  };
   return (
     <div className="itinerary-when">
-      <select
-        value={kind}
-        aria-label={t("itinerary.when.label")}
-        onChange={(event) => {
-          const next = event.target.value;
-          onChange(next === "depart" || next === "arrive" ? { kind: next, at: when?.at ?? inAnHour() } : null);
-        }}
-      >
-        <option value="now">{t("itinerary.when.now")}</option>
-        <option value="depart">{t("itinerary.when.depart")}</option>
-        {(arrive || kind === "arrive") && <option value="arrive">{t("itinerary.when.arrive")}</option>}
-      </select>
+      <div className="segmented" role="radiogroup" aria-label={t("itinerary.when.label")}>
+        {kinds.map((id) => (
+          <button
+            key={id}
+            role="radio"
+            aria-checked={kind === id}
+            className={`segmented-option ${kind === id ? "is-active" : ""}`}
+            onClick={() => onChange(id === "now" ? null : { kind: id, at: when?.at ?? inAnHour() })}
+          >
+            {t(`itinerary.when.${id}`)}
+          </button>
+        ))}
+      </div>
       {when && (
-        <input
-          type="datetime-local"
-          value={toLocalInput(when.at)}
-          aria-label={t(when.kind === "arrive" ? "itinerary.when.arrive" : "itinerary.when.depart")}
-          onChange={(event) => {
-            const at = new Date(event.target.value).getTime();
-            if (Number.isFinite(at)) onChange({ kind: when.kind, at });
-          }}
-        />
+        <div className="itinerary-when-at">
+          <input type="date" value={day} aria-label={t("itinerary.when.day")} onChange={(event) => set(event.target.value, time)} />
+          <input type="time" value={time} aria-label={t("itinerary.when.time")} onChange={(event) => set(day, event.target.value)} />
+        </div>
       )}
     </div>
   );

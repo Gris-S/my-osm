@@ -450,7 +450,7 @@ function ResultIconCell({ children }: { children: React.ReactNode }) {
  * réunisse un arrêt ou huit (voir `useStopBadges`) — et pictogramme de
  * transport dès qu'il y en a plusieurs.
  */
-function KindIcon({ entry, badges }: { entry: SearchEntry; badges: Map<string, LineChip> }) {
+export function KindIcon({ entry, badges }: { entry: SearchEntry; badges: Map<string, LineChip> }) {
   const kind = resultKind(entry.place);
   if (kind === "address") return <Navigation size={16} />;
   if (kind === "place") return <MapPin size={18} className="is-filled" />;

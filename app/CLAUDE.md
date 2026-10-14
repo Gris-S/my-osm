@@ -508,6 +508,14 @@ l'horaire du jour quand la ligne le diffuse). Points à connaître :
   `relations`), sans clé ni quota ; `useItinerary` passe la station en
   `fromStation`/`toStation` (`JourneyOptions`). Faute de réponse, on retombe sur
   les coordonnées.
+- **Contrepartie : les montées fantômes.** Partant d'une zone (Châtelet,
+  métro) vers une autre zone d'arrêt (Châtelet - Les Halles, RER), Navitia
+  invente un « trajet » d'un seul arrêt sur une ligne de passage pour enchaîner
+  la correspondance, une fois par ligne, parfois d'une durée négative (14 octobre
+  2026). `legFromSection` écarte tout tronçon en transport de moins de deux
+  arrêts, les correspondances sont recomptées, et `journeysFromNavitia` fusionne
+  les trajets aux mêmes tronçons en transport (garde la marche la plus courte).
+  Test : `tests/navitiaPhantom.test.ts`, sur la vraie réponse.
 - **« Ma position » n'est prise que fraîche** (`CONFIG.ROUTE_POSITION_MAX_AGE_MS`,
   deux minutes). `useGeolocation` garde son dernier relevé, même vieux de
   plusieurs heures et même quand le suivant échoue : un trajet de nuit partait
@@ -1742,6 +1750,10 @@ une heure de départ ou d'arrivée. En transports, toujours (Navitia
 des étapes. En voiture, **seulement avec TomTom** (`departAt` / `arriveAt`),
 qui compte alors sur le trafic habituel de l'heure ; le guidage, lui, part
 toujours au trafic du moment.
+Le choix se fait aux segments (`.segmented`), la date et l'heure par **deux
+champs** `date` + `time` : `datetime-local` ouvrait dans la WebView le dialogue
+à roues d'Android 6 (14 octobre 2026). Leur calendrier et leur horloge prennent
+le bleu de l'app par `AppTheme.PickerDialog` (`apk/.../values/styles.xml`).
 
 ##### Le journal de navigation (`navigation/journal.ts`)
 

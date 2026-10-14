@@ -1,0 +1,1097 @@
+[
+ {
+  "departure_date_time": "20261014T134559",
+  "arrival_date_time": "20261014T141355",
+  "duration": 1676,
+  "nb_transfers": 1,
+  "durations": {
+   "walking": 240
+  },
+  "sections": [
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T134559",
+    "arrival_date_time": "20261014T134559",
+    "duration": 0,
+    "from": {
+     "id": "stop_area:IDFM:71264",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:21959",
+     "name": "Châtelet (Paris)"
+    }
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T134559",
+    "arrival_date_time": "20261014T134529",
+    "duration": -30,
+    "data_freshness": "base_schedule",
+    "from": {
+     "id": "stop_point:IDFM:21959",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:21959",
+     "name": "Châtelet (Paris)"
+    },
+    "display_informations": {
+     "code": "14",
+     "color": "640082",
+     "text_color": "FFFFFF",
+     "commercial_mode": "Métro",
+     "direction": "Aéroport d'Orly (Paray-Vieille-Poste)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T134529",
+      "departure_date_time": "20261014T134559",
+      "stop_point": {
+       "id": "stop_point:IDFM:21959",
+       "name": "Châtelet",
+       "coord": {
+        "lat": "48.859866",
+        "lon": "2.346175"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "transfer",
+    "transfer_type": "walking",
+    "departure_date_time": "20261014T134529",
+    "arrival_date_time": "20261014T134929",
+    "duration": 240,
+    "from": {
+     "id": "stop_point:IDFM:21959",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    }
+   },
+   {
+    "type": "waiting",
+    "departure_date_time": "20261014T134929",
+    "arrival_date_time": "20261014T135200",
+    "duration": 151
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T135200",
+    "arrival_date_time": "20261014T141355",
+    "duration": 1315,
+    "data_freshness": "realtime",
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "display_informations": {
+     "code": "A",
+     "color": "EB2132",
+     "text_color": "FFFFFF",
+     "commercial_mode": "RER",
+     "direction": "Saint-Germain-en-Laye (Saint-Germain-en-Laye)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T135140",
+      "departure_date_time": "20261014T135200",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45102",
+       "name": "Châtelet - Les Halles",
+       "coord": {
+        "lat": "48.861745",
+        "lon": "2.346977"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135425",
+      "departure_date_time": "20261014T135445",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45873",
+       "name": "Auber",
+       "coord": {
+        "lat": "48.872349",
+        "lon": "2.329659"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135731",
+      "departure_date_time": "20261014T135751",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58759",
+       "name": "Charles de Gaulle - Étoile",
+       "coord": {
+        "lat": "48.874173",
+        "lon": "2.295231"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140145",
+      "departure_date_time": "20261014T140205",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:470549",
+       "name": "La Défense",
+       "coord": {
+        "lat": "48.892230",
+        "lon": "2.238419"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140351",
+      "departure_date_time": "20261014T140411",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43169",
+       "name": "Nanterre - Préfecture",
+       "coord": {
+        "lat": "48.895887",
+        "lon": "2.222986"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140628",
+      "departure_date_time": "20261014T140648",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43170",
+       "name": "Nanterre Université",
+       "coord": {
+        "lat": "48.901130",
+        "lon": "2.213536"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140850",
+      "departure_date_time": "20261014T140910",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43171",
+       "name": "Nanterre - Ville",
+       "coord": {
+        "lat": "48.895020",
+        "lon": "2.195118"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141122",
+      "departure_date_time": "20261014T141142",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58875",
+       "name": "Rueil-Malmaison",
+       "coord": {
+        "lat": "48.887673",
+        "lon": "2.172366"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141355",
+      "departure_date_time": "20261014T141415",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:53783",
+       "name": "Chatou - Croissy",
+       "coord": {
+        "lat": "48.885197",
+        "lon": "2.155938"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T141355",
+    "arrival_date_time": "20261014T141355",
+    "duration": 0,
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "to": {
+     "id": "stop_area:IDFM:64483",
+     "name": "Chatou - Croissy (Chatou)"
+    }
+   }
+  ]
+ },
+ {
+  "departure_date_time": "20261014T134512",
+  "arrival_date_time": "20261014T141355",
+  "duration": 1723,
+  "nb_transfers": 1,
+  "durations": {
+   "walking": 300
+  },
+  "sections": [
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T134512",
+    "arrival_date_time": "20261014T134512",
+    "duration": 0,
+    "from": {
+     "id": "stop_area:IDFM:71264",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463160",
+     "name": "Châtelet (Paris)"
+    }
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T134512",
+    "arrival_date_time": "20261014T134447",
+    "duration": -25,
+    "data_freshness": "base_schedule",
+    "from": {
+     "id": "stop_point:IDFM:463160",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463160",
+     "name": "Châtelet (Paris)"
+    },
+    "display_informations": {
+     "code": "1",
+     "color": "FFBE00",
+     "text_color": "000000",
+     "commercial_mode": "Métro",
+     "direction": "La Défense (Puteaux)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T134447",
+      "departure_date_time": "20261014T134512",
+      "stop_point": {
+       "id": "stop_point:IDFM:463160",
+       "name": "Châtelet",
+       "coord": {
+        "lat": "48.858616",
+        "lon": "2.347922"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "transfer",
+    "transfer_type": "walking",
+    "departure_date_time": "20261014T134447",
+    "arrival_date_time": "20261014T134947",
+    "duration": 300,
+    "from": {
+     "id": "stop_point:IDFM:463160",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    }
+   },
+   {
+    "type": "waiting",
+    "departure_date_time": "20261014T134947",
+    "arrival_date_time": "20261014T135200",
+    "duration": 133
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T135200",
+    "arrival_date_time": "20261014T141355",
+    "duration": 1315,
+    "data_freshness": "realtime",
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "display_informations": {
+     "code": "A",
+     "color": "EB2132",
+     "text_color": "FFFFFF",
+     "commercial_mode": "RER",
+     "direction": "Saint-Germain-en-Laye (Saint-Germain-en-Laye)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T135140",
+      "departure_date_time": "20261014T135200",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45102",
+       "name": "Châtelet - Les Halles",
+       "coord": {
+        "lat": "48.861745",
+        "lon": "2.346977"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135425",
+      "departure_date_time": "20261014T135445",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45873",
+       "name": "Auber",
+       "coord": {
+        "lat": "48.872349",
+        "lon": "2.329659"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135731",
+      "departure_date_time": "20261014T135751",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58759",
+       "name": "Charles de Gaulle - Étoile",
+       "coord": {
+        "lat": "48.874173",
+        "lon": "2.295231"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140145",
+      "departure_date_time": "20261014T140205",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:470549",
+       "name": "La Défense",
+       "coord": {
+        "lat": "48.892230",
+        "lon": "2.238419"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140351",
+      "departure_date_time": "20261014T140411",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43169",
+       "name": "Nanterre - Préfecture",
+       "coord": {
+        "lat": "48.895887",
+        "lon": "2.222986"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140628",
+      "departure_date_time": "20261014T140648",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43170",
+       "name": "Nanterre Université",
+       "coord": {
+        "lat": "48.901130",
+        "lon": "2.213536"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140850",
+      "departure_date_time": "20261014T140910",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43171",
+       "name": "Nanterre - Ville",
+       "coord": {
+        "lat": "48.895020",
+        "lon": "2.195118"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141122",
+      "departure_date_time": "20261014T141142",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58875",
+       "name": "Rueil-Malmaison",
+       "coord": {
+        "lat": "48.887673",
+        "lon": "2.172366"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141355",
+      "departure_date_time": "20261014T141415",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:53783",
+       "name": "Chatou - Croissy",
+       "coord": {
+        "lat": "48.885197",
+        "lon": "2.155938"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T141355",
+    "arrival_date_time": "20261014T141355",
+    "duration": 0,
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "to": {
+     "id": "stop_area:IDFM:64483",
+     "name": "Chatou - Croissy (Chatou)"
+    }
+   }
+  ]
+ },
+ {
+  "departure_date_time": "20261014T134451",
+  "arrival_date_time": "20261014T141355",
+  "duration": 1744,
+  "nb_transfers": 1,
+  "durations": {
+   "walking": 180
+  },
+  "sections": [
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T134451",
+    "arrival_date_time": "20261014T134451",
+    "duration": 0,
+    "from": {
+     "id": "stop_area:IDFM:71264",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463158",
+     "name": "Châtelet (Paris)"
+    }
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T134451",
+    "arrival_date_time": "20261014T134539",
+    "duration": 48,
+    "data_freshness": "base_schedule",
+    "from": {
+     "id": "stop_point:IDFM:463158",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463208",
+     "name": "Les Halles (Paris)"
+    },
+    "display_informations": {
+     "code": "4",
+     "color": "A0006E",
+     "text_color": "FFFFFF",
+     "commercial_mode": "Métro",
+     "direction": "Porte de Clignancourt (Paris)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T134425",
+      "departure_date_time": "20261014T134451",
+      "stop_point": {
+       "id": "stop_point:IDFM:463158",
+       "name": "Châtelet",
+       "coord": {
+        "lat": "48.859770",
+        "lon": "2.346763"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T134539",
+      "departure_date_time": "20261014T134605",
+      "stop_point": {
+       "id": "stop_point:IDFM:463208",
+       "name": "Les Halles",
+       "coord": {
+        "lat": "48.862724",
+        "lon": "2.345990"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "transfer",
+    "transfer_type": "walking",
+    "departure_date_time": "20261014T134539",
+    "arrival_date_time": "20261014T134839",
+    "duration": 180,
+    "from": {
+     "id": "stop_point:IDFM:463208",
+     "name": "Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    }
+   },
+   {
+    "type": "waiting",
+    "departure_date_time": "20261014T134839",
+    "arrival_date_time": "20261014T135200",
+    "duration": 201
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T135200",
+    "arrival_date_time": "20261014T141355",
+    "duration": 1315,
+    "data_freshness": "realtime",
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "display_informations": {
+     "code": "A",
+     "color": "EB2132",
+     "text_color": "FFFFFF",
+     "commercial_mode": "RER",
+     "direction": "Saint-Germain-en-Laye (Saint-Germain-en-Laye)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T135140",
+      "departure_date_time": "20261014T135200",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45102",
+       "name": "Châtelet - Les Halles",
+       "coord": {
+        "lat": "48.861745",
+        "lon": "2.346977"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135425",
+      "departure_date_time": "20261014T135445",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45873",
+       "name": "Auber",
+       "coord": {
+        "lat": "48.872349",
+        "lon": "2.329659"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135731",
+      "departure_date_time": "20261014T135751",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58759",
+       "name": "Charles de Gaulle - Étoile",
+       "coord": {
+        "lat": "48.874173",
+        "lon": "2.295231"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140145",
+      "departure_date_time": "20261014T140205",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:470549",
+       "name": "La Défense",
+       "coord": {
+        "lat": "48.892230",
+        "lon": "2.238419"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140351",
+      "departure_date_time": "20261014T140411",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43169",
+       "name": "Nanterre - Préfecture",
+       "coord": {
+        "lat": "48.895887",
+        "lon": "2.222986"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140628",
+      "departure_date_time": "20261014T140648",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43170",
+       "name": "Nanterre Université",
+       "coord": {
+        "lat": "48.901130",
+        "lon": "2.213536"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140850",
+      "departure_date_time": "20261014T140910",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43171",
+       "name": "Nanterre - Ville",
+       "coord": {
+        "lat": "48.895020",
+        "lon": "2.195118"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141122",
+      "departure_date_time": "20261014T141142",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58875",
+       "name": "Rueil-Malmaison",
+       "coord": {
+        "lat": "48.887673",
+        "lon": "2.172366"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141355",
+      "departure_date_time": "20261014T141415",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:53783",
+       "name": "Chatou - Croissy",
+       "coord": {
+        "lat": "48.885197",
+        "lon": "2.155938"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T141355",
+    "arrival_date_time": "20261014T141355",
+    "duration": 0,
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "to": {
+     "id": "stop_area:IDFM:64483",
+     "name": "Chatou - Croissy (Chatou)"
+    }
+   }
+  ]
+ },
+ {
+  "departure_date_time": "20261014T134431",
+  "arrival_date_time": "20261014T141355",
+  "duration": 1764,
+  "nb_transfers": 0,
+  "durations": {
+   "walking": 449
+  },
+  "sections": [
+   {
+    "type": "street_network",
+    "departure_date_time": "20261014T134431",
+    "arrival_date_time": "20261014T135200",
+    "duration": 449,
+    "from": {
+     "id": "stop_area:IDFM:71264",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    }
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T135200",
+    "arrival_date_time": "20261014T141355",
+    "duration": 1315,
+    "data_freshness": "realtime",
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "display_informations": {
+     "code": "A",
+     "color": "EB2132",
+     "text_color": "FFFFFF",
+     "commercial_mode": "RER",
+     "direction": "Saint-Germain-en-Laye (Saint-Germain-en-Laye)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T135140",
+      "departure_date_time": "20261014T135200",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45102",
+       "name": "Châtelet - Les Halles",
+       "coord": {
+        "lat": "48.861745",
+        "lon": "2.346977"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135425",
+      "departure_date_time": "20261014T135445",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45873",
+       "name": "Auber",
+       "coord": {
+        "lat": "48.872349",
+        "lon": "2.329659"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135731",
+      "departure_date_time": "20261014T135751",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58759",
+       "name": "Charles de Gaulle - Étoile",
+       "coord": {
+        "lat": "48.874173",
+        "lon": "2.295231"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140145",
+      "departure_date_time": "20261014T140205",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:470549",
+       "name": "La Défense",
+       "coord": {
+        "lat": "48.892230",
+        "lon": "2.238419"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140351",
+      "departure_date_time": "20261014T140411",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43169",
+       "name": "Nanterre - Préfecture",
+       "coord": {
+        "lat": "48.895887",
+        "lon": "2.222986"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140628",
+      "departure_date_time": "20261014T140648",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43170",
+       "name": "Nanterre Université",
+       "coord": {
+        "lat": "48.901130",
+        "lon": "2.213536"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140850",
+      "departure_date_time": "20261014T140910",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43171",
+       "name": "Nanterre - Ville",
+       "coord": {
+        "lat": "48.895020",
+        "lon": "2.195118"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141122",
+      "departure_date_time": "20261014T141142",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58875",
+       "name": "Rueil-Malmaison",
+       "coord": {
+        "lat": "48.887673",
+        "lon": "2.172366"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141355",
+      "departure_date_time": "20261014T141415",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:53783",
+       "name": "Chatou - Croissy",
+       "coord": {
+        "lat": "48.885197",
+        "lon": "2.155938"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T141355",
+    "arrival_date_time": "20261014T141355",
+    "duration": 0,
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "to": {
+     "id": "stop_area:IDFM:64483",
+     "name": "Chatou - Croissy (Chatou)"
+    }
+   }
+  ]
+ },
+ {
+  "departure_date_time": "20261014T134153",
+  "arrival_date_time": "20261014T141355",
+  "duration": 1922,
+  "nb_transfers": 1,
+  "durations": {
+   "walking": 480
+  },
+  "sections": [
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T134153",
+    "arrival_date_time": "20261014T134153",
+    "duration": 0,
+    "from": {
+     "id": "stop_area:IDFM:71264",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463060",
+     "name": "Châtelet (Paris)"
+    }
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T134153",
+    "arrival_date_time": "20261014T134130",
+    "duration": -23,
+    "data_freshness": "base_schedule",
+    "from": {
+     "id": "stop_point:IDFM:463060",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:463060",
+     "name": "Châtelet (Paris)"
+    },
+    "display_informations": {
+     "code": "7",
+     "color": "FF82B4",
+     "text_color": "000000",
+     "commercial_mode": "Métro",
+     "direction": "Villejuif - Louis Aragon (Villejuif)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T134130",
+      "departure_date_time": "20261014T134153",
+      "stop_point": {
+       "id": "stop_point:IDFM:463060",
+       "name": "Châtelet",
+       "coord": {
+        "lat": "48.856917",
+        "lon": "2.348161"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "transfer",
+    "transfer_type": "walking",
+    "departure_date_time": "20261014T134130",
+    "arrival_date_time": "20261014T134930",
+    "duration": 480,
+    "from": {
+     "id": "stop_point:IDFM:463060",
+     "name": "Châtelet (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    }
+   },
+   {
+    "type": "waiting",
+    "departure_date_time": "20261014T134930",
+    "arrival_date_time": "20261014T135200",
+    "duration": 150
+   },
+   {
+    "type": "public_transport",
+    "departure_date_time": "20261014T135200",
+    "arrival_date_time": "20261014T141355",
+    "duration": 1315,
+    "data_freshness": "realtime",
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:45102",
+     "name": "Châtelet - Les Halles (Paris)"
+    },
+    "to": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "display_informations": {
+     "code": "A",
+     "color": "EB2132",
+     "text_color": "FFFFFF",
+     "commercial_mode": "RER",
+     "direction": "Saint-Germain-en-Laye (Saint-Germain-en-Laye)"
+    },
+    "stop_date_times": [
+     {
+      "arrival_date_time": "20261014T135140",
+      "departure_date_time": "20261014T135200",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45102",
+       "name": "Châtelet - Les Halles",
+       "coord": {
+        "lat": "48.861745",
+        "lon": "2.346977"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135425",
+      "departure_date_time": "20261014T135445",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:45873",
+       "name": "Auber",
+       "coord": {
+        "lat": "48.872349",
+        "lon": "2.329659"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T135731",
+      "departure_date_time": "20261014T135751",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58759",
+       "name": "Charles de Gaulle - Étoile",
+       "coord": {
+        "lat": "48.874173",
+        "lon": "2.295231"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140145",
+      "departure_date_time": "20261014T140205",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:470549",
+       "name": "La Défense",
+       "coord": {
+        "lat": "48.892230",
+        "lon": "2.238419"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140351",
+      "departure_date_time": "20261014T140411",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43169",
+       "name": "Nanterre - Préfecture",
+       "coord": {
+        "lat": "48.895887",
+        "lon": "2.222986"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140628",
+      "departure_date_time": "20261014T140648",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43170",
+       "name": "Nanterre Université",
+       "coord": {
+        "lat": "48.901130",
+        "lon": "2.213536"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T140850",
+      "departure_date_time": "20261014T140910",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:43171",
+       "name": "Nanterre - Ville",
+       "coord": {
+        "lat": "48.895020",
+        "lon": "2.195118"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141122",
+      "departure_date_time": "20261014T141142",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:58875",
+       "name": "Rueil-Malmaison",
+       "coord": {
+        "lat": "48.887673",
+        "lon": "2.172366"
+       }
+      }
+     },
+     {
+      "arrival_date_time": "20261014T141355",
+      "departure_date_time": "20261014T141415",
+      "stop_point": {
+       "id": "stop_point:IDFM:monomodalStopPlace:53783",
+       "name": "Chatou - Croissy",
+       "coord": {
+        "lat": "48.885197",
+        "lon": "2.155938"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "type": "crow_fly",
+    "departure_date_time": "20261014T141355",
+    "arrival_date_time": "20261014T141355",
+    "duration": 0,
+    "from": {
+     "id": "stop_point:IDFM:monomodalStopPlace:53783",
+     "name": "Chatou - Croissy (Chatou)"
+    },
+    "to": {
+     "id": "stop_area:IDFM:64483",
+     "name": "Chatou - Croissy (Chatou)"
+    }
+   }
+  ]
+ }
+]

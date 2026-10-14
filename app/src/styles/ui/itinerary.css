@@ -363,31 +363,41 @@
    comme les pastilles de mode. */
 .itinerary-when {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   margin-top: 12px;
 }
 
-.itinerary-when :is(select, input) {
+.itinerary-when .segmented-option {
+  font-size: 13px;
+}
+
+.itinerary-when-at {
+  display: flex;
+  gap: 8px;
+}
+
+.itinerary-when-at input {
+  flex: 1;
+  min-width: 0;
   min-height: 38px;
   padding: 0 12px;
   border: 0;
   border-radius: 12px;
   background: rgba(120, 120, 128, 0.14);
   color: var(--text-primary);
+  color-scheme: light dark;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
+  text-align: center;
 }
 
-.itinerary-when input {
-  flex: 1;
-  min-width: 0;
-}
-
+/* Sous la durée et le bouton, sur toute la largeur : à côté, le texte se
+   tassait en colonne et repoussait « 52 min » sur deux lignes. */
 .itinerary-when-result {
   flex-basis: 100%;
-  margin: 8px 0 0;
+  margin: 2px 0 0;
   font-size: 13.5px;
   color: var(--text-secondary);
 }
@@ -421,17 +431,20 @@
 .itinerary-result {
   margin-top: 12px;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
 }
 
 .itinerary-duration {
+  white-space: nowrap;
   font-size: 22px;
   font-weight: 700;
   color: var(--accent);
 }
 
 .itinerary-distance {
+  white-space: nowrap;
   font-size: 15px;
   color: var(--text-secondary);
 }
@@ -456,4 +469,11 @@
   color: var(--accent);
   opacity: 1;
   font-weight: 600;
+}
+
+/* Les pictogrammes de la barre de recherche (`KindIcon`), à la taille de cette
+   liste plus serrée : ni la colonne de 52 px ni son trait. */
+.itinerary-origin-result .search-result-icon {
+  width: 28px;
+  border-right: 0;
 }

@@ -269,3 +269,10 @@
   font-size: 11px;
   color: var(--text-secondary);
 }
+
+/* « Démarrer » dans le trajet déplié : aligné sur le texte du résumé. Hors
+   d'une ligne flexible, son `margin-left: auto` ne jouait plus et le bouton
+   venait se coller au bord de la carte. */
+.journey > .nav-start {
+  margin: 8px 12px 6px;
+}

@@ -68,7 +68,7 @@ interface NavitiaSection {
   geojson?: GeoJSON.LineString;
 }
 
-interface NavitiaJourney {
+export interface NavitiaJourney {
   duration?: number;
   nb_transfers?: number;
   departure_date_time?: string;
@@ -143,6 +143,12 @@ function legFromSection(section: NavitiaSection): TransitLeg | null {
   if (!kind || !section.departure_date_time || !section.arrival_date_time) return null;
   // Une marche de quelques secondes entre deux quais n'apprend rien.
   if (kind === "walk" && (section.duration ?? 0) < 30) return null;
+  // Un « trajet » d'un seul arrêt n'en est pas un : partant d'une zone d'arrêt
+  // (Châtelet, métro), Navitia invente une montée-descente sur place pour
+  // enchaîner la correspondance à pied vers une autre zone (Châtelet - Les
+  // Halles, RER), parfois d'une durée négative en temps réel (constaté le
+  // 14 octobre 2026). Un vrai tronçon dessert au moins deux arrêts.
+  if (kind === "transit" && (section.stop_date_times?.length ?? 0) < 2) return null;
 
   // Les arrêts desservis, de la montée à la descente. Leur `name` est le nom nu
   // (« Hôtel de Ville ») là où celui de la section porte la commune entre
@@ -187,6 +193,28 @@ function legFromSection(section: NavitiaSection): TransitLeg | null {
   };
 }
 
+/**
+ * Les trajets à proposer, par heure d'arrivée. Une fois les montées fantômes
+ * écartées, plusieurs propositions de Navitia ne diffèrent plus que par la
+ * ligne fantôme et la marche qui en découlait : on n'en garde qu'une, celle
+ * qui marche le moins. Ce sont les mêmes trains aux mêmes heures.
+ */
+export function journeysFromNavitia(journeys: NavitiaJourney[]): TransitJourney[] {
+  const kept = new Map<string, TransitJourney>();
+  for (const journey of journeys.map(journeyFromNavitia)) {
+    if (!journey) continue;
+    const key = journey.legs
+      .filter((leg) => leg.kind === "transit")
+      .map((leg) => `${leg.line?.label}|${leg.from}|${leg.to}|${leg.departure.getTime()}|${leg.arrival.getTime()}`)
+      .join(">");
+    const same = kept.get(key);
+    if (!same || journey.walkingSeconds < same.walkingSeconds) kept.set(key, journey);
+  }
+  return [...kept.values()]
+    .sort((a, b) => a.arrival.getTime() - b.arrival.getTime())
+    .slice(0, CONFIG.TRANSIT_MAX_RESULTS);
+}
+
 function journeyFromNavitia(journey: NavitiaJourney, index: number): TransitJourney | null {
   if (!journey.departure_date_time || !journey.arrival_date_time) return null;
   const legs = (journey.sections ?? []).map(legFromSection).filter((leg): leg is TransitLeg => leg !== null);
@@ -199,7 +227,8 @@ function journeyFromNavitia(journey: NavitiaJourney, index: number): TransitJour
     departure: parseNavitiaDate(journey.departure_date_time),
     arrival: parseNavitiaDate(journey.arrival_date_time),
     durationSeconds: journey.duration ?? 0,
-    transfers: journey.nb_transfers ?? 0,
+    // Recompté : Navitia compte aussi les montées fantômes écartées plus haut.
+    transfers: Math.max(0, legs.filter((leg) => leg.kind === "transit").length - 1),
     walkingSeconds: journey.durations?.walking ?? 0,
     legs,
   };
@@ -292,11 +321,7 @@ export async function getJourneysBetween(
     throw new Error(t("error.transitUnavailable"));
   }
 
-  const journeys = data.journeys
-    .map(journeyFromNavitia)
-    .filter((journey): journey is TransitJourney => journey !== null)
-    .sort((a, b) => a.arrival.getTime() - b.arrival.getTime())
-    .slice(0, CONFIG.TRANSIT_MAX_RESULTS);
+  const journeys = journeysFromNavitia(data.journeys);
 
   cache.set(key, { at: Date.now(), value: journeys });
   return journeys;
