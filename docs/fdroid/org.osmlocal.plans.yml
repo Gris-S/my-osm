@@ -47,7 +47,11 @@
 # de date et d'heure ; reproduite sur leur CI (pipeline 2947066510).
 # 0.1.0-alpha.115 (15 octobre 2026) : aucune dépendance de plus — deux
 # greffons natifs (alarme et vibration de l'alerte de descente, fichier ouvert
-# depuis une autre application : API Android) ; scanner passé sur l'APK.
+# depuis une autre application : API Android) ; scanner passé sur l'APK,
+# reproduite sur leur CI (pipeline 2952256466). Attention aussi : fdroidserver
+# 2.4.2 en local coupe en deux la ligne `sudo:` du `echo … forky.list` et
+# `AllowedAPKSigningKeys`, que leur CI veut sur une ligne (échec de
+# `rewritemeta`, pipeline 2951699202) — les garder sur une ligne.
 # Attention : fdroidserver
 # 2.4.5 en local remet `UpdateCheckData` sur une ligne, leur CI le veut sur deux
 # (échec de `rewritemeta` constaté) — garder la forme sur deux lignes.
