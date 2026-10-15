@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, memo } from "react";
-import { Bookmark, Check, ChevronDown, FolderPlus, MapPin, Palette, Pencil, Trash2, X } from "lucide-react";
+import { Bookmark, Check, ChevronDown, FolderPlus, MapPin, Palette, Pencil, Play, Route, Trash2, X } from "lucide-react";
 import { DEFAULT_FOLDER_ID, FOLDER_COLORS, type BookmarkFolder, type Bookmarks, type SavedPlace } from "../hooks/useBookmarks";
 import { useI18n } from "../i18n";
 import { useBackClose } from "../hooks/useBackClose";
@@ -18,9 +18,10 @@ interface FolderRowProps {
   visible: boolean;
   bookmarks: Bookmarks;
   onOpenPlace: (place: SavedPlace) => void;
+  onLaunch: (folder: BookmarkFolder) => void;
 }
 
-function FolderRow({ folder, visible, bookmarks, onOpenPlace }: FolderRowProps) {
+function FolderRow({ folder, visible, bookmarks, onOpenPlace, onLaunch }: FolderRowProps) {
   const { t, tp } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -44,8 +45,50 @@ function FolderRow({ folder, visible, bookmarks, onOpenPlace }: FolderRowProps) 
     setRenaming(false);
   }
 
+  const actions = (
+    <>
+          {/* Lancer un parcours : par tous les lieux du dossier, ou le long de sa trace. */}
+          {(folder.places.length > 0 || !!folder.tracks?.length) && (
+            <button
+              className="bookmark-icon-button is-launch"
+              onClick={() => onLaunch(folder)}
+              aria-label={t(folder.tracks?.length ? "bookmarks.followTrack" : "bookmarks.tour")}
+              title={t(folder.tracks?.length ? "bookmarks.followTrack" : "bookmarks.tour")}
+            >
+              <Play size={14} fill="currentColor" />
+            </button>
+          )}
+          <button className="bookmark-icon-button" onClick={() => setPicking((prev) => !prev)} aria-label={t("bookmarks.color")}>
+            <Palette size={15} />
+          </button>
+          <button
+            className="bookmark-icon-button"
+            onClick={() => {
+              setName(folder.name);
+              setRenaming(true);
+            }}
+            aria-label={t("bookmarks.rename")}
+          >
+            <Pencil size={15} />
+          </button>
+          {removable && (
+            <button
+              className="bookmark-icon-button is-danger"
+              onClick={() => {
+                setPicking(false);
+                setConfirming(true);
+              }}
+              aria-label={t("bookmarks.delete")}
+              title={t("bookmarks.delete")}
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+    </>
+  );
+
   return (
-    <div className={`bookmark-folder ${visible ? "is-visible" : ""}`}>
+    <div className={`bookmark-folder ${visible ? "is-visible" : ""} ${expanded ? "is-expanded" : ""}`}>
       <div className="bookmark-folder-head">
         {/* Allumer le dossier : c'est ce qui pose ses points sur la carte. */}
         <button
@@ -78,38 +121,18 @@ function FolderRow({ folder, visible, bookmarks, onOpenPlace }: FolderRowProps) 
         ) : (
           <button className="bookmark-folder-name" onClick={() => setExpanded((prev) => !prev)} aria-expanded={expanded}>
             <span className="bookmark-folder-label">{folder.name}</span>
+            {/* Une trace se signale à côté du nombre de lieux : un dossier de trace seule n'est pas vide. */}
+            {!!folder.tracks?.length && <Route size={13} className="bookmark-track-mark" aria-label={t("bookmarks.followTrack")} />}
             <span className="bookmark-count">{folder.places.length}</span>
             <ChevronDown size={15} className={`departure-chevron ${expanded ? "is-open" : ""}`} />
           </button>
         )}
 
-        <button className="bookmark-icon-button" onClick={() => setPicking((prev) => !prev)} aria-label={t("bookmarks.color")}>
-          <Palette size={15} />
-        </button>
-        <button
-          className="bookmark-icon-button"
-          onClick={() => {
-            setName(folder.name);
-            setRenaming(true);
-          }}
-          aria-label={t("bookmarks.rename")}
-        >
-          <Pencil size={15} />
-        </button>
-        {removable && (
-          <button
-            className="bookmark-icon-button is-danger"
-            onClick={() => {
-              setPicking(false);
-              setConfirming(true);
-            }}
-            aria-label={t("bookmarks.delete")}
-            title={t("bookmarks.delete")}
-          >
-            <Trash2 size={15} />
-          </button>
-        )}
+        {/* Replié, les boutons suivent le nom ; déplié, ils passent dessous et le
+            nom s'écrit en entier (demande explicite, 15 octobre 2026). */}
+        {!expanded && actions}
       </div>
+      {expanded && <div className="bookmark-folder-actions">{actions}</div>}
 
       {confirming && (
         <div className="bookmark-confirm" role="alertdialog" aria-label={t("bookmarks.confirmAria")}>
@@ -171,6 +194,8 @@ function FolderRow({ folder, visible, bookmarks, onOpenPlace }: FolderRowProps) 
 interface BookmarksMenuProps {
   bookmarks: Bookmarks;
   onOpenPlace: (place: SavedPlace) => void;
+  /** ▶ sur un dossier : un parcours par ses lieux, ou le long de sa trace. */
+  onLaunch: (folder: BookmarkFolder) => void;
   offsetBottom: number;
   /** Vrai quand un menu voisin se déploie par-dessus ce bouton. */
   covered: boolean;
@@ -178,7 +203,7 @@ interface BookmarksMenuProps {
 
 // Protégé contre les rendus inutiles (`memo`) : `App` se redessine à chaque
 // relevé GPS d'une navigation, et ce composant n'a alors rien de neuf à montrer.
-export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlace, offsetBottom, covered }: BookmarksMenuProps) {
+export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlace, onLaunch, offsetBottom, covered }: BookmarksMenuProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -235,6 +260,10 @@ export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlac
                 onOpenPlace={(place) => {
                   setOpen(false);
                   onOpenPlace(place);
+                }}
+                onLaunch={(launched) => {
+                  setOpen(false);
+                  onLaunch(launched);
                 }}
               />
             ))}

@@ -49,6 +49,11 @@ import { useWideLayout, WIDE_COLUMN_PX } from "./hooks/useWideLayout";
 import { openWebSearch } from "./services/webSearch";
 import { groupFromTags } from "./filters";
 import { OSM_CATEGORIES } from "./services/osmEdit";
+import { nearestOrder, parseGeoFile, thinTrack, type GeoFile, type GeoFilePoint } from "./services/geoFile";
+import type { NavMode } from "./navigation/route";
+import type { BookmarkFolder } from "./hooks/useBookmarks";
+import { GeoFileCard } from "./components/GeoFileCard";
+import { GEOFILE_COLOR } from "./components/MapView";
 
 // « + OSM » ne sert qu'à qui contribue, option éteinte par défaut : la fenêtre
 // est chargée à sa première ouverture, et le démarrage n'en porte rien.
@@ -101,6 +106,14 @@ export default function App() {
 
   const [poiStatus, setPoiStatus] = useState<PoiStatus>("idle");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  // Le fichier GPX, KML ou GeoJSON ouvert (`services/geoFile.ts`) : depuis une
+  // autre application, le menu, ou un glisser-déposer. `file` nul : illisible.
+  const [opened, setOpened] = useState<{ name: string; file: GeoFile | null; savedIn: string | null } | null>(null);
+  const openGeoFile = useCallback((name: string, file: GeoFile | null) => {
+    setSelectedPlace(null);
+    setOpened({ name, file, savedIn: null });
+  }, []);
+  const openGeoFileText = useCallback((name: string, text: string) => openGeoFile(name, parseGeoFile(name, text)), [openGeoFile]);
   // Nombre de contacts répétés sur le lieu ouvert : chaque hausse rafraîchit la fiche.
   const [sheetRefresh, setSheetRefresh] = useState(0);
   // Horaires, téléphone, site, adresse : absents des tuiles, cherchés à
@@ -152,6 +165,7 @@ export default function App() {
     handleAddStop,
     handleRemoveStop,
     handleMoveStop,
+    refreshCurrentLocation,
   } = useItinerary(geolocation.position, geolocation.positionAt, geolocation.locate);
 
   // La durée annoncée **avant** de partir vient du même moteur que celle
@@ -416,7 +430,14 @@ export default function App() {
 
   /** Vrai pendant un guidage, à pied, en voiture comme en transports. */
   const guiding = navigation.active || carNav.active || transitNav.active || run.active;
-  startupBusyRef.current = selectedPlace !== null || stops.length > 0 || guiding;
+  // Fin d'une navigation : le panneau d'itinéraire revient, et l'on n'est plus
+  // là où « Ma position » avait été relevée (`refreshCurrentLocation`).
+  const wasGuidingRef = useRef(guiding);
+  useEffect(() => {
+    if (wasGuidingRef.current && !guiding) refreshCurrentLocation();
+    wasGuidingRef.current = guiding;
+  }, [guiding, refreshCurrentLocation]);
+  startupBusyRef.current = selectedPlace !== null || stops.length > 0 || guiding || opened !== null;
 
   /**
    * Vrai pendant le **choix** d'un itinéraire voiture, avant tout guidage.
@@ -461,13 +482,147 @@ export default function App() {
     // La position est redemandée par `useItinerary` si elle n'est pas fraîche.
   }
 
+  /**
+   * « Suivre la trace » : le guidage **sur la trace elle-même**
+   * (`navigation/trackRoute.ts`), ses consignes dites à leur place s'il en a.
+   * Le moteur ne calcule que l'approche, de ma position au début de la trace,
+   * et le retour sur elle après un écart. Plusieurs traces se suivent bout à
+   * bout, dans l'ordre du fichier.
+   */
+  function followTrack(tracks: LonLat[][], guidance: GeoFilePoint[], mode: NavMode, name: string) {
+    const points = tracks.flat();
+    if (points.length < 2) return;
+    // Une position vieille de plus de deux minutes ne dit plus d'où l'on part :
+    // le guidage partira du début de la trace et calculera l'approche au
+    // premier relevé (`useNavigation`).
+    const fresh =
+      geolocation.position && geolocation.positionAt !== null && Date.now() - geolocation.positionAt < CONFIG.ROUTE_POSITION_MAX_AGE_MS
+        ? geolocation.position
+        : null;
+    navigation.start([fresh ?? points[0], points[points.length - 1]], { to: name }, mode, undefined, { points, guidance });
+    setSelectedPlace(null);
+  }
+
   // Un lien de position ouvert depuis une autre application — « Itinéraire »
   // d'un site, adresse d'un message, texte partagé (voir `useIncomingLinks`).
   useIncomingLinks({
     onPlace: (place) => handleSelectFromSearchOrMap(place),
     onRoute: (place) => handleRouteTo(place),
     onUnresolved: (text) => openWebSearch(text, (place) => handleSelectFromSearchOrMap(place)),
+    onFile: openGeoFile,
   });
+
+  // Les points du fichier, posés comme des signets violets : les toucher ouvre
+  // leur fiche. Une fois enregistrés, ce sont les signets qui les montrent.
+  const fileFile = opened?.file ?? null;
+  const fileSaved = opened?.savedIn ?? null;
+  const filePins = useMemo(
+    () =>
+      fileFile && !fileSaved
+        ? fileFile.points.map((point, rank) => ({
+            id: `web/${point.lat},${point.lon}`,
+            name: point.name || t("geofile.point", { rank: rank + 1 }),
+            lon: point.lon,
+            lat: point.lat,
+            group: null,
+            savedAt: 0,
+            color: GEOFILE_COLOR,
+          }))
+        : NOTHING_ON_MAP,
+    [fileFile, fileSaved],
+  );
+  const mapSavedPlaces = useMemo(
+    () => (filePins.length ? [...bookmarks.visiblePlaces, ...filePins] : bookmarks.visiblePlaces),
+    [bookmarks.visiblePlaces, filePins],
+  );
+
+  /**
+   * Range le fichier dans « Lieux enregistrés » : ses points, et **sa trace
+   * s'il en a une** (allégée, `thinTrack`) — jamais une ligne inventée entre
+   * des points. Fermé ou effacé ailleurs, le fichier reste ainsi lançable
+   * depuis son dossier (▶).
+   */
+  function saveFile() {
+    if (!fileFile) return;
+    const tracks = fileFile.tracks.map((track) => thinTrack(track)).filter((track) => track.length > 1);
+    if (!filePins.length && !tracks.length) return;
+    const folderId = bookmarks.createFolder(fileFile.name);
+    for (const pin of filePins) {
+      bookmarks.savePlace(folderId, { id: pin.id, name: pin.name, group: null, lon: pin.lon, lat: pin.lat }, pin.name);
+    }
+    if (tracks.length) bookmarks.setFolderTracks(folderId, tracks, fileFile.guidance);
+    setOpened((current) => (current ? { ...current, savedIn: fileFile.name } : current));
+  }
+
+  /**
+   * ▶ sur un dossier de « Lieux enregistrés » : le long de sa trace s'il en a
+   * une, sinon un itinéraire depuis ma position par tous ses lieux, le plus
+   * proche d'abord (`nearestOrder`). Au-delà de ce qu'un itinéraire accepte,
+   * les plus proches, et un mot le dit.
+   */
+  const [tourNotice, setTourNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tourNotice) return;
+    const timer = window.setTimeout(() => setTourNotice(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [tourNotice]);
+  function launchFolder(folder: BookmarkFolder) {
+    // Une trace : sa carte s'ouvre, avec le choix « à pied » ou « à vélo ».
+    if (folder.tracks?.length) {
+      setSelectedPlace(null);
+      setOpened({
+        name: folder.name,
+        file: { name: folder.name, tracks: folder.tracks, points: [], guidance: folder.guidance ?? [] },
+        savedIn: folder.name,
+      });
+      return;
+    }
+    const ordered = nearestOrder(geolocation.position, folder.places);
+    const kept = ordered.slice(0, CONFIG.MAX_ROAD_WAYPOINTS + 1);
+    setStops([
+      { kind: "current" },
+      ...kept.map((place): RouteStop => ({
+        kind: "place",
+        place: { id: place.id, name: place.name, group: place.group, address: place.address, lon: place.lon, lat: place.lat },
+      })),
+    ]);
+    setSelectedPlace(null);
+    setTourNotice(
+      kept.length < ordered.length ? t("tour.trimmed", { count: kept.length, total: ordered.length, max: CONFIG.MAX_ROAD_WAYPOINTS }) : null,
+    );
+  }
+  const launchFolderRef = useLatest(launchFolder);
+  const onLaunchFolder = useCallback((folder: BookmarkFolder) => launchFolderRef.current(folder), [launchFolderRef]);
+
+  // Glisser-déposer un fichier sur la carte : la voie naturelle sur grand
+  // écran (version Docker).
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    const hasFiles = (event: DragEvent) => !!event.dataTransfer?.types.includes("Files");
+    const over = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      setDragging(true);
+    };
+    const leave = (event: DragEvent) => {
+      if (!event.relatedTarget) setDragging(false);
+    };
+    const drop = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      setDragging(false);
+      const file = event.dataTransfer?.files[0];
+      if (file) void file.text().then((text) => openGeoFileText(file.name, text));
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, [openGeoFileText]);
 
   /**
    * Démarre le guidage sur le parcours en cours. Il reçoit **le parcours
@@ -670,7 +825,11 @@ export default function App() {
         brandPlaces={carGuiding ? null : brandPlaces}
         onBrandStale={handleBrandStale}
         onViewportChange={handleViewportChange}
-        savedPlaces={carGuiding ? NOTHING_ON_MAP : bookmarks.visiblePlaces}
+        savedPlaces={carGuiding ? NOTHING_ON_MAP : mapSavedPlaces}
+        savedTracks={carGuiding ? NOTHING_ON_MAP : bookmarks.visibleTracks}
+        // Pendant un guidage, la trace du fichier s'efface : elle recouvrait le
+        // tracé suivi, dont la partie restante ne se voyait plus.
+        geoFile={guiding ? null : fileFile}
         onSelectSaved={(saved) => {
           if (!transitPanelOpenRef.current) handleOpenSaved(saved);
         }}
@@ -759,6 +918,7 @@ export default function App() {
             autoSource={autoSource}
             onThemeChange={setTheme}
             onAutoTheme={setAutoTheme}
+            onOpenFile={openGeoFileText}
             openApiSignal={openApiSignal}
           />
 
@@ -770,6 +930,7 @@ export default function App() {
             <BookmarksMenu
               bookmarks={bookmarks}
               onOpenPlace={openSaved}
+              onLaunch={onLaunchFolder}
               offsetBottom={locateButtonOffset + 168}
               covered={mapOptionsOpen || filterMenuOpen}
             />
@@ -891,6 +1052,27 @@ export default function App() {
             run.start();
           }}
         />
+      )}
+
+      {opened && !photoExpanded && !guiding && !itineraryOpen && !selectedPlace && (
+        <GeoFileCard
+          file={opened.file}
+          error={opened.file ? null : opened.name}
+          savedIn={opened.savedIn}
+          onSave={saveFile}
+          onFollow={
+            opened.file?.tracks.length
+              ? (mode) => followTrack(opened.file!.tracks, opened.file!.guidance, mode, opened.file!.name)
+              : undefined
+          }
+          onClose={() => setOpened(null)}
+        />
+      )}
+      {dragging && <div className="geofile-drop">{t("geofile.drop")}</div>}
+      {tourNotice && itineraryOpen && (
+        <p className="tour-notice" role="status">
+          {tourNotice}
+        </p>
       )}
 
       {!photoExpanded && !guiding && (

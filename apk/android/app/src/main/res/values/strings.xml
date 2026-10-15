@@ -4,4 +4,5 @@
     <string name="title_activity_main">MY OSM</string>
     <string name="package_name">org.osmlocal.plans</string>
     <string name="custom_url_scheme">org.osmlocal.plans</string>
+    <string name="get_off_channel">Get-off alerts</string>
 </resources>

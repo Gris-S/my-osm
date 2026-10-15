@@ -109,7 +109,9 @@ encore.
 - À pied, à vélo, en voiture et en transports en commun
 - Vélo : le plus rapide ou le plus sûr côte à côte, pistes cyclables en vert, partout et sans clé
 - Voiture : trafic en direct sur le trajet, limitations de vitesse, voies à suivre, radars, prix des péages quand il est publié
-- Transports : passages en direct partout ([Transitous](https://transitous.org/)) et en Île-de-France (Île-de-France Mobilités) ; trajet suivi étape par étape, jusqu'à la sortie de station
+- Transports : passages en direct partout ([Transitous](https://transitous.org/)) et en Île-de-France (Île-de-France Mobilités) ; trajet suivi étape par étape, jusqu'à la sortie de station, avec une vibration forte avant l'arrêt où descendre — même écran éteint
+- Traces et lieux venus d'autres applications : ouvrir des fichiers **GPX, KML et GeoJSON**, suivre une trace virage par virage avec ses propres consignes, la garder dans ses lieux enregistrés
+- Un parcours par tous les lieux d'un dossier, le plus proche d'abord, depuis là où vous êtes
 - Un mode course avec son graphe d'allure
 - Votre musique (n'importe quel lecteur) pilotable pendant la navigation
 - Marches et courses gardées sur l'appareil avec tracé et dénivelé, aussi longtemps que vous le choisissez — ou pas du tout
@@ -126,7 +128,7 @@ encore.
 - Météo, qualité de l'air, pollens et vigilances de Météo-France
 - Imagerie satellite, relief, courbes de niveau, bâtiments en 3D, calque du trafic
 - Photos de rue de Mapillary
-- Lieux enregistrés dans des dossiers de couleur
+- Lieux enregistrés dans des dossiers de couleur, avec leurs traces
 - Thèmes clair et sombre, le sombre suivant le capteur de lumière
 - Français et anglais
 - Une image Docker pour grand écran, avec les mêmes fonctions sauf le mode course

@@ -157,7 +157,7 @@ export function CarNavigationPanel({ session }: { session: CarNavSession }) {
         )}
 
         {/* Musique en cours : l'encart n'existe que s'il y en a une (voir `music/`). */}
-        <MusicCard />
+        <MusicCard mode="car" />
         <div className="nav-bar car-bar">
           <div className="nav-bar-main">
             <div className="car-figures">

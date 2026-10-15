@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Music, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { useNav } from "../strings";
+import { useMusicShown, type MusicMode } from "../settings";
 import { controlMusic, openMusicPlayer, useNowPlaying } from "./nowPlaying";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +23,12 @@ import { controlMusic, openMusicPlayer, useNowPlaying } from "./nowPlaying";
 // ni de liste : au volant, on ne lit pas, on reconnaît.
 // ---------------------------------------------------------------------------
 
-export function MusicCard() {
+/** L'encart, s'il est voulu pour cette navigation (fenêtre « Modes »). Coupé, il n'écoute même pas le lecteur. */
+export function MusicCard({ mode }: { mode: MusicMode }) {
+  return useMusicShown(mode) ? <NowPlayingCard /> : null;
+}
+
+function NowPlayingCard() {
   const { nav } = useNav();
   const { track, permission } = useNowPlaying();
   const [noticeHidden, setNoticeHidden] = useState(false);

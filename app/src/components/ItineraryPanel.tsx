@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { WhenAt } from "./WhenAt";
 import { ArrowDown, ArrowUp, Bike, Briefcase, Car, ChevronDown, ChevronRight, Footprints, Home, LocateFixed, MousePointerClick, Plus, Search, TrainFront, X } from "lucide-react";
-import { CONFIG, type TravelMode } from "../config";
+import { CONFIG, maxWaypoints, type TravelMode } from "../config";
 import type { LonLat, Place, RouteResult, RouteStop, StopEdit, TripWhen } from "../types";
 import { getNextDepartures, type NextDeparture } from "../services/transit";
 import type { TransitJourney, TransitLeg } from "../transport/journeyView";
@@ -588,7 +589,7 @@ export function ItineraryPanel({
   const { t } = useI18n();
   const last = stops.length - 1;
   const stepCount = Math.max(0, stops.length - 2);
-  const full = stepCount >= CONFIG.MAX_WAYPOINTS;
+  const full = stepCount >= maxWaypoints(mode);
   // Un parcours a besoin de deux points : en dessous, il n'y a plus rien à
   // retirer sans le laisser sans arrivée.
   const removable = stops.length > 2;
@@ -722,7 +723,7 @@ export function ItineraryPanel({
         ) : (
           <button className="itinerary-add-step" onClick={() => onEditingChange("new")} disabled={full}>
             <Plus size={15} />
-            {full ? t("itinerary.stepsFull", { count: CONFIG.MAX_WAYPOINTS }) : t("itinerary.addStep")}
+            {full ? t("itinerary.stepsFull", { count: maxWaypoints(mode) }) : t("itinerary.addStep")}
           </button>
         )}
       </div>
@@ -824,35 +825,25 @@ export function ItineraryPanel({
   );
 }
 
-/** `2026-10-13T18:30` : la date et l'heure d'un instant, à l'heure de l'appareil. */
-function toLocalInput(at: number): string {
-  const date = new Date(at);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 /**
  * « Partir plus tard » : maintenant, partir à, arriver à — et l'heure.
  *
  * Le choix se fait aux segments de la maison : un `select` ouvrait la vieille
- * liste d'Android. La date et l'heure restent au système, mais **en deux
- * champs** : un `datetime-local` ouvre dans la WebView un dialogue à roues
- * d'Android 6 (constaté le 14 octobre 2026), quand `date` et `time` ouvrent le
- * calendrier et l'horloge Material. Passer de « maintenant » à une heure
- * propose **dans une heure**, arrondi à cinq minutes : c'est une heure qu'on
- * corrige, pas un champ vide qu'on remplit.
+ * liste d'Android. Le jour et l'heure se choisissent dans **notre** sélecteur
+ * (`WhenAt`) : ceux d'Android suivaient le thème du téléphone et s'écrivaient
+ * blanc sur blanc la nuit. Passer de « maintenant » à une heure propose
+ * **dans une heure**, arrondi à cinq minutes : c'est une heure qu'on corrige,
+ * pas un champ vide qu'on remplit.
  */
+/** Dans une heure, arrondi aux cinq minutes : l'heure proposée en quittant « maintenant ». */
+function inAnHour(): number {
+  return Math.ceil((Date.now() + 3600_000) / 300_000) * 300_000;
+}
+
 function WhenPicker({ when, onChange, arrive }: { when: TripWhen; onChange: (when: TripWhen) => void; arrive: boolean }) {
   const { t } = useI18n();
   const kind = when?.kind ?? "now";
-  const inAnHour = () => Math.ceil((Date.now() + 3600_000) / 300_000) * 300_000;
   const kinds: ("now" | "depart" | "arrive")[] = ["now", "depart", ...(arrive || kind === "arrive" ? ["arrive" as const] : [])];
-  const [day, time] = when ? toLocalInput(when.at).split("T") : ["", ""];
-  const set = (nextDay: string, nextTime: string) => {
-    const at = new Date(`${nextDay}T${nextTime}`).getTime();
-    // Le bouton « Effacer » du système rend un champ vide : on garde l'heure d'avant.
-    if (when && Number.isFinite(at)) onChange({ kind: when.kind, at });
-  };
   return (
     <div className="itinerary-when">
       <div className="segmented" role="radiogroup" aria-label={t("itinerary.when.label")}>
@@ -868,12 +859,7 @@ function WhenPicker({ when, onChange, arrive }: { when: TripWhen; onChange: (whe
           </button>
         ))}
       </div>
-      {when && (
-        <div className="itinerary-when-at">
-          <input type="date" value={day} aria-label={t("itinerary.when.day")} onChange={(event) => set(event.target.value, time)} />
-          <input type="time" value={time} aria-label={t("itinerary.when.time")} onChange={(event) => set(day, event.target.value)} />
-        </div>
-      )}
+      {when && <WhenAt at={when.at} onChange={(at) => onChange({ kind: when.kind, at })} />}
     </div>
   );
 }

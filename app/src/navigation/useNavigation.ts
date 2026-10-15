@@ -17,6 +17,9 @@ import { isTrivialTrip } from "./trip";
 import { navText } from "./strings";
 import { useWakeLock } from "./useWakeLock";
 import { useLatest } from "../hooks/useLatest";
+import { trackFrom, trackNavRoute } from "./trackRoute";
+import { distance } from "./geo";
+import type { GeoFilePoint } from "../services/geoFile";
 
 // ---------------------------------------------------------------------------
 // La session de navigation : elle tient le trajet, la position, l'avancement,
@@ -259,7 +262,9 @@ export interface NavSession {
     points: LonLat[],
     names?: { from?: string | null; to?: string | null },
     mode?: NavMode,
-    initial?: NavRoute
+    initial?: NavRoute,
+    /** Suivre cette trace plutôt qu'un itinéraire calculé (`trackRoute.ts`). */
+    track?: TrackToFollow
   ) => void;
   /**
    * À vélo, « Démarrer » n'ouvre pas la navigation mais le **choix** : plus
@@ -294,7 +299,22 @@ interface Request {
   preset?: boolean;
   /** Vrai quand la demande fait suite à un écart, et non à un départ. */
   reroute: boolean;
+  /**
+   * Guidage sur une trace (`trackRoute.ts`) : la trace qui reste, et ses
+   * consignes. Le moteur ne calcule alors que l'approche, de `points[0]` au
+   * début de la trace.
+   */
+  track?: TrackToFollow;
 }
+
+/** Une trace à suivre, et les consignes du fichier qui l'accompagnent. */
+export interface TrackToFollow {
+  points: LonLat[];
+  guidance: GeoFilePoint[];
+}
+
+/** En deçà, on est déjà sur la trace : pas d'approche à calculer. */
+const ON_TRACK_METERS = 30;
 
 export function useNavigation(): NavSession {
   const [active, setActive] = useState(false);
@@ -341,6 +361,12 @@ export function useNavigation(): NavSession {
   const reroutingRef = useLatest(rerouting);
   // Recalculs ratés d'affilée, et l'instant avant lequel on n'en retente pas
   // (`rerouteRetryDelayMs`).
+  // La trace suivie (ce qu'il en reste), et la longueur de l'approche qui y mène.
+  const trackRef = useRef<TrackToFollow | null>(null);
+  const approachUntilRef = useRef(0);
+  // La trace a-t-elle été rejointe ? Jusque-là, un écart vise son **début** :
+  // rejoindre au plus près sauterait le début d'une trace qui n'est pas une boucle.
+  const trackJoinedRef = useRef(false);
   const rerouteFailuresRef = useRef(0);
   const rerouteRetryAtRef = useRef(0);
   // Et l'instant avant lequel on ne recalcule pas **même quand tout marche** :
@@ -389,9 +415,12 @@ export function useNavigation(): NavSession {
       points: LonLat[],
       given?: { from?: string | null; to?: string | null },
       navMode: NavMode = "walking",
-      initial?: NavRoute
+      initial?: NavRoute,
+      track?: TrackToFollow
     ) => {
       if (points.length < 2) return;
+      trackRef.current = track ?? null;
+      trackJoinedRef.current = false;
       setActive(true);
       setMode(navMode);
       setChoice(null);
@@ -415,7 +444,7 @@ export function useNavigation(): NavSession {
       targetsRef.current = points.slice(1);
       coveredRef.current = emptyCovered();
       startedAtRef.current = Date.now();
-      setRequest({ points, mode: navMode, profile: initial?.profile, reroute: false, preset: !!initial });
+      setRequest({ points, mode: navMode, profile: initial?.profile, reroute: false, preset: !!initial, track });
     },
     []
   );
@@ -515,7 +544,18 @@ export function useNavigation(): NavSession {
     let cancelled = false;
     if (!request.reroute) rerouteFailuresRef.current = rerouteRetryAtRef.current = 0;
 
-    getNavRoute(request.points, controller.signal, request.mode, request.profile)
+    // Sur une trace, le moteur ne calcule que l'approche, s'il y en a une.
+    const track = request.track;
+    const computed = track
+      ? (distance(request.points[0], track.points[0]) > ON_TRACK_METERS
+          ? getNavRoute([request.points[0], track.points[0]], controller.signal, request.mode, request.profile)
+          : Promise.resolve(null)
+        ).then((approach) => {
+          approachUntilRef.current = approach?.distanceMeters ?? 0;
+          return trackNavRoute(track.points, track.guidance, request.mode, approach);
+        })
+      : getNavRoute(request.points, controller.signal, request.mode, request.profile);
+    computed
       .then((next) => {
         if (cancelled) return;
         setRoute(next);
@@ -575,6 +615,10 @@ export function useNavigation(): NavSession {
     // isolé rebondit de vingt mètres sous les arbres ou entre deux immeubles ;
     // recalculer à chaque rebond ferait clignoter l'instruction et enchaînerait
     // les appels.
+    // Sur la trace, au-delà de l'approche : elle est rejointe.
+    if (trackRef.current && !trackJoinedRef.current && next.offsetMeters <= OFF_ROUTE_METERS && next.traveledMeters > approachUntilRef.current + 20) {
+      trackJoinedRef.current = true;
+    }
     if (next.offsetMeters > OFF_ROUTE_METERS) {
       offRouteRef.current += 1;
       if (
@@ -583,6 +627,22 @@ export function useNavigation(): NavSession {
         Date.now() >= Math.max(rerouteRetryAtRef.current, rerouteGapUntilRef.current)
       ) {
         offRouteRef.current = 0;
+        // Sur une trace, on la rejoint au plus près — sauf pendant l'approche,
+        // où c'est toujours son début qu'on vise.
+        const track = trackRef.current;
+        if (track) {
+          const rest = trackJoinedRef.current ? trackFrom(track.points, fix) : track.points;
+          trackRef.current = { ...track, points: rest };
+          coveredRef.current = merge(coveredRef.current, route, next);
+          setRequest({
+            points: [{ lon: fix.lon, lat: fix.lat }, rest[rest.length - 1]],
+            mode: modeRef.current,
+            profile: route.profile,
+            reroute: true,
+            track: trackRef.current,
+          });
+          return;
+        }
         const remaining = targetsAhead(route, next, targetsRef.current);
         targetsRef.current = remaining;
         // Le trajet qu'on abandonne laisse derrière lui ce qu'on en a fait :

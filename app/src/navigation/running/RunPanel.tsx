@@ -84,7 +84,7 @@ export function RunPanel({ session }: { session: RunSession }) {
           </button>
         )}
 
-        <MusicCard />
+        <MusicCard mode="running" />
 
         <div className="nav-bar run-bar">
           <div className="run-figures">

@@ -37,7 +37,8 @@
 }
 
 .bookmarks-panel {
-  width: min(300px, calc(100vw - 32px));
+  /* 340 et non 300 : le bouton ▶ d'un dossier mangeait son nom (« Boucl… »). */
+  width: min(340px, calc(100vw - 32px));
   max-height: min(560px, calc(100dvh - var(--bookmarks-offset, 200px) - 78px));
   overflow-y: auto;
   background: var(--surface-solid);
@@ -59,11 +60,16 @@
   border-top: 1px solid var(--hairline);
 }
 
+/* 44 px au moins : la zone de toucher d'un bouton déborde de 8 px en haut et
+   en bas (28 → 44). Plus serrées, deux lignes de dossiers se volaient leurs
+   appuis — mesuré par le scénario `zones-tactiles` avec deux dossiers. */
 .bookmark-folder-head {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 0;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 /* Allumer un dossier : la pastille se remplit de sa couleur, et ses points
@@ -159,6 +165,19 @@
 .bookmark-icon-button:hover {
   background: var(--hover);
   color: var(--text-primary);
+}
+
+/* ▶ : lancer un parcours. Plein, au bleu de la navigation — c'est l'action
+   principale d'un dossier, pas un réglage comme ses voisins. */
+.bookmark-icon-button.is-launch {
+  background: var(--accent);
+  color: #fff;
+}
+
+.bookmark-icon-button.is-launch:hover {
+  background: var(--accent);
+  color: #fff;
+  filter: brightness(1.1);
 }
 
 .bookmark-icon-button.is-danger:hover {
@@ -285,4 +304,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.bookmark-track-mark {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+/* Dossier déplié : le nom en entier, sur plusieurs lignes s'il le faut, et
+   les boutons sur une ligne à part, sous lui. */
+.bookmark-folder.is-expanded .bookmark-folder-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.bookmark-folder-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 4px 6px 34px;
 }

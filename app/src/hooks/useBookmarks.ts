@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { safeColor } from "../utils/safe";
 import { normalizeGroupId, type FilterGroupId } from "../filters";
-import type { Place } from "../types";
+import type { LonLat, Place } from "../types";
 import { t } from "../i18n";
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,14 @@ export interface BookmarkFolder {
   /** Couleur des pastilles de ce dossier sur la carte. */
   color: string;
   places: SavedPlace[];
+  /**
+   * La trace d'un fichier enregistré (GPX, KML…), **seulement s'il en avait
+   * une** : un fichier de points seuls ne reçoit pas de ligne inventée entre
+   * eux. Allégée (`thinTrack`) pour tenir dans le stockage.
+   */
+  tracks?: LonLat[][];
+  /** Les consignes du fichier le long de sa trace (« Tournez à gauche… »), dites par le guidage sur trace. */
+  guidance?: { lon: number; lat: number; name: string }[];
 }
 
 /** Couleurs proposées pour un dossier — la palette iOS de l'application. */
@@ -90,6 +98,21 @@ function readFolders(): BookmarkFolder[] {
               // à celle d'aujourd'hui, sans quoi la pastille passerait au gris.
               .map((place) => ({ ...place, group: normalizeGroupId(place.group) }))
           : [],
+        ...(Array.isArray(folder.tracks)
+          ? {
+              tracks: folder.tracks
+                .filter((track) => Array.isArray(track))
+                .map((track) => track.filter((point) => point && Number.isFinite(point.lon) && Number.isFinite(point.lat)))
+                .filter((track) => track.length > 1),
+            }
+          : {}),
+        ...(Array.isArray(folder.guidance)
+          ? {
+              guidance: folder.guidance.filter(
+                (point) => point && typeof point.name === "string" && Number.isFinite(point.lon) && Number.isFinite(point.lat)
+              ),
+            }
+          : {}),
       }));
     return folders.length ? folders : defaultFolders();
   } catch {
@@ -181,6 +204,12 @@ export function useBookmarks() {
     setVisibleIds((current) => (current.includes(folderId) ? current : [...current, folderId]));
   }, []);
 
+  /** Range une trace dans un dossier (elle remplace la précédente) et l'allume. */
+  const setFolderTracks = useCallback((folderId: string, tracks: LonLat[][], guidance: BookmarkFolder["guidance"] = []) => {
+    setFolders((current) => current.map((folder) => (folder.id === folderId ? { ...folder, tracks, guidance } : folder)));
+    setVisibleIds((current) => (current.includes(folderId) ? current : [...current, folderId]));
+  }, []);
+
   const removePlace = useCallback((placeId: string) => {
     setFolders((current) =>
       current.map((folder) => ({ ...folder, places: folder.places.filter((place) => place.id !== placeId) }))
@@ -218,6 +247,15 @@ export function useBookmarks() {
     [folders, visibleIds]
   );
 
+  /** Les traces à dessiner : celles des dossiers allumés, à leur couleur. Mémorisées, comme les points. */
+  const visibleTracks = useMemo(
+    () =>
+      folders
+        .filter((folder) => visibleIds.includes(folder.id) && folder.tracks?.length)
+        .map((folder) => ({ id: folder.id, color: folder.color, tracks: folder.tracks! })),
+    [folders, visibleIds]
+  );
+
   // Un seul objet tant que rien ne change : le menu des signets est protégé
   // contre les rendus inutiles (`memo`).
   return useMemo(
@@ -225,16 +263,18 @@ export function useBookmarks() {
       folders,
       visibleIds,
       visiblePlaces,
+      visibleTracks,
       createFolder,
       renameFolder,
       recolorFolder,
       deleteFolder,
       savePlace,
+      setFolderTracks,
       removePlace,
       toggleVisible,
       findSaved,
     }),
-    [folders, visibleIds, visiblePlaces, createFolder, renameFolder, recolorFolder, deleteFolder, savePlace, removePlace, toggleVisible, findSaved]
+    [folders, visibleIds, visiblePlaces, visibleTracks, createFolder, renameFolder, recolorFolder, deleteFolder, savePlace, setFolderTracks, removePlace, toggleVisible, findSaved]
   );
 }
 

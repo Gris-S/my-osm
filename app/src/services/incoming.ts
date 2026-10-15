@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import type { Place } from "../types";
 import { geocodeAddress } from "./geocode";
+import { parseGeoFile, type GeoFile } from "./geoFile";
 import { isNavigationLink, parseMapLink, placeFromCandidate, type WebCandidate } from "./webPlace";
 
 // ---------------------------------------------------------------------------
@@ -20,10 +21,22 @@ import { isNavigationLink, parseMapLink, placeFromCandidate, type WebCandidate }
 // ---------------------------------------------------------------------------
 
 /** Ce que l'application fait de ce qu'elle a reçu. */
-export type IncomingAction = { kind: "place" | "route"; place: Place } | { kind: "search"; text: string };
+export type IncomingAction =
+  | { kind: "place" | "route"; place: Place }
+  | { kind: "search"; text: string }
+  /** Un fichier de traces ou de points ; `file` nul s'il ne se lit pas. */
+  | { kind: "file"; name: string; file: GeoFile | null };
 
 /** Préfixe des partages de texte, réécrits par `MainActivity`. */
 export const SHARE_URL_PREFIX = "myosm-share:";
+
+/** Préfixe d'un fichier ouvert avec MY OSM : son contenu attend dans le greffon `IncomingFile`. */
+export const FILE_URL_PREFIX = "myosm-file:";
+
+function incomingFilePlugin(): { take(): Promise<{ name?: string; text?: string }> } | null {
+  const capacitor = (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor;
+  return (capacitor?.Plugins?.IncomingFile as { take(): Promise<{ name?: string; text?: string }> } | undefined) ?? null;
+}
 
 const LINK = /(https?:\/\/|geo:|google\.navigation:)[^\s<>"]+/gi;
 
@@ -69,6 +82,12 @@ export async function resolveSharedText(text: string): Promise<IncomingAction | 
 
 /** Une adresse reçue au lancement ou pendant que l'application tourne. */
 export async function resolveIncoming(url: string): Promise<IncomingAction | null> {
+  if (url.startsWith(FILE_URL_PREFIX)) {
+    const taken = await incomingFilePlugin()?.take().catch(() => null);
+    if (!taken?.text) return null;
+    const name = taken.name ?? "";
+    return { kind: "file", name, file: parseGeoFile(name, taken.text) };
+  }
   if (url.startsWith(SHARE_URL_PREFIX)) {
     const text = new URLSearchParams(url.slice(SHARE_URL_PREFIX.length).replace(/^\?/, "")).get("text");
     return text ? resolveSharedText(text) : null;

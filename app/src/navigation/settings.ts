@@ -217,3 +217,38 @@ export const useRunSummaryEnabled = runSummary.useValue;
 /** En transports, la liste des stations de la ligne en cours s'affiche-t-elle ? */
 export const setTransitStationsEnabled = transitStations.set;
 export const useTransitStationsEnabled = transitStations.useValue;
+
+// ---------------------------------------------------------------------------
+// L'encart de musique, navigation par navigation (demande explicite,
+// 15 octobre 2026) : on peut le vouloir en voiture et pas à pied.
+// ---------------------------------------------------------------------------
+
+export type MusicMode = "walking" | "cycling" | "car" | "transit" | "running";
+
+const musicModes: Record<MusicMode, ReturnType<typeof booleanSetting>> = {
+  walking: booleanSetting("osm-local:music-walking", true),
+  cycling: booleanSetting("osm-local:music-cycling", true),
+  car: booleanSetting("osm-local:music-car", true),
+  transit: booleanSetting("osm-local:music-transit", true),
+  running: booleanSetting("osm-local:music-running", true),
+};
+
+export const setMusicShown = (mode: MusicMode, next: boolean) => musicModes[mode].set(next);
+export const useMusicShown = (mode: MusicMode) => musicModes[mode].useValue();
+
+// Une chaîne et non un objet : `useSyncExternalStore` compare l'instantané par
+// identité, et un objet neuf à chaque lecture redessinerait sans fin.
+const musicShownList = () =>
+  (Object.keys(musicModes) as MusicMode[]).filter((mode) => musicModes[mode].get()).join(",");
+
+/** Les navigations où l'encart paraît, pour la fenêtre « Modes ». */
+export function useMusicModes(): Set<MusicMode> {
+  const list = useSyncExternalStore(subscribe, musicShownList, musicShownList);
+  return new Set(list.split(",").filter(Boolean) as MusicMode[]);
+}
+
+/** En transports, le téléphone vibre-t-il avant la station où descendre (`getOffAlert.ts`) ? */
+const getOffAlert = booleanSetting("osm-local:get-off-alert", true);
+export const getOffAlertEnabled = getOffAlert.get;
+export const setGetOffAlertEnabled = getOffAlert.set;
+export const useGetOffAlertEnabled = getOffAlert.useValue;

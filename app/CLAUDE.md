@@ -523,6 +523,15 @@ l'horaire du jour quand la ligne le diffuse). Points à connaître :
   qu'on pouvait encore prendre. `useItinerary` retient l'instant où
   « Ma position » entre dans le parcours, redemande un relevé s'il le faut et
   n'accepte que ceux d'après ; sans GPS, le panneau demande un départ.
+  **Au retour au panneau, elle se refait** (alpha.104,
+  `refreshCurrentLocation`) : à la fin d'une navigation (`guiding` qui
+  retombe, dans `App`) et au retour dans l'application, si le relevé a plus de
+  deux minutes. Nuit du 15 octobre 2026 : panneau ouvert à Ranelagh, une heure
+  de transports dessous, et le vélo calculé à l'arrivée partait de Ranelagh
+  (20 km). Le trajet affiché reste le temps du relevé et n'est refait que si
+  l'on a bougé de plus de 100 m (`MOVED_METERS`). Scénario `position-retour`
+  (point collé, Photon étant tombé ce jour-là) : 11 km depuis Ranelagh →
+  39 km depuis Versailles après deux minutes derrière.
 - **Navitia rend l'heure locale du réseau** (`20260901T182027`, sans décalage) :
   elle est reconstruite comme une date locale, ce qui suppose un appareil à
   l'heure française — le seul cas d'usage d'un réseau francilien.
@@ -1696,14 +1705,16 @@ Onze demandes après des trajets en voiture et en transports ; les scénarios
   avec un relevé frais (20 s) et précis, l'horaire ne fait passer à la descente
   que si l'on a quitté l'arrêt le long de la ligne. Sinon le bandeau reste sur
   la montée ou la marche, et le dit. Sans relevé — sous terre — l'horaire reste
-  seul maître. Un appui sur les flèches vaut preuve.
+  seul maître. (Un appui sur les flèches valait preuve ; depuis l'alpha.99
+  elles ne font que regarder, voir plus bas.)
 - **Le trajet se recalcule depuis la position** (`replan`) : véhicule manqué
   (deux minutes d'attente à l'arrêt, trente secondes si l'on marche encore) ou
   chemin quitté (trois relevés, vingt secondes). Une fois par minute au plus,
   jamais pour un parcours à étapes. Chaque changement d'action est noté au
   journal (`tc.step`, `tc.replan`) — le 8 octobre, rien ne l'expliquait.
 - **La liste des stations** de la ligne en cours (`Stations`), réglable dans
-  « Modes ».
+  « Modes ». **Sans heure de passage** depuis l'alpha.99 (demande explicite) :
+  celle du train prévu trompait quand on en avait pris un autre.
 - **La colonne de droite cède ses boutons** quand elle ne tient pas entre le
   bandeau et la colonne du bas (`crampedLevel`) : signets, puis catégories,
   puis boussole.
@@ -1750,10 +1761,17 @@ une heure de départ ou d'arrivée. En transports, toujours (Navitia
 des étapes. En voiture, **seulement avec TomTom** (`departAt` / `arriveAt`),
 qui compte alors sur le trafic habituel de l'heure ; le guidage, lui, part
 toujours au trafic du moment.
-Le choix se fait aux segments (`.segmented`), la date et l'heure par **deux
-champs** `date` + `time` : `datetime-local` ouvrait dans la WebView le dialogue
-à roues d'Android 6 (14 octobre 2026). Leur calendrier et leur horloge prennent
-le bleu de l'app par `AppTheme.PickerDialog` (`apk/.../values/styles.xml`).
+Le choix se fait aux segments (`.segmented`), le jour et l'heure dans **notre
+sélecteur** (`components/WhenAt.tsx`, alpha.105, demande explicite) : une
+rangée de jours (« Aujourd'hui », « Demain », la semaine) et deux roues, heures
+et minutes par cinq (`scroll-snap`, la valeur rendue une fois la roue
+arrêtée). Les champs `date` + `time` ouvraient le calendrier et l'horloge
+d'Android, qui suivent le thème **du téléphone** : la nuit du 15 octobre 2026,
+la grille du mois s'écrivait blanc sur blanc (le thème `AppCompat.DayNight`
+sur un composant Android de base). Avant eux, `datetime-local` ouvrait le
+dialogue à roues d'Android 6. Le thème `AppTheme.PickerDialog` a été retiré.
+Scénarios `transports-guidage` (demain 08:00 par les pastilles et les roues)
+et `partir-plus-tard-sombre` (contraste mesuré en thème sombre).
 
 ##### Le journal de navigation (`navigation/journal.ts`)
 
@@ -1892,15 +1910,45 @@ a pas de position à suivre.
   départ du RER, si bien que l'action « monter » ne dure rien. Sans cette
   annonce anticipée, le bandeau passerait de « marcher » à « descendre » sans
   qu'on ait jamais lu quelle ligne prendre.
-- **Trois sources d'avancement, dans cet ordre de confiance** : l'horaire de
-  Navitia ; le GPS quand il revient, qui **confirme** un arrêt et ne fait jamais
-  reculer de plus d'une action — deux stations proches se confondraient sur une
-  ligne qui revient sur ses pas ; et l'utilisateur, par deux flèches. Le geste
-  manuel se garde sous la forme d'un **décalage en nombre d'actions**, non d'une
-  action figée : le trajet continue d'avancer seul, avec une action d'avance ou
-  de retard, ce qui est exactement ce qu'on constate quand une ligne prend du
-  retard. Le décalage est affiché — un guidage volontairement décalé passerait
-  sinon pour une erreur de calcul.
+- **Trois sources d'avancement** : l'horaire de Navitia ; le GPS quand il
+  revient, qui **confirme** un arrêt et ne fait jamais reculer de plus d'une
+  action — deux stations proches se confondraient sur une ligne qui revient sur
+  ses pas ; et **le premier train qui passe** (alpha.99, ci-dessous).
+- **Les deux flèches ne font que regarder** (alpha.99, demande explicite du
+  15 octobre 2026). Elles valaient correction (un décalage en nombre
+  d'actions) : revenu quatre étapes en arrière pour relire le RER, le guidage
+  posait le point bleu au Parc de Saint-Maur alors qu'on roulait dans Paris.
+  Une étape regardée (`viewing`) montre son bandeau et toute sa ligne, **sans
+  point bleu** ni nombre d'arrêts ; la note « Étape passée / à venir » porte
+  « Revenir à maintenant ». La position (`live`) ne bouge que par l'horaire, le
+  GPS et le recalage sur le train pris ; le journal (`tc.step`) ne note qu'elle.
+- **Le premier train qui passe** (alpha.99, `retimeLeg` dans `transitSteps.ts`,
+  testé dans `tests/transitRetime.test.ts`). Le 14 octobre 2026, le 9 d'avant
+  pris à Havre-Caumartin : sous terre, l'horaire du 9 de 18 h 58 plaçait le
+  voyageur trois minutes en arrière jusqu'à Ranelagh. Arrivé à l'étape « prendre
+  la ligne », le guidage demande les départs réels du quai
+  (`getNextDepartures`, un appel par montée) et suppose qu'on monte dans **le
+  premier après l'arrivée sur le quai** — l'heure prévue de cette arrivée, ou
+  maintenant si l'on est en avance. Si ce train diffère d'au moins 30 s de
+  celui du calcul, la ligne, ses arrêts et les marches qui suivent glissent
+  d'autant ; le véhicule suivant garde son horaire. Noté au journal
+  (`tc.retime`). Limite connue : un train qu'on laisse passer met le guidage un
+  train en avance, sans geste pour le corriger. Seules les sources qui donnent
+  ligne et quai (IDFM) en profitent.
+- **Dans le train, la position l'emporte sur l'horaire** (alpha.103, demande
+  explicite du 15 octobre 2026 : sur le 9, la flèche avait raison et la liste
+  des stations tort). La liste ne croyait un relevé que frais de 20 s, précis à
+  60 m et à 150 m de la ligne ; sous terre, la position vient souvent de la 4G
+  du tunnel, à 100–300 m près, et était écartée. En roulant, un relevé de
+  moins de 60 s et précis à 250 m compte désormais, s'il tombe sur la ligne à
+  sa précision près (`linePosition`, `RIDE_ACCURACY_METERS`, `RIDE_FIX_MS`).
+  Et **l'horaire se recale sur lui** : écart d'au moins 30 s entre le rang que
+  donne la position et l'heure que l'horaire y prévoit (`timeAtPosition`) → la
+  ligne glisse d'autant (`retimeLeg`), liste, arrêts, arrivée et alerte de
+  descente avec ; une fois par 30 s au plus ; noté `tc.retime` avec
+  `position` et `ecart`. La porte de la montée, le recalage d'étape et le
+  « chemin quitté » gardent les seuils stricts. **Seuils estimés, pas
+  mesurés** : un relevé réel sous terre doit les confirmer.
 - **La liste du bas ne montre que ce qui reste.** Une action franchie disparaît :
   ce qui est encore écrit est ce qu'il reste à faire, lisible d'un coup d'œil
   dans une rame bondée.
@@ -1910,6 +1958,30 @@ a pas de position à suivre.
   différemment — le piéton conduit la caméra relevé par relevé, les transports
   cadrent d'un bloc. Le cadrage n'est rejoué qu'au changement de jeton, sans
   quoi la carte relancerait son animation à chaque battement d'horloge.
+- **L'alerte de descente** (alpha.101, demande explicite du 15 octobre 2026,
+  « comme dans Citymapper ») : le téléphone vibre fort quand le train quitte
+  l'avant-dernière station (`getOffTime`, testé), avec une notification
+  « Descendez au prochain arrêt — Ranelagh · Sortie 1 ». Citymapper ne publie
+  pas sa méthode (« it's magic »), mais son alerte marche sous terre et porte
+  une icône de réveil : c'est une alarme sur l'horaire. Ici de même, car **la
+  page est en pause dans la poche** : `getOffAlert.ts` programme, dès la
+  montée, une alarme d'Android (greffon `GetOffAlertPlugin`,
+  `setExactAndAllowWhileIdle`) que `GetOffAlertReceiver` change en vibration
+  à pleine amplitude, rangée comme une alarme (l'intensité des notifications
+  du téléphone est souvent basse), plus la notification. Elle suit le train
+  réellement pris (recalage de l'alpha.99), et une seule existe à la fois.
+  **Le GPS ne fait que l'avancer**, application ouverte (`ridePosition` sur la
+  ligne) : pas de service de position, refusé pour la course. Mesuré sur le
+  Pixel 8, écran éteint : alerte reçue, vibration à amplitude 1,0 (le maximum
+  du moteur), usage `ALARM`. Le rythme est **court-court-long, trois fois**
+  (demande explicite : « plus fort » — la puissance ne monte plus, c'est le
+  rythme qui se remarque). **« Alarmes et rappels » est refusé d'office depuis
+  Android 14** : sans lui, Android a donné l'alerte 15 s après l'heure (fenêtre
+  annoncée par `dumpsys alarm`) ; « Modes » le dit et ouvre le réglage. Les
+  notifications sont demandées au départ d'une navigation en transports.
+  Interrupteur sous la liste des stations et dans « Modes »
+  (`osm-local:get-off-alert`, allumé par défaut). Version Docker : une
+  minuterie et `navigator.vibrate`, page ouverte seulement.
 - **Les sorties de station viennent du jeu ouvert « acces » d'IDFM**
   (`exits.ts`) : 2 523 accès, chacun avec son numéro, la rue qu'il dessert et
   ses coordonnées, sans clé et en origine croisée autorisée — mesuré. La sortie
@@ -2009,6 +2081,14 @@ titre, artiste, et pause / précédent / suivant.
   de place réservée : une musique lancée en route le fait apparaître, un lecteur
   fermé ou arrêté le fait disparaître. En pause, il reste. C'était la demande
   explicite — ne pas y ajouter d'interrupteur.
+- **Il se règle navigation par navigation** (alpha.100, demande explicite du
+  15 octobre 2026 : « pas une liste à cocher, un truc sympa ») : dans « Modes »,
+  une pastille par navigation — à pied, vélo, voiture, transports, course —
+  pleine quand l'encart y paraît, en creux et barrée sinon ; le curseur de la
+  ligne les allume ou les éteint toutes, à mi-course quand certaines seulement
+  le sont (`MusicModes`, `useMusicModes` et `osm-local:music-<mode>` dans
+  `settings.ts`). Coupé, `MusicCard` ne monte rien et n'écoute donc pas le
+  lecteur. Tout est allumé par défaut, comme avant le réglage.
 - **Sans l'accès, un message remplace l'encart** : il renvoie à Paramètres ›
   Navigation, et une croix le masque pour le reste de la navigation (il revient
   à la suivante, le panneau étant remonté à chaque départ). Sans lui, l'encart
@@ -2408,6 +2488,100 @@ propose MY OSM, et « Toujours » en fait l'application par défaut.
   ligne = nom et reste = adresse ; un texte qu'on ne sait pas placer part en
   **recherche sur le web**. Un lien Google raccourci est ignoré, le texte qui
   l'accompagne sert à sa place.
+
+### Fichiers de traces et de points (GPX, KML, GeoJSON — alpha.107)
+
+**MY OSM est dans la liste des applications qui ouvrent un fichier GPX, KML ou
+GeoJSON** (demande explicite, 15 octobre 2026), à côté d'OsmAnd — vérifié par
+`cmd package query-activities` — et pour les liens Waze, Bing et HERE que
+`parseMapLink` savait déjà lire.
+
+- **Trois entrées, un chemin** : un fichier ouvert ou partagé depuis une autre
+  application (`content://`, lu par `MainActivity.asFileIntent` tant que la
+  permission de l'expéditeur vaut, rangé dans le greffon `IncomingFile`, puis
+  `myosm-file:?name=…` qui suit les liens), « Ouvrir un fichier » du menu
+  burger (`<input type="file">`), et le glisser-déposer sur la carte (version
+  Docker). Tous aboutissent à `parseGeoFile`.
+- **La lecture ne garde que traces et points nommés** (`services/geoFile.ts`,
+  testé dans `tests/geoFile.test.ts`), par expressions régulières et non par
+  `DOMParser` : testable dans Node. 20 Mo au plus. **Pas de KMZ** (zippé).
+- **Le manifeste** déclare les types (`application/gpx+xml`, KML, GeoJSON) et,
+  pour les fichiers que le système déclare `application/octet-stream` — le cas
+  d'un `.gpx` dans Téléchargements, mesuré —, leur extension (`pathPattern`).
+  **Et, comme OsmAnd, tout fichier `application/octet-stream`, `application/xml`
+  ou `text/xml`** (alpha.108) : WhatsApp envoie un GPX ainsi, à une adresse sans
+  extension (`content://com.whatsapp.provider.media/item/…`, relevé dans
+  `dumpsys activity` le 15 octobre 2026), et MY OSM n'était pas proposé. On en
+  juge au contenu : ce qui n'est pas une carte s'annonce illisible
+  (`geofile.unreadable`).
+- **À l'écran** : la trace en violet (`GEOFILE_COLOR`, ni le bleu d'un
+  itinéraire ni l'orange d'une course), les points en épingles violettes par
+  le chemin des signets (`savedPlaces` — les toucher ouvre leur fiche,
+  identifiant `web/…`), la carte cadrée sans animation (elle arrive pendant le
+  retour au premier plan), et une carte au bas (`GeoFileCard`) : nom, longueur,
+  nombre de points, « Enregistrer les points » (un dossier de signets au nom du
+  fichier) et fermer. Le recentrage d'ouverture ne passe pas par-dessus
+  (`startupBusyRef`).
+- **Une trace avec ses consignes n'est pas une liste de lieux** (alpha.109,
+  `isGuidance`) : un GPX exporté d'un calculateur range chaque virage en point.
+  Le 15 octobre 2026, « Boucle Toussus-Issy » (70 km) : 453 points dont 447
+  consignes (« Tournez à gauche sur Rue de B… », « End »), devenus 447 signets
+  qui couvraient la carte. À partir de dix points dont la moitié se lit comme
+  une consigne (français ou anglais), seule la trace est gardée : ni
+  épingles, ni « Enregistrer ». Des lieux nombreux mais nommés (« Café 3 »)
+  restent des lieux.
+- **Suivre une trace, c'est un guidage sur la trace elle-même** (alpha.112,
+  `navigation/trackRoute.ts`, testé). La première version (alpha.109) faisait
+  un itinéraire par treize points de la trace, et le moteur prenait son propre
+  chemin entre eux — refusée (« tu as créé ton propre parcours alors que les
+  points existent déjà »). Désormais le tracé suivi est la trace, point par
+  point ; les manœuvres sont **les consignes du fichier** (`GeoFile.guidance`,
+  mises à part par `isGuidance`, projetées sur la trace et dites telles
+  quelles — `NavManeuver.text`, pictogramme déduit des mots « gauche »,
+  « droite »…), ou à défaut **les virages de la trace** (changement de cap de
+  plus de 35°). Le moteur ne calcule que **l'approche** (de ma position au
+  début de la trace, si elle est à plus de 30 m) et le retour après un écart :
+  au plus près une fois la trace rejointe (`trackFrom`), vers son début
+  avant. Une position de plus de deux minutes n'est pas prise pour départ. À
+  pied ou à vélo (deux boutons sur la carte du fichier), 4,5 et 15 km/h pour
+  le temps restant ; pas en voiture. La trace violette s'efface pendant le
+  guidage, elle cachait le tracé suivi. Vérifié sur le téléphone, marche
+  simulée sur une trace de test : les consignes du fichier défilent dans
+  l'ordre, à leur place.
+- **Un fichier enregistré garde sa trace** (alpha.111, demande explicite :
+  « tu gardes la trace seulement s'il y en avait une, tu n'en inventes pas »).
+  « Enregistrer dans mes lieux » range les points **et la trace s'il y en a
+  une** dans un dossier (`BookmarkFolder.tracks`, allégée par `thinTrack` : un
+  point tous les 15 m, six décimales), dessinée à la couleur du dossier quand
+  il est allumé (`visibleTracks`, couche `saved-tracks-layer`). Le fichier peut
+  alors être fermé ou effacé ailleurs.
+- **Le plafond d'étapes dépend du mode** (alpha.112, `maxWaypoints`) : 15 en
+  transports (chaque étape coûte un appel sur le quota IDFM, et le panneau le
+  dit au-delà), 48 ailleurs (`MAX_ROAD_WAYPOINTS`). Mesuré le 15 octobre
+  2026 : OSRM accepte 100 points, TomTom 50, **Valhalla 10** — le vélo est donc
+  demandé par morceaux de dix recousus (`stitch`, testé). Avant, un itinéraire
+  vélo de plus de huit étapes échouait sans dire pourquoi.
+- **« Terminer » à pied et à vélo est un rond**, comme en voiture
+  (alpha.114, `.nav-stop.is-round`, demande explicite) : le libellé poussait
+  le bouton du dénivelé sous lui.
+- **Le parcours de vérification vise le champ de recherche, pas « le premier
+  champ »** (`input:not([type=file])` dans `outils/parcours.mjs`) : le champ
+  caché d'« Ouvrir un fichier » est désormais le premier de la page, et
+  `saisir` y tapait — tous les scénarios avec recherche échouaient.
+- **Un dossier déplié** montre son nom en entier et ses boutons sur une ligne
+  dessous (`bookmark-folder-actions`, demande explicite).
+- **▶ sur chaque dossier de « Lieux enregistrés »** (`launchFolder` dans
+  `App`) : le long de sa trace s'il en a une (`followTrack`), sinon un
+  itinéraire depuis ma position par tous ses lieux, **le plus proche d'abord**
+  (`nearestOrder`, testé — un ordre lisible, pas l'optimum). Au-delà de
+  `MAX_ROAD_WAYPOINTS` + l'arrivée, les plus proches, et une ligne le dit
+  sept secondes (`tour-notice`). Un dossier de trace ouvre sa carte, avec
+  « à pied » et « à vélo ». Vérifié sur le téléphone : un dossier de
+  trace seule, fichier fermé, et un dossier de 447 points (« 16 sur 447 »). Le
+  panneau passe à 340 px de large : le bouton mangeait les noms.
+- **`isStyleLoaded` reste faux tant que des tuiles arrivent** : sans le nouvel
+  essai sur `idle`, un fichier ouvert au lancement n'était jamais dessiné
+  (constaté sur le téléphone).
 
 ### Détails d'un lieu (horaires, téléphone, adresse)
 

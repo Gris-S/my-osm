@@ -108,7 +108,9 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 - Walking, cycling, driving and public transport
 - Cycling: fastest or safest route side by side, bike lanes in green, worldwide and without a key
 - Driving: live traffic on your route, speed limits, lane guidance, speed-camera warnings, toll prices where published
-- Transit: live departures worldwide ([Transitous](https://transitous.org/)) and in the Paris region (Île-de-France Mobilités); journeys followed step by step, down to the station exit
+- Transit: live departures worldwide ([Transitous](https://transitous.org/)) and in the Paris region (Île-de-France Mobilités); journeys followed step by step, down to the station exit, with a strong vibration before your stop — even with the screen off
+- Tracks and places from other apps: open **GPX, KML and GeoJSON** files, follow a track turn by turn with its own instructions, keep it in your saved places
+- A route through a whole folder of saved places, nearest first, from where you are
 - A running mode with its own pace chart
 - Your music (any player) controllable during navigation
 - Walks and runs kept on the device with track and elevation, for as long as you choose — or not at all
@@ -125,7 +127,7 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 - Weather, air quality, pollen and official French weather warnings
 - Satellite imagery, terrain relief, contour lines, 3D buildings, live traffic layer
 - Street-level photos from Mapillary
-- Saved places in colour-coded folders
+- Saved places in colour-coded folders, with their tracks
 - Light and dark themes, the dark one following the ambient light sensor
 - English and French
 - A Docker image for larger screens, with the same features except the running mode

@@ -312,6 +312,15 @@
   font-weight: 600;
 }
 
+/* « Terminer » à pied et à vélo : le rond rouge de la voiture, dans le flux de la barre. */
+.nav-stop.is-round {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+
 .nav-sim {
   flex: none;
   width: 32px;
@@ -2377,6 +2386,140 @@
   font-size: 12.5px;
   line-height: 1.35;
   color: var(--text-secondary);
+}
+
+.modes-group + .modes-row,
+.modes-row + .modes-group {
+  border-top: 1px solid var(--hairline);
+}
+
+.modes-group + .modes-group {
+  border-top: 1px solid var(--hairline);
+}
+
+/* Ce qui empêche un mode de bien marcher : une phrase orange, touchable
+   quand elle mène aux réglages d'Android. */
+.modes-warning {
+  display: block;
+  width: 100%;
+  margin: -4px 0 12px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 149, 0, 0.14);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+button.modes-warning {
+  cursor: pointer;
+}
+
+/* L'alerte de descente, sous la liste des stations. */
+.transit-getoff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin: -6px 0 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.transit-getoff > span:first-of-type {
+  flex: 1;
+}
+
+.toggle-switch.is-small {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+}
+
+.toggle-switch.is-small .toggle-switch-knob {
+  width: 18px;
+  height: 18px;
+}
+
+.toggle-switch.is-small.is-on .toggle-switch-knob {
+  transform: translateX(16px);
+}
+
+/* Les pastilles du lecteur de musique : une par navigation, pleine quand
+   l'encart y paraît, en creux sinon. */
+.music-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 8px;
+  padding: 0 0 14px;
+}
+
+.music-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.music-mode-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--hairline);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+/* Éteinte : le pictogramme est barré d'un trait. */
+.music-mode-icon::after {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  transition: opacity 0.2s ease;
+}
+
+.music-mode.is-on {
+  color: var(--text-primary);
+}
+
+.music-mode.is-on .music-mode-icon {
+  border: 1.5px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.music-mode.is-on .music-mode-icon::after {
+  opacity: 0;
+}
+
+.music-mode:active .music-mode-icon {
+  transform: scale(0.92);
 }
 
 /* La confirmation du lancement : deux boutons larges, l'orange pour partir. */

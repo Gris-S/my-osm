@@ -359,8 +359,8 @@
   margin-top: 14px;
 }
 
-/* « Partir plus tard » (`WhenPicker`) : les deux champs du système, habillés
-   comme les pastilles de mode. */
+/* « Partir plus tard » (`WhenPicker`, `WhenAt`) : les segments, puis les
+   jours en pastilles et l'heure en deux roues, au thème de l'application. */
 .itinerary-when {
   display: flex;
   flex-direction: column;
@@ -372,25 +372,114 @@
   font-size: 13px;
 }
 
-.itinerary-when-at {
+.when-at {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.itinerary-when-at input {
-  flex: 1;
-  min-width: 0;
-  min-height: 38px;
+/* Les jours défilent de côté, sans barre visible. */
+.when-days {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -2px;
+  padding: 0 2px;
+}
+
+.when-days::-webkit-scrollbar {
+  display: none;
+}
+
+.when-day {
+  flex: none;
+  min-height: 34px;
   padding: 0 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 17px;
   background: rgba(120, 120, 128, 0.14);
   color: var(--text-primary);
-  color-scheme: light dark;
   font: inherit;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
-  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.when-day.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Deux roues côte à côte ; la bande du milieu marque la valeur retenue. Trois
+   rangées de 36 px visibles (`ROW` dans `WhenAt.tsx`). */
+.when-clock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 108px;
+  border-radius: 14px;
+  background: rgba(120, 120, 128, 0.1);
+}
+
+.when-clock::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(120, 120, 128, 0.18);
+  pointer-events: none;
+}
+
+.when-wheel {
+  position: relative;
+  width: 64px;
+  height: 108px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  /* Une rangée vide au-dessus et au-dessous : la première et la dernière
+     valeur peuvent venir au milieu. */
+  padding: 36px 0;
+  box-sizing: border-box;
+  mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+}
+
+.when-wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.when-wheel-value {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+
+.when-wheel-value.is-active {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.when-colon {
+  position: relative;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 /* Sous la durée et le bouton, sur toute la largeur : à côté, le texte se
@@ -476,4 +565,124 @@
 .itinerary-origin-result .search-result-icon {
   width: 28px;
   border-right: 0;
+}
+
+/* Le fichier ouvert (`GeoFileCard`) : une carte au bas de l'écran, au-dessus
+   de la carte, comme le message d'état. */
+.geofile-card {
+  position: absolute;
+  z-index: 6;
+  left: max(16px, env(safe-area-inset-left));
+  /* La colonne de boutons du bord droit (44 px et sa marge) reste dégagée. */
+  right: calc(max(16px, env(safe-area-inset-right)) + 56px);
+  bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border-radius: 18px;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.geofile-icon {
+  flex: none;
+  color: #af52de;
+}
+
+.geofile-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+/* Deux lignes au plus : à côté de « Suivre », une seule coupait tout nom. */
+.geofile-text strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.geofile-saved {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--open, #34c759);
+}
+
+.geofile-save,
+.geofile-close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.geofile-save {
+  background: #af52de;
+  color: #fff;
+}
+
+/* Suivre la trace, à pied ou à vélo : deux ronds au bleu de la navigation. */
+.geofile-follow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Le voile du glisser-déposer (version Docker, grand écran). */
+.geofile-drop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(175, 82, 222, 0.18);
+  border: 3px dashed #af52de;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Un parcours de dossier raccourci (`tourNotice`) : une ligne sous le panneau. */
+.tour-notice {
+  position: absolute;
+  z-index: 7;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(28, 28, 30, 0.9);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.35;
 }

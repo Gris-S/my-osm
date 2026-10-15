@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, useState, memo } from "react";
-import { Coffee, Download, History, KeyRound, MapPinPlus, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
+import { Coffee, Download, FolderOpen, History, KeyRound, MapPinPlus, Menu, Moon, Scale, Settings, Sun, SunMoon, ToggleRight, TrainFront, X } from "lucide-react";
 import type { AutoSource, Theme } from "../hooks/useTheme";
 import { useI18n, useLangSetting, type Lang, type TranslationKey } from "../i18n";
 import type { LonLat } from "../types";
 import { CONFIG } from "../config";
+import { GEO_FILE_ACCEPT } from "../services/geoFile";
 // Navigation guidée — voir `src/navigation/README.md`. La section entière est
 // fournie par le module ; la fenêtre ne fait que lui donner sa place.
 import { ApiKeysSettings } from "./ApiKeysSettings";
@@ -73,6 +74,8 @@ interface AppMenuProps {
   autoSource: AutoSource;
   onThemeChange: (theme: Theme) => void;
   onAutoTheme: () => void;
+  /** Un fichier GPX, KML ou GeoJSON choisi par « Ouvrir un fichier ». */
+  onOpenFile: (name: string, text: string) => void;
   /**
    * Compteur qu'on incrémente pour demander l'ouverture de l'écran des clés.
    *
@@ -117,7 +120,7 @@ function renderCredit(html: string): React.ReactNode[] {
 
 // Protégé contre les rendus inutiles (`memo`) : `App` se redessine à chaque
 // relevé GPS d'une navigation, et ce composant n'a alors rien de neuf à montrer.
-export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, autoSource, onThemeChange, onAutoTheme, openApiSignal }: AppMenuProps) {
+export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, autoSource, onThemeChange, onAutoTheme, onOpenFile, openApiSignal }: AppMenuProps) {
   const { t } = useI18n();
   const language = useLangSetting();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -134,6 +137,7 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   // D'où viennent les données, et sous quelle licence (Transitous exige ce lien).
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   // Ouverture de l'écran des clés demandée du dehors (fenêtre d'accueil).
@@ -203,6 +207,18 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
   return (
     <>
       <div className="app-menu" ref={wrapRef}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={GEO_FILE_ACCEPT}
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            setMenuOpen(false);
+            if (file) void file.text().then((text) => onOpenFile(file.name, text));
+          }}
+        />
         <button
           className={`app-menu-button ${menuOpen ? "is-open" : ""}`}
           onClick={() => setMenuOpen((prev) => !prev)}
@@ -266,6 +282,13 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
                 {navText("menu.modes")}
               </button>
             )}
+            {/* Une trace ou des points (GPX, KML, GeoJSON) : le même chemin que
+                les fichiers ouverts depuis une autre application, et la seule
+                voie dans la version Docker (avec le glisser-déposer). */}
+            <button className="app-menu-item" role="menuitem" onClick={() => fileRef.current?.click()}>
+              <FolderOpen size={17} />
+              {t("menu.openFile")}
+            </button>
             <button
               className="app-menu-item"
               role="menuitem"

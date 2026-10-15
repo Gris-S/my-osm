@@ -154,26 +154,22 @@ export function strayed(steps: TransitStep[], legs: TransitLeg[], index: number,
  * C'est le point bleu de la liste des stations (demande explicite, 13 octobre
  * 2026), qui avance avec le voyageur.
  *
- * Le GPS d'abord, quand il répond et qu'on est sur la ligne : la position est
- * projetée sur le tracé, entre les deux stations qui l'encadrent. Sinon —
- * sous terre — l'horaire : la part du temps écoulée entre deux passages.
- * `null` si la source ne détaille pas la desserte.
+ * La position d'abord, quand elle tombe sur la ligne (`linePosition`). Sinon —
+ * sous terre, sans relevé — l'horaire : la part du temps écoulée entre deux
+ * passages. `null` si la source ne détaille pas la desserte.
  */
-export function ridePosition(leg: TransitLeg | undefined, now: number, here: LonLat | null): number | null {
+export function ridePosition(
+  leg: TransitLeg | undefined,
+  now: number,
+  here: LonLat | null,
+  tolerance = LINE_METERS,
+): number | null {
   const stops = leg?.stops;
   if (!stops || stops.length < 2) return null;
   const last = stops.length - 1;
 
-  const path = here ? pathOf(leg) : null;
-  const match = path && here ? locateOnPath(path, here) : null;
-  if (path && match && match.offset <= LINE_METERS) {
-    const measures = stops.map((stop) => locateOnPath(path, stop).measure);
-    for (let i = 0; i < last; i++) {
-      const span = measures[i + 1] - measures[i];
-      if (match.measure < measures[i + 1] && span > 0) return i + Math.max(0, (match.measure - measures[i]) / span);
-    }
-    return last;
-  }
+  const located = here ? linePosition(leg, here, tolerance) : null;
+  if (located !== null) return located;
 
   for (let i = 0; i < last; i++) {
     const from = stops[i].at.getTime();
@@ -181,4 +177,35 @@ export function ridePosition(leg: TransitLeg | undefined, now: number, here: Lon
     if (now < to) return i + (to > from ? Math.max(0, (now - from) / (to - from)) : 0);
   }
   return last;
+}
+
+/**
+ * Le rang le long des stations d'après un relevé seul, ou `null` s'il tombe à
+ * plus de `tolerance` mètres de la ligne. La tolérance suit la précision du
+ * relevé : sous terre, la position vient souvent de la 4G du tunnel, juste à
+ * 100–300 m près, et c'est elle qui avait raison le 14 octobre 2026 quand
+ * l'horaire se trompait de train.
+ */
+export function linePosition(leg: TransitLeg | undefined, here: LonLat, tolerance = LINE_METERS): number | null {
+  const stops = leg?.stops;
+  const path = pathOf(leg);
+  if (!stops || stops.length < 2 || !path) return null;
+  const match = locateOnPath(path, here);
+  if (match.offset > tolerance) return null;
+  const measures = stops.map((stop) => locateOnPath(path, stop).measure);
+  for (let i = 0; i < stops.length - 1; i++) {
+    const span = measures[i + 1] - measures[i];
+    if (match.measure < measures[i + 1] && span > 0) return i + Math.max(0, (match.measure - measures[i]) / span);
+  }
+  return stops.length - 1;
+}
+
+/** L'heure où l'horaire place le train au rang `position` (voir `ridePosition`). */
+export function timeAtPosition(leg: TransitLeg, position: number): number | null {
+  const stops = leg.stops;
+  if (!stops?.length) return null;
+  const i = Math.max(0, Math.min(Math.floor(position), stops.length - 1));
+  const from = stops[i].at.getTime();
+  const to = stops[Math.min(i + 1, stops.length - 1)].at.getTime();
+  return from + (to - from) * Math.min(1, position - i);
 }

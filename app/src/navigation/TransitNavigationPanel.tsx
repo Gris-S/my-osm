@@ -1,11 +1,11 @@
-import { ChevronLeft, ChevronRight, Flag, Footprints, Play, Square, X } from "lucide-react";
+import { BellRing, ChevronLeft, ChevronRight, Flag, Footprints, Play, Square, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { StationExit } from "./exits";
 import { useNavBannerRef, useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
 import type { TransitStep } from "./transitSteps";
 import type { TransitLine, TransitStop } from "../transport/journeyView";
-import { useTransitStationsEnabled } from "./settings";
+import { setGetOffAlertEnabled, useGetOffAlertEnabled, useTransitStationsEnabled } from "./settings";
 import { formatClock, navPlural, useNav } from "./strings";
 import type { TransitNavSession } from "./useTransitNavigation";
 
@@ -46,8 +46,8 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
           exit={session.exit}
           connection={session.connection}
         />
-        {/* Le décalage manuel se dit : sans cela, un guidage volontairement
-            décalé d'une étape passerait pour une erreur du calcul. */}
+        {/* Une étape regardée aux flèches se dit, avec le chemin du retour :
+            sans cela, elle passerait pour celle où l'on est. */}
         {/* Retenu par la porte de la montée, ou en plein recalcul : le bandeau
             dit pourquoi il ne suit pas l'horaire (`transitGuide.ts`). */}
         {session.replanning ? (
@@ -59,8 +59,8 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
         ) : null}
         {offset !== 0 && (
           <p className="nav-banner-note">
-            {offsetText(offset, nav)}
-            <button className="transit-resync" onClick={() => (offset > 0 ? session.back() : session.advance())}>
+            {nav(offset > 0 ? "transit.viewingAhead" : "transit.viewingBehind")}
+            <button className="transit-resync" onClick={session.follow}>
               {nav("transit.resync")}
             </button>
           </p>
@@ -69,12 +69,13 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
 
       <div className="nav-dock" ref={dockRef}>
         {/* Musique en cours : l'encart n'existe que s'il y en a une (voir `music/`). */}
-        <MusicCard />
+        <MusicCard mode="transit" />
         <div className="nav-bar is-transit">
           <div className="transit-remaining">
             {stationList && session.rideStops.length > 1 && (
               <Stations stops={session.rideStops} fraction={session.rideFraction} color={current.line?.color} />
             )}
+            {(current.kind === "board" || current.kind === "alight") && <GetOffSwitch />}
             <h3 className="transit-remaining-title">
               {upcoming.length ? nav("transit.remaining") : nav("transit.done")}
             </h3>
@@ -90,9 +91,8 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
           </div>
 
           <div className="nav-bar-main">
-            {/* Deux boutons de recalage : l'horaire de Navitia est une
-                prévision, et un train en retard rend le guidage faux sans que
-                rien ne permette de le dire. */}
+            {/* Deux flèches pour regarder les autres étapes, sans changer
+                celle où l'on est. */}
             <div className="transit-nudge">
               <button onClick={session.back} aria-label={nav("transit.previous")}>
                 <ChevronLeft size={16} />
@@ -130,16 +130,18 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
 /**
  * Les stations de la ligne en cours, comme sur le plan au-dessus des portes
  * (demande explicite, 13 octobre 2026 ; réglable dans « Modes ») : un trait à
- * la couleur de la ligne, un point par station, l'heure de passage devant, et
- * la descente en gras au bout. Une station passée disparaît, comme les
+ * la couleur de la ligne, un point par station, et la descente en gras au
+ * bout. **Sans heure de passage** (demande explicite, 15 octobre 2026) : celle
+ * du train prévu trompait quand on en avait pris un autre. Une station passée disparaît, comme les
  * actions de la liste : ce qui est écrit est ce qui reste.
  *
  * **Un point bleu dit où l'on est**, sans un mot (demande explicite) : posé sur
  * la première station tant qu'on y est, il glisse le long du trait vers la
  * suivante à mesure qu'on avance (`fraction`, de 0 à 1), puis la liste remonte
- * d'un cran et il repart du haut.
+ * d'un cran et il repart du haut. Pas de point sur une étape regardée aux
+ * flèches (`fraction` nul) : on n'y est pas.
  */
-function Stations({ stops, fraction, color }: { stops: TransitStop[]; fraction: number; color: string | undefined }) {
+function Stations({ stops, fraction, color }: { stops: TransitStop[]; fraction: number | null; color: string | undefined }) {
   const { nav } = useNav();
   return (
     <>
@@ -149,9 +151,8 @@ function Stations({ stops, fraction, color }: { stops: TransitStop[]; fraction: 
           const last = rank === stops.length - 1;
           return (
             <li key={`${stop.name}-${stop.at.getTime()}`} className={`transit-station ${last ? "is-last" : ""}`}>
-              <span className="transit-step-time">{formatClock(stop.at)}</span>
               <span className="transit-station-dot" aria-hidden="true">
-                {rank === 0 && (
+                {rank === 0 && fraction !== null && (
                   <span className="transit-station-here" style={{ top: `${50 + Math.min(1, Math.max(0, fraction)) * 100}%` }} />
                 )}
               </span>
@@ -164,6 +165,24 @@ function Stations({ stops, fraction, color }: { stops: TransitStop[]; fraction: 
         })}
       </ol>
     </>
+  );
+}
+
+/**
+ * L'alerte de descente, sous la liste des stations, comme le « Get off alert »
+ * de Citymapper : le même réglage que dans « Modes », à portée de pouce.
+ */
+function GetOffSwitch() {
+  const { nav } = useNav();
+  const on = useGetOffAlertEnabled();
+  return (
+    <button className="transit-getoff" onClick={() => setGetOffAlertEnabled(!on)} role="switch" aria-checked={on}>
+      <BellRing size={15} />
+      <span>{nav("transit.getOffAlert")}</span>
+      <span className={`toggle-switch is-small ${on ? "is-on" : ""}`} aria-hidden="true">
+        <span className="toggle-switch-knob" />
+      </span>
+    </button>
   );
 }
 
@@ -317,8 +336,3 @@ function exitText(exit: StationExit, nav: Nav): string {
   return nav("transit.exitUnnumbered", { name: exit.name });
 }
 
-function offsetText(offset: number, nav: Nav): string {
-  const count = Math.abs(offset);
-  if (offset > 0) return count === 1 ? nav("transit.ahead") : nav("transit.aheadMany", { count });
-  return count === 1 ? nav("transit.behind") : nav("transit.behindMany", { count });
-}

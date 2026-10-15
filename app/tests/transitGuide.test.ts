@@ -158,4 +158,26 @@ describe("ridePosition — le point bleu sur la ligne des stations", async () =>
   it("ne dit rien sans desserte", () => {
     expect(ridePosition({ ...leg, stops: undefined }, t(53).getTime(), null)).toBeNull();
   });
+  it("une position de la 4G, à 200 m de la ligne, compte si sa précision le permet", () => {
+    const coarse = { lon: 2.4235, lat: lat + 0.0018 };
+    expect(ridePosition(leg, t(53).getTime(), coarse)).toBeCloseTo(0.5);
+    expect(ridePosition(leg, t(53).getTime(), coarse, 250)).toBeCloseTo(1.5, 1);
+  });
+});
+
+describe("timeAtPosition — l'heure où l'horaire place le train", async () => {
+  const { timeAtPosition } = await import("../src/navigation/transitGuide");
+  const leg = {
+    ...journey.legs[1],
+    stops: [
+      { name: "Bourbaki", lon: 2.404, lat, at: t(51) },
+      { name: "Milieu", lon: 2.417, lat, at: t(55) },
+      { name: "Rue des Remises", lon: 2.43, lat, at: t(58) },
+    ],
+  };
+  it("interpole entre deux passages", () => {
+    expect(timeAtPosition(leg, 0)).toBe(t(51).getTime());
+    expect(timeAtPosition(leg, 1.5)).toBe(t(56).getTime() + 30_000);
+    expect(timeAtPosition(leg, 2)).toBe(t(58).getTime());
+  });
 });

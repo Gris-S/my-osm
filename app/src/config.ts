@@ -620,6 +620,12 @@ export const CONFIG = {
   // itinéraire en transports peut coûter : chaque étape ajoute un appel à
   // Navitia, sur le quota partagé de 1 000 par jour.
   MAX_WAYPOINTS: 15,
+  // À pied, à vélo et en voiture, le plafond est bien plus haut (demande
+  // explicite, 15 octobre 2026 : un dossier de lieux à visiter dépassait 15).
+  // Mesuré le même jour : OSRM accepte 100 points, TomTom 50 (150 annoncés),
+  // et Valhalla 10 seulement — le vélo est demandé par morceaux
+  // (`BIKE_MAX_LOCATIONS`). 48 étapes + départ + arrivée = les 50 de TomTom.
+  MAX_ROAD_WAYPOINTS: 48,
 
   // Au-delà de ce nombre d'étapes, la liste cesse de s'allonger et défile sur
   // place : le panneau porte aussi les modes, le résultat et le détail du
@@ -759,3 +765,8 @@ export const CONFIG = {
 // que l'on demande à un routeur de voirie.
 export type TravelMode = "driving" | "walking" | "cycling" | "transit";
 export type RoadMode = Exclude<TravelMode, "transit">;
+
+/** Le plafond d'étapes intermédiaires d'un parcours dans ce mode (voir `MAX_ROAD_WAYPOINTS`). */
+export function maxWaypoints(mode: TravelMode): number {
+  return mode === "transit" ? CONFIG.MAX_WAYPOINTS : CONFIG.MAX_ROAD_WAYPOINTS;
+}

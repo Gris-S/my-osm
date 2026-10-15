@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CONFIG, type TravelMode } from "../config";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CONFIG, maxWaypoints, type TravelMode } from "../config";
 import { getRoute } from "../services/routing";
 import { journeyToRoute, type TransitJourney } from "../transport/journeyView";
 import { loadJourneys } from "../transport/journeys";
 import { isTransitStop } from "../services/idfm";
 import { t } from "../i18n";
+import { distance } from "../navigation/geo";
 import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit, TripWhen } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -12,6 +13,9 @@ import type { LonLat, Place, RouteResult, RouteStop, RouteStopMarker, StopEdit, 
 // repères sur la carte. Sorti d'`App` sans rien changer — `App` en reprend les
 // mêmes noms. La position de l'appareil est passée d'en haut.
 // ---------------------------------------------------------------------------
+
+/** En deçà, un nouveau relevé ne refait pas le trajet : le GPS tremble d'une dizaine de mètres. */
+const MOVED_METERS = 100;
 
 export function useItinerary(devicePosition: LonLat | null, positionAt: number | null, locate: () => void) {
   // Le parcours entier, dans l'ordre : départ, étapes, arrivée. **Un seul
@@ -58,6 +62,14 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   // attend, puis demande un départ si le GPS ne répond pas. Une fois le
   // parcours ouvert, la position ne se périme plus : le trajet affiché ne doit
   // pas disparaître parce que deux minutes ont passé.
+  //
+  // **Sauf quand on revient au panneau** (`refreshCurrentLocation`) : fin
+  // d'une navigation, ou retour dans l'application. Le 15 octobre 2026, le
+  // panneau ouvert à Ranelagh est resté dessous pendant une heure de
+  // transports, et le trajet vélo calculé à l'arrivée partait encore de
+  // Ranelagh — 20 km au lieu de quelques centaines de mètres. Le trajet
+  // affiché reste le temps du nouveau relevé, et n'est refait que si l'on a
+  // bougé de plus de `MOVED_METERS`.
   const hasCurrentStop = stops.some((stop) => stop.kind === "current");
   const [fixSince, setFixSince] = useState<number | null>(null);
   const latestFix = useRef({ positionAt, locate });
@@ -72,8 +84,35 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
     const { positionAt: at, locate: relocate } = latestFix.current;
     if (at === null || at < since) relocate();
   }, [hasCurrentStop]);
-  const position =
+  const fresh =
     devicePosition && positionAt !== null && fixSince !== null && positionAt >= fixSince ? devicePosition : null;
+  // Le point retenu pour le calcul : il ne suit un relevé frais que s'il a
+  // bougé, et survit à une nouvelle demande le temps qu'elle aboutisse.
+  // Mis à jour pendant le rendu, en comparant au point retenu (patron « valeur
+  // du rendu précédent » de React).
+  const [held, setHeld] = useState<LonLat | null>(null);
+  const moved = fresh !== null && (held === null || distance(held, fresh) > MOVED_METERS);
+  if (!hasCurrentStop && held) setHeld(null);
+  else if (hasCurrentStop && moved) setHeld(fresh);
+  const position = !hasCurrentStop ? null : moved ? fresh : held;
+
+  const refreshCurrentLocation = useCallback(() => {
+    if (!hasCurrentStop) return;
+    const { positionAt: at, locate: relocate } = latestFix.current;
+    if (at !== null && at >= Date.now() - CONFIG.ROUTE_POSITION_MAX_AGE_MS) return;
+    setFixSince(Date.now());
+    relocate();
+  }, [hasCurrentStop]);
+
+  // Retour dans l'application, parcours ouvert : on a pu changer de quartier.
+  useEffect(() => {
+    if (!hasCurrentStop) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshCurrentLocation();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [hasCurrentStop, refreshCurrentLocation]);
 
   /**
    * Les coordonnées de chaque point du parcours, dans l'ordre. `null` là où
@@ -118,7 +157,7 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   /** Ajoute une étape à la fin du parcours, juste avant l'arrivée. */
   function handleAddStop(place: Place) {
     setStops((current) => {
-      if (current.length - 2 >= CONFIG.MAX_WAYPOINTS) return current;
+      if (current.length - 2 >= maxWaypoints(routeMode)) return current;
       const next = [...current];
       next.splice(next.length - 1, 0, { kind: "place", place });
       return next;
@@ -180,6 +219,14 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   useEffect(() => {
     if (!routePoints) return;
     const points = routePoints;
+    // En transports, chaque étape coûte un appel sur le quota partagé : un
+    // parcours de cinquante lieux, bâti à pied, n'y passe pas.
+    if (routeMode === "transit" && points.length - 2 > CONFIG.MAX_WAYPOINTS) {
+      setJourneys(null);
+      setRouteLoading(false);
+      setRouteError(t("itinerary.transitTooMany", { count: CONFIG.MAX_WAYPOINTS }));
+      return;
+    }
     const controller = new AbortController();
     let cancelled = false;
     setRouteLoading(true);
@@ -280,6 +327,7 @@ export function useItinerary(devicePosition: LonLat | null, positionAt: number |
   }
 
   return {
+    refreshCurrentLocation,
     stops,
     setStops,
     editingStop,

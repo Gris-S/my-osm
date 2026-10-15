@@ -87,6 +87,7 @@ export function maneuverIcon(maneuver: NavManeuver): LucideIcon {
  */
 export function maneuverText(maneuver: NavManeuver): string {
   const { type, modifier, name, exit, waypoint } = maneuver;
+  if (maneuver.text) return maneuver.text;
   const named = name.length > 0;
   const vars = { name, exit: exit ?? 0 };
 

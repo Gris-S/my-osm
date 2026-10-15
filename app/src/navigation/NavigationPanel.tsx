@@ -99,7 +99,7 @@ export function NavigationPanel({ session }: { session: NavSession }) {
         )}
 
         {/* Musique en cours : l'encart n'existe que s'il y en a une (voir `music/`). */}
-        <MusicCard />
+        <MusicCard mode={session.mode} />
         <div className={`nav-bar ${detailOpen ? "is-open" : ""}`}>
           {detailOpen && route && (
             <Detail route={route} traveledMeters={progress?.traveledMeters ?? 0} />
@@ -153,9 +153,11 @@ export function NavigationPanel({ session }: { session: NavSession }) {
             {/* « Terminer » ne referme pas : il **clôt le trajet**, et la
                 fiche qui s'ouvre rend compte de ce qui a été fait. C'est elle
                 qui referme ensuite. */}
-            <button className="nav-stop" onClick={session.finish}>
-              <X size={16} />
-              {nav("nav.stop")}
+            {/* Un rond, comme en voiture (demande explicite, 15 octobre 2026) :
+                le libellé poussait le dénivelé sous le bouton. Il reste pour la
+                synthèse vocale et l'infobulle. */}
+            <button className="nav-stop is-round" onClick={session.finish} aria-label={nav("nav.stop")} title={nav("nav.stop")}>
+              <X size={22} />
             </button>
           </div>
         </div>

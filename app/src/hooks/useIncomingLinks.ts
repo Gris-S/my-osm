@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { Place } from "../types";
+import type { GeoFile } from "../services/geoFile";
 import { resolveIncoming } from "../services/incoming";
 import { launchUrl, listenAppUrls } from "../services/native";
 import { useLatest } from "./useLatest";
@@ -11,6 +12,8 @@ interface IncomingHandlers {
   onRoute: (place: Place) => void;
   /** Un texte partagé qu'on ne sait pas placer : il part en recherche sur le web. */
   onUnresolved: (text: string) => void;
+  /** Un fichier GPX, KML ou GeoJSON ouvert avec MY OSM ; `file` nul s'il ne se lit pas. */
+  onFile: (name: string, file: GeoFile | null) => void;
 }
 
 /**
@@ -39,12 +42,14 @@ export function useIncomingLinks(handlers: IncomingHandlers) {
     // et doit toucher l'application telle qu'elle est alors.
     const handle = (url: string) => {
       const now = Date.now();
-      if (url === lastUrl && now - lastAt < 5000) return;
+      // Un fichier se reprend toujours : deux ouvertures du même nom sont deux fichiers.
+      if (url === lastUrl && now - lastAt < 5000 && !url.startsWith("myosm-file:")) return;
       lastUrl = url;
       lastAt = now;
       void resolveIncoming(url).then((action) => {
         if (!action) return;
-        if (action.kind === "search") latest.current.onUnresolved(action.text);
+        if (action.kind === "file") latest.current.onFile(action.name, action.file);
+        else if (action.kind === "search") latest.current.onUnresolved(action.text);
         else if (action.kind === "route") latest.current.onRoute(action.place);
         else latest.current.onPlace(action.place);
       });

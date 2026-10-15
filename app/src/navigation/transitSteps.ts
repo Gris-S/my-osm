@@ -135,6 +135,47 @@ export function buildTransitSteps(journey: TransitJourney): TransitStep[] {
 }
 
 /**
+ * Le trajet recalé sur le train réellement pris à l'étape `legIndex` : ses
+ * heures, celles de ses arrêts et des marches qui suivent jusqu'au prochain
+ * véhicule glissent d'autant (même ligne, mêmes temps entre stations). Le
+ * véhicule suivant garde son horaire : on l'attendra simplement plus longtemps.
+ */
+export function retimeLeg(journey: TransitJourney, legIndex: number, departure: Date): TransitJourney {
+  const leg = journey.legs[legIndex];
+  if (!leg || leg.kind !== "transit") return journey;
+  const delta = departure.getTime() - leg.departure.getTime();
+  const shift = (date: Date) => new Date(date.getTime() + delta);
+  const nextTransit = journey.legs.findIndex((other, i) => i > legIndex && other.kind === "transit");
+  const until = nextTransit < 0 ? journey.legs.length : nextTransit;
+  const legs = journey.legs.map((other, i) =>
+    i < legIndex || i >= until
+      ? other
+      : {
+          ...other,
+          departure: shift(other.departure),
+          arrival: shift(other.arrival),
+          stops: other.stops?.map((stop) => ({ ...stop, at: shift(stop.at) })),
+        }
+  );
+  const arrival = nextTransit < 0 ? shift(journey.arrival) : journey.arrival;
+  return {
+    ...journey,
+    legs,
+    arrival,
+    durationSeconds: Math.round((arrival.getTime() - journey.departure.getTime()) / 1000),
+  };
+}
+
+/**
+ * L'heure de l'alerte de descente : quand le train quitte l'avant-dernière
+ * station (Citymapper fait de même), ou 90 s avant l'arrivée faute de desserte.
+ */
+export function getOffTime(leg: TransitLeg): number {
+  const stops = leg.stops;
+  return stops && stops.length >= 2 ? stops[stops.length - 2].at.getTime() : leg.arrival.getTime() - 90_000;
+}
+
+/**
  * L'action en cours d'après l'horaire : la dernière dont l'heure est passée.
  *
  * Avant l'heure de départ du trajet — on a lancé le guidage en avance — c'est

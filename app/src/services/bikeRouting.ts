@@ -101,7 +101,46 @@ export function fetchBikeRoute(points: LonLat[], profile: BikeProfile, signal?: 
   return signal ? abortable(value, signal) : value;
 }
 
+/**
+ * **Dix points au plus par demande** : au-delà, Valhalla de la FOSSGIS répond
+ * « Exceeded max locations: 10 » (mesuré le 15 octobre 2026, à 25, 50 et 100
+ * points). Un parcours plus long est demandé par morceaux qui se partagent
+ * leurs extrémités, puis recousu (`stitch`) : les tronçons (`legs`) se suivent,
+ * comme dans une réponse unique.
+ */
+export const BIKE_MAX_LOCATIONS = 10;
+
 async function computeBikeRoute(points: LonLat[], profile: BikeProfile): Promise<BikeRoute> {
+  if (points.length <= BIKE_MAX_LOCATIONS) return computeBikeChunk(points, profile);
+  const parts: BikeRoute[] = [];
+  for (let start = 0; start < points.length - 1; start += BIKE_MAX_LOCATIONS - 1) {
+    parts.push(await computeBikeChunk(points.slice(start, start + BIKE_MAX_LOCATIONS), profile));
+  }
+  return stitch(parts);
+}
+
+/** Des morceaux consécutifs, recousus en un seul parcours. */
+export function stitch(parts: BikeRoute[]): BikeRoute {
+  const coordinates: GeoJSON.Position[] = [];
+  for (const part of parts) {
+    for (const position of part.route.geometry.coordinates) {
+      const last = coordinates[coordinates.length - 1];
+      if (last && last[0] === position[0] && last[1] === position[1]) continue;
+      coordinates.push(position);
+    }
+  }
+  return {
+    source: parts.some((part) => part.source === "brouter") ? "brouter" : "valhalla",
+    route: {
+      distance: parts.reduce((sum, part) => sum + part.route.distance, 0),
+      duration: parts.reduce((sum, part) => sum + part.route.duration, 0),
+      geometry: { type: "LineString", coordinates },
+      legs: parts.flatMap((part) => part.route.legs),
+    },
+  };
+}
+
+async function computeBikeChunk(points: LonLat[], profile: BikeProfile): Promise<BikeRoute> {
   try {
     return { source: "valhalla", route: await fromValhalla(points, profile) };
   } catch (e) {

@@ -31,6 +31,7 @@ export interface StreetPhotoRef {
   lat: number;
 }
 import type { SavedPlace as StoredPlace } from "../hooks/useBookmarks";
+import { geoFileBounds, type GeoFile } from "../services/geoFile";
 // Navigation guidée — voir `src/navigation/README.md`. La carte n'en connaît
 // que la caméra à suivre et le repère du marcheur ; tout le reste est dans ce
 // dossier, et se retire avec lui.
@@ -47,6 +48,15 @@ const NAV_POI_REFRESH_MS = 1000;
 
 /** Un lieu enregistré tel que la carte le reçoit : le point et sa couleur. */
 type SavedPlace = StoredPlace & { color: string };
+
+const NO_TRACKS: { id: string; color: string; tracks: LonLat[][] }[] = [];
+const SAVED_TRACKS_SOURCE_ID = "saved-tracks-source";
+const SAVED_TRACKS_LAYER_ID = "saved-tracks-layer";
+const GEOFILE_SOURCE_ID = "geofile-source";
+const GEOFILE_CASING_ID = "geofile-casing";
+const GEOFILE_LAYER_ID = "geofile-layer";
+/** Le violet des fichiers ouverts : ni le bleu d'un itinéraire, ni l'orange d'une course. */
+export const GEOFILE_COLOR = "#AF52DE";
 
 interface MapViewProps {
   /** Catégories cochées : la carte lit les POI correspondants dans ses tuiles. */
@@ -108,6 +118,10 @@ interface MapViewProps {
   onSelectArea?: (target: { osmNode: number; kind: string; name: string; lon: number; lat: number }) => void;
   /** Le contour à surligner, celui de la ville ou du quartier ouvert. */
   areaOutline?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
+  /** Le fichier GPX, KML ou GeoJSON ouvert : ses traces sont dessinées, la carte s'y cadre (ses points passent par `savedPlaces`). */
+  geoFile?: GeoFile | null;
+  /** Les traces des dossiers de signets allumés, à leur couleur. */
+  savedTracks?: { id: string; color: string; tracks: LonLat[][] }[];
   /**
    * Largeur couverte à gauche par la colonne du grand écran (`useWideLayout`),
    * 0 ailleurs. La carte s'en écarte : un lieu choisi se centre dans ce qui
@@ -174,6 +188,8 @@ export const MapView = memo(function MapView({
   onBackgroundClick,
   onSelectArea,
   areaOutline = null,
+  geoFile = null,
+  savedTracks = NO_TRACKS,
   insetLeft = 0,
   savedPlaces,
   onSelectSaved,
@@ -1487,6 +1503,122 @@ export const MapView = memo(function MapView({
     // `syncNavCone` ne lit que des refs : il n'a pas à relancer l'abonnement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsCompass]);
+
+  // Les traces d'un fichier ouvert (GPX, KML, GeoJSON), et le cadrage sur
+  // tout ce qu'il montre — une fois, à l'ouverture. Même patron que le tracé
+  // d'une course : sa propre source, reposée après chaque changement de style.
+  const geoFileRef = useRef(geoFile);
+  geoFileRef.current = geoFile;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const current = geoFileRef.current;
+      if (!current?.tracks.length) {
+        for (const id of [GEOFILE_LAYER_ID, GEOFILE_CASING_ID]) if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(GEOFILE_SOURCE_ID)) map.removeSource(GEOFILE_SOURCE_ID);
+        return;
+      }
+      const data: GeoJSON.FeatureCollection = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "MultiLineString", coordinates: current.tracks.map((track) => track.map((p) => [p.lon, p.lat])) },
+          },
+        ],
+      };
+      const source = map.getSource(GEOFILE_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(data);
+        return;
+      }
+      // `isStyleLoaded` reste faux tant que des tuiles arrivent : sans nouvel
+      // essai, un fichier ouvert pendant le chargement n'était jamais dessiné.
+      if (!map.isStyleLoaded()) {
+        map.once("idle", apply);
+        return;
+      }
+      map.addSource(GEOFILE_SOURCE_ID, { type: "geojson", data });
+      map.addLayer({
+        id: GEOFILE_CASING_ID,
+        type: "line",
+        source: GEOFILE_SOURCE_ID,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.85 },
+      });
+      map.addLayer({
+        id: GEOFILE_LAYER_ID,
+        type: "line",
+        source: GEOFILE_SOURCE_ID,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": GEOFILE_COLOR, "line-width": 4 },
+      });
+    };
+    apply();
+    // Sans animation : un fichier ouvert depuis une autre application arrive
+    // pendant que la page revient au premier plan, où une animation ne tourne pas.
+    if (geoFile) {
+      const [west, south, east, north] = geoFileBounds(geoFile);
+      if (west === east && south === north) map.jumpTo({ center: [west, south], zoom: Math.max(map.getZoom(), 15) });
+      else map.fitBounds([west, south, east, north], { padding: 80, maxZoom: 16, duration: 0 });
+    }
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+      map.off("idle", apply);
+    };
+  }, [geoFile]);
+
+  // Les traces des dossiers allumés : comme leurs points, elles se montrent et
+  // se cachent avec le dossier, à sa couleur. Pas de cadrage : allumer un
+  // dossier ne déplace pas la carte.
+  const savedTracksRef = useRef(savedTracks);
+  savedTracksRef.current = savedTracks;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const current = savedTracksRef.current;
+      if (!current.length) {
+        if (map.getLayer(SAVED_TRACKS_LAYER_ID)) map.removeLayer(SAVED_TRACKS_LAYER_ID);
+        if (map.getSource(SAVED_TRACKS_SOURCE_ID)) map.removeSource(SAVED_TRACKS_SOURCE_ID);
+        return;
+      }
+      const data: GeoJSON.FeatureCollection = {
+        type: "FeatureCollection",
+        features: current.map((folder) => ({
+          type: "Feature",
+          properties: { color: folder.color },
+          geometry: { type: "MultiLineString", coordinates: folder.tracks.map((track) => track.map((p) => [p.lon, p.lat])) },
+        })),
+      };
+      const source = map.getSource(SAVED_TRACKS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(data);
+        return;
+      }
+      if (!map.isStyleLoaded()) {
+        map.once("idle", apply);
+        return;
+      }
+      map.addSource(SAVED_TRACKS_SOURCE_ID, { type: "geojson", data });
+      map.addLayer({
+        id: SAVED_TRACKS_LAYER_ID,
+        type: "line",
+        source: SAVED_TRACKS_SOURCE_ID,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": ["get", "color"], "line-width": 4, "line-opacity": 0.85 },
+      });
+    };
+    apply();
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+      map.off("idle", apply);
+    };
+  }, [savedTracks]);
 
   // Le tracé d'une course (`navigation.trace`), dessiné tel qu'il arrive.
   //

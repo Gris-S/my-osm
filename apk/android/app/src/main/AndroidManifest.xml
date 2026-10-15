@@ -65,6 +65,72 @@
                 <data android:pathPrefix="/maps" />
             </intent-filter>
 
+            <!-- Autres liens de cartes que `parseMapLink` sait lire (Waze, Bing, HERE). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="waze.com" />
+                <data android:host="www.waze.com" />
+                <data android:host="ul.waze.com" />
+                <data android:host="wego.here.com" />
+                <data android:host="share.here.com" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="www.bing.com" />
+                <data android:host="bing.com" />
+                <data android:pathPrefix="/maps" />
+            </intent-filter>
+
+            <!-- Fichiers de traces et de points (`app/src/services/geoFile.ts`) : GPX, KML,
+                 GeoJSON, ouverts depuis un gestionnaire de fichiers ou partagés par une autre
+                 application. Lus par `MainActivity`. Par leur type quand l'expéditeur le
+                 donne ; sinon par leur extension, que seul un nom de fichier porte. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/vnd.google-earth.kml+xml" />
+                <data android:mimeType="application/geo+json" />
+                <data android:mimeType="application/vnd.geo+json" />
+            </intent-filter>
+            <!-- Sans type ni nom : WhatsApp envoie un GPX en `application/octet-stream`, à une
+                 adresse sans extension (`content://com.whatsapp.provider.media/item/…`, relevé
+                 le 15 octobre 2026). Comme OsmAnd, MY OSM accepte tout fichier binaire ou XML et
+                 en juge au contenu : ce qui n'est pas une carte s'annonce illisible. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="text/xml" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.gpx" />
+                <data android:pathPattern=".*\\..*\\.gpx" />
+                <data android:pathPattern=".*\\.kml" />
+                <data android:pathPattern=".*\\..*\\.kml" />
+                <data android:pathPattern=".*\\.geojson" />
+                <data android:pathPattern=".*\\..*\\.geojson" />
+            </intent-filter>
+
             <!-- Texte partagé (« Partager » › MY OSM) : réécrit en adresse par `MainActivity`. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -88,6 +154,11 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- L'alerte de descente des transports (`GetOffAlertPlugin`) : l'alarme
+             programmée arrive ici, écran éteint, et fait vibrer. Seul le système
+             l'envoie (`exported="false"`). -->
+        <receiver android:name=".GetOffAlertReceiver" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -124,6 +195,13 @@
          propose que la position approchée. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Alerte de descente (`GetOffAlertPlugin`) : vibrer, prévenir, et tenir
+         l'heure même téléphone endormi. `SCHEDULE_EXACT_ALARM` s'accorde dans
+         « Alarmes et rappels » ; sans elle, l'alerte peut arriver en retard. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>

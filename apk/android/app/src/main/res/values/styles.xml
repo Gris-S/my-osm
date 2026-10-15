@@ -13,14 +13,6 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- Calendrier et horloge des champs date/heure de la WebView : au bleu de l'app, pas au vert d'Android. -->
-        <item name="android:datePickerDialogTheme">@style/AppTheme.PickerDialog</item>
-        <item name="android:timePickerDialogTheme">@style/AppTheme.PickerDialog</item>
-    </style>
-
-    <style name="AppTheme.PickerDialog" parent="Theme.AppCompat.DayNight.Dialog">
-        <item name="colorAccent">#0A84FF</item>
-        <item name="android:colorAccent">#0A84FF</item>
     </style>
 
 

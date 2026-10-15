@@ -200,7 +200,8 @@ const texte = (selecteur) =>
 
 /** Saisit dans le champ de recherche. React écoute l'événement, pas la propriété. */
 const saisir = (valeur) =>
-  js(`(()=>{const i=document.querySelector('input');if(!i)return false;i.focus();
+  // Pas le premier champ venu : « Ouvrir un fichier » (menu) a son champ caché.
+  js(`(()=>{const i=document.querySelector('input:not([type=file])');if(!i)return false;i.focus();
     const set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
     set.call(i,${JSON.stringify(valeur)});i.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
 
@@ -602,7 +603,7 @@ const SCENARIOS = [
       verifier("la carte est dessinée", await js("!!document.querySelector('.map-container canvas')"));
       verifier("aucune panne de carte signalée", !(await js("!!document.querySelector('.map-status.is-error')")));
       const version = await js("(()=>{const m=[...document.querySelectorAll('*')].find(e=>/Version 0\\./.test(e.textContent||''));return m?m.textContent.trim():null})()");
-      verifier("la barre de recherche est là", await js("!!document.querySelector('input')"));
+      verifier("la barre de recherche est là", await js("!!document.querySelector('input:not([type=file])')"));
       capture("01-demarrage");
       return { version };
     },
@@ -708,7 +709,7 @@ const SCENARIOS = [
       await recharger();
       verifier("le thème sombre est repris", (await js("document.documentElement.getAttribute('data-theme')")) === "dark");
       verifier("la langue française est reprise", (await js("document.documentElement.lang")) === "fr");
-      const place = await js("(()=>{const i=document.querySelector('input');return i?i.placeholder:''})()");
+      const place = await js("(()=>{const i=document.querySelector('input:not([type=file])');return i?i.placeholder:''})()");
       verifier("l'interface est traduite", /lieu|adresse/i.test(place ?? ""), place ?? "");
       capture("06-reglages");
     },
@@ -948,7 +949,8 @@ const SCENARIOS = [
       await scene();
       if (!verifier("le menu principal s'ouvre", await ouvrirMenu())) return;
       const entrees = await js("[...document.querySelectorAll('.app-menu-item')].map(e=>e.innerText.trim()).join(' · ')");
-      verifier("le menu offre ses six entrées", (await js("document.querySelectorAll('.app-menu-item').length")) === 6, entrees);
+      // Sept depuis « Ouvrir un fichier » (GPX, KML, GeoJSON — 15 octobre 2026).
+      verifier("le menu offre ses sept entrées", (await js("document.querySelectorAll('.app-menu-item').length")) === 7, entrees);
       verifier("la version est affichée au bas du menu", await js("!!document.querySelector('.app-menu-version')"),
         (await texte(".app-menu-version")) ?? "");
       await entreeMenu("/Downloads|Téléchargement/i");
@@ -1259,7 +1261,7 @@ const SCENARIOS = [
         return;
       }
       verifier("la carte est dessinée malgré le refus", await js("!!document.querySelector('.map-container canvas')"));
-      verifier("la barre de recherche reste utilisable", await js("!!document.querySelector('input')"));
+      verifier("la barre de recherche reste utilisable", await js("!!document.querySelector('input:not([type=file])')"));
 
       await cliquer(".locate-button");
       const debut = Date.now();
@@ -1308,7 +1310,7 @@ const SCENARIOS = [
       const paysage = await js("window.innerWidth + 'x' + window.innerHeight");
       verifier("l'écran a bien tourné", portrait !== paysage, `${portrait} → ${paysage}`);
       verifier("la carte est redessinée", await js("!!document.querySelector('.map-container canvas')"));
-      verifier("la barre de recherche est toujours là", await js("!!document.querySelector('input')"));
+      verifier("la barre de recherche est toujours là", await js("!!document.querySelector('input:not([type=file])')"));
       const deborde = await js("document.documentElement.scrollWidth > window.innerWidth + 1");
       verifier(
         "aucun débordement horizontal",
@@ -2649,53 +2651,56 @@ const SCENARIOS = [
       await cliquer(".locate-button");
       await dodo(1500);
       await carteVers(2.3311, 48.8726, 15);
-      await saisir("Nation");
-      await attendre(".search-result");
-      await cliquerPremierLieu();
+      // Nation en coordonnées : un point collé ne dépend pas du géocodeur.
+      await saisir("48.8483, 2.3959");
+      await attendre(".search-result.is-brand");
+      await cliquer(".search-result.is-brand");
       if (!verifier("la fiche s'ouvre", await attendre(".sheet"))) return;
       await cliquer(".sheet-action-primary");
       await attendre(".itinerary-panel");
 
+      // « Partir plus tard » : les segments (maintenant, partir à, arriver à),
+      // puis le sélecteur de l'application (`WhenAt`, 15 octobre 2026) — les
+      // champs du système s'écrivaient blanc sur blanc la nuit.
+      const quand = (rang) =>
+        js(`(()=>{const b=document.querySelectorAll('.itinerary-when .segmented-option')[${rang}];if(b)b.click();return !!b})()`);
+      const roue = (colonne, rang) =>
+        js(`(()=>{const v=document.querySelectorAll('.when-wheel')[${colonne}]?.querySelectorAll('.when-wheel-value')[${rang}];if(v)v.click();return !!v})()`);
+
       // --- partir plus tard, en voiture (le mode d'ouverture) : avec TomTom seulement
       await js("(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[0])m[0].click();return true})()");
       await attendre(".itinerary-result", 30_000);
-      if (!(await js("!!document.querySelector('.itinerary-when select')"))) {
+      if (!(await js("!!document.querySelector('.itinerary-when')"))) {
         verifier("pas de clé TomTom : « partir plus tard » en voiture non éprouvé", true, "le sélecteur n'existe qu'avec elle");
       } else {
-        await js(`(()=>{const s=document.querySelector('.itinerary-when select');
-          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'arrive');
-          s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+        await quand(2); // arriver à
         const estime = await attendre(".itinerary-when-result", 25_000);
         verifier("en voiture, une heure d'arrivée donne l'heure de départ estimée", estime, (await texte(".itinerary-when-result")) ?? "");
         capture("41-partir-plus-tard-voiture");
-        await js(`(()=>{const s=document.querySelector('.itinerary-when select');
-          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'now');
-          s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+        await quand(0);
       }
 
       await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
       if (!verifier("un trajet en transports est proposé", await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000))) return;
 
-      // --- partir plus tard : demain, huit heures
-      const demain = new Date(Date.now() + 86_400_000);
-      const valeur = `${demain.getFullYear()}-${String(demain.getMonth() + 1).padStart(2, "0")}-${String(demain.getDate()).padStart(2, "0")}T08:00`;
-      verifier("le sélecteur « partir plus tard » est là", await js("!!document.querySelector('.itinerary-when select')"));
-      await js(`(()=>{const s=document.querySelector('.itinerary-when select');
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'depart');
-        s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
-      await attendre(".itinerary-when input");
-      await js(`(()=>{const i=document.querySelector('.itinerary-when input');
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'${valeur}');
-        i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      // --- partir plus tard : demain, huit heures, par les pastilles et les roues
+      verifier("le sélecteur « partir plus tard » est là", await quand(1));
+      await attendre(".when-day");
+      await js("(()=>{const d=document.querySelectorAll('.when-day')[1];if(d)d.click();return !!d})()");
+      await dodo(800);
+      await roue(0, 8);
+      await dodo(1200); // le défilement doux, puis l'arrêt de la roue
+      await roue(1, 0);
       await dodo(1500);
+      const choisi = await js(`(()=>{const v=[...document.querySelectorAll('.when-wheel-value.is-active')].map(e=>e.innerText);
+        return (document.querySelector('.when-day.is-active')?.innerText??'')+' '+v.join(':')})()`);
+      verifier("le sélecteur dit demain, 08:00", /(Demain|Tomorrow) 08:00/.test(choisi ?? ""), choisi ?? "");
       const plusTard = await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000);
       const heures = (await js("document.querySelector('.itinerary-journeys')?.innerText.replace(/\\n+/g,' ').slice(0,160) ?? ''")) ?? "";
       verifier("les trajets sont recalculés pour demain huit heures", plusTard && /\b0?8[:h]\d\d/.test(heures), heures);
       capture("41-partir-plus-tard");
       // Retour à maintenant : c'est ce trajet-là qu'on va suivre.
-      await js(`(()=>{const s=document.querySelector('.itinerary-when select');
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'now');
-        s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+      await quand(0);
       await dodo(1500);
       if (!(await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000))) return verifier("retour à maintenant", false);
 
@@ -2704,7 +2709,7 @@ const SCENARIOS = [
       await dodo(1000);
       verifier("au départ, rien ne se recouvre", (await chevauchements()) === "", await chevauchements());
 
-      // Jusqu'à la montée, à la main : la liste des stations paraît.
+      // Jusqu'à la montée, aux flèches : la liste des stations paraît.
       for (let k = 0; k < 4 && !(await js("!!document.querySelector('.transit-stations')")); k++) {
         await js("(()=>{const b=document.querySelectorAll('.transit-nudge button')[1];if(b)b.click();return true})()");
         await dodo(700);
@@ -2713,14 +2718,106 @@ const SCENARIOS = [
         return {n:l.length,derniere:l[l.length-1]??''}})()`);
       verifier("les stations de la ligne s'affichent, la descente en dernier", stations.n >= 2, `${stations.n} stations, jusqu'à « ${stations.derniere} »`);
       verifier("stations affichées, rien ne se recouvre", (await chevauchements()) === "", await chevauchements());
-      // Le point bleu : sur le quai, il est sur la première station, celle de la montée.
-      const point = await js(`(()=>{const p=document.querySelector('.transit-station-here');const d=document.querySelector('.transit-station-dot');
-        if(!p||!d)return null;const a=p.getBoundingClientRect(),b=d.getBoundingClientRect();
-        return {ecart:Math.round((a.top+a.height/2)-(b.top+b.height/2)),nombre:document.querySelectorAll('.transit-station-here').length}})()`);
-      verifier("un point bleu, posé sur la station où l'on est", point !== null && point.nombre === 1 && Math.abs(point.ecart) <= 2, JSON.stringify(point));
+      // Demande du 15 octobre 2026 : plus d'heure devant les stations, et pas de
+      // point bleu sur une étape regardée aux flèches — on n'y est pas.
+      const heuresStations = await js("document.querySelectorAll('.transit-stations .transit-step-time').length");
+      verifier("les stations n'ont pas d'heure", heuresStations === 0, `${heuresStations} heure(s)`);
+      const points = await js("document.querySelectorAll('.transit-station-here').length");
+      verifier("étape regardée aux flèches : pas de point bleu", points === 0, `${points} point(s)`);
+      verifier("la note dit qu'on regarde une autre étape", await js("!!document.querySelector('.transit-resync')"));
       capture("42-transports-stations");
+      await cliquer(".transit-resync");
+      await dodo(700);
+      verifier("« Revenir à maintenant » rend l'étape en cours", !(await js("!!document.querySelector('.transit-resync')")));
       await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
       await dodo(1000);
+    },
+  },
+
+  {
+    id: "position-retour",
+    titre: "« Ma position » se refait au retour dans l'application",
+    /**
+     * Nuit du 15 octobre 2026 : itinéraire ouvert à Ranelagh, une heure de
+     * transports, et le trajet vélo calculé à l'arrivée partait encore de
+     * Ranelagh. Le relevé simulé porte ici l'heure de chaque demande — celui
+     * de `positionSimulee` est daté une fois pour toutes, et vieillirait.
+     */
+    async executer() {
+      const poser = (lat, lon) =>
+        js(`(()=>{const f=()=>({coords:{latitude:${lat},longitude:${lon},accuracy:5,heading:null,speed:0,altitude:null,altitudeAccuracy:null},timestamp:Date.now()});
+          navigator.geolocation.getCurrentPosition=(ok)=>ok(f());
+          navigator.geolocation.watchPosition=(ok)=>{ok(f());return setInterval(()=>ok(f()),1000)};
+          navigator.geolocation.clearWatch=(id)=>clearInterval(id);return true})()`);
+      const km = async () => Number(/([\d.,]+)\s*km/.exec((await texte(".itinerary-result")) ?? "")?.[1]?.replace(",", ".") ?? NaN);
+      await scene();
+      await poser(48.8553, 2.27); // Ranelagh
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await carteVers(2.27, 48.8553, 15);
+      // Nation en coordonnées : un point collé ne dépend pas du géocodeur
+      // (Photon ne répondait plus le jour où ce scénario a été écrit).
+      await saisir("48.8483, 2.3959");
+      await attendre(".search-result.is-brand");
+      await cliquer(".search-result.is-brand");
+      if (!verifier("la fiche s'ouvre", await attendre(".sheet"))) return;
+      await cliquer(".sheet-action-primary");
+      if (!verifier("un itinéraire depuis Ranelagh", await attendre(".itinerary-result", 25_000))) return;
+      await dodo(3000);
+      const avant = await km();
+
+      // On part à Versailles, application derrière, plus de deux minutes.
+      await poser(48.8049, 2.1204);
+      await js("(()=>{window.__marqueurRetour=1;return true})()");
+      adb("shell", "input", "keyevent", "3");
+      await dodo(130_000);
+      reveiller();
+      adb("shell", "monkey", "-p", "org.osmlocal.plans", "-c", "android.intent.category.LAUNCHER", "1");
+      await dodo(3000);
+      await connecter(30_000);
+      if (!(await js("!!window.__marqueurRetour"))) {
+        return verifier("la page a survécu à l'arrière-plan", true, "rechargée par le système : rien à éprouver");
+      }
+      const refait = await attendreQue(
+        `(()=>{const m=/([\\d.,]+)\\s*km/.exec(document.querySelector('.itinerary-result')?.innerText??'');return !!m&&Math.abs(Number(m[1].replace(',','.'))-${avant})>5})()`,
+        30_000,
+      );
+      verifier("le trajet repart de la nouvelle position", refait, `${avant} km → ${await km()} km`);
+      capture("43-position-retour");
+      await cliquer(".itinerary-close");
+    },
+  },
+
+  {
+    id: "partir-plus-tard-sombre",
+    titre: "Le sélecteur de jour et d'heure se lit en thème sombre",
+    // Nuit du 15 octobre 2026 : le calendrier d'Android s'écrivait blanc sur
+    // blanc. Le sélecteur de l'application (`WhenAt`) doit rester lisible.
+    async executer() {
+      await scene({ theme: "dark" });
+      await positionSimulee(48.8726, 2.3311);
+      await cliquer(".locate-button");
+      await dodo(1500);
+      await saisir("48.8483, 2.3959");
+      await attendre(".search-result.is-brand");
+      await cliquer(".search-result.is-brand");
+      if (!verifier("la fiche s'ouvre", await attendre(".sheet"))) return;
+      await cliquer(".sheet-action-primary");
+      // En transports : « Partir plus tard » y existe toujours, en voiture
+      // seulement avec une clé TomTom (absente de la version F-Droid).
+      await attendre(".itinerary-mode", 20_000);
+      await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
+      await attendre(".itinerary-when .segmented-option", 20_000);
+      await js("(()=>{document.querySelectorAll('.itinerary-when .segmented-option')[1]?.click();return true})()");
+      if (!verifier("le sélecteur s'ouvre", await attendre(".when-wheel"))) return;
+      await dodo(1000);
+      // Lisible : le texte des jours et des roues contraste avec leur fond.
+      const contraste = await js(`(()=>{const lum=(c)=>{const m=c.match(/\\d+(\\.\\d+)?/g).map(Number);return (0.2126*m[0]+0.7152*m[1]+0.0722*m[2])/255};
+        const v=document.querySelector('.when-wheel-value.is-active'),p=document.querySelector('.itinerary-panel');
+        return Math.abs(lum(getComputedStyle(v).color)-lum(getComputedStyle(p).backgroundColor)).toFixed(2)})()`);
+      verifier("la valeur retenue se détache du fond", Number(contraste) > 0.5, `écart de luminance ${contraste}`);
+      capture("44-partir-plus-tard-sombre");
+      await cliquer(".itinerary-close");
     },
   },
 
@@ -2879,7 +2976,7 @@ const SCENARIOS = [
       await attendre(".nav-banner .nav-maneuver", 15_000);
       await dodo(1500);
       await etat("guidage en transports");
-      // Le bandeau le plus haut : une descente, avec la note du décalage manuel.
+      // Le bandeau le plus haut : une descente regardée aux flèches, avec sa note.
       for (let i = 0; i < 3; i++) {
         await js("(()=>{const b=document.querySelectorAll('.transit-nudge button')[1];if(b)b.click();return true})()");
         await dodo(400);

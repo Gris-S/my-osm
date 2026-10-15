@@ -43,6 +43,11 @@ export interface NavManeuver {
    * pour toutes les autres manœuvres, y compris l'arrivée finale.
    */
   waypoint: number | null;
+  /**
+   * La phrase toute faite d'une consigne venue d'un fichier (« Tournez à
+   * gauche sur Rue de B… », `trackRoute.ts`), dite telle quelle.
+   */
+  text?: string;
 }
 
 export interface NavStep {

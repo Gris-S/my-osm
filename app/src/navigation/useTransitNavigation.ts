@@ -6,20 +6,36 @@ import {
   buildTransitSteps,
   connectionTo,
   exitWanted,
+  getOffTime,
   remainingStops,
   resyncStep,
+  retimeLeg,
   scheduledStep,
   type ResyncMemory,
   type TransitStep,
 } from "./transitSteps";
-import { anchoredStep, boardingGate, ridePosition, strayed, type Anchor, type GateMemory, type Hold } from "./transitGuide";
+import {
+  anchoredStep,
+  boardingGate,
+  linePosition,
+  ridePosition,
+  strayed,
+  timeAtPosition,
+  type Anchor,
+  type GateMemory,
+  type Hold,
+} from "./transitGuide";
 import { useNavPosition } from "./useNavPosition";
 import { loadJourneys } from "../transport/journeys";
+import { getNextDepartures } from "../services/transit";
 import { note } from "./journal";
 import { useLatest } from "../hooks/useLatest";
 import { setJourneyStopHints } from "../services/idfm";
 import type { NavMapState } from "./useNavigation";
 import { useWakeLock } from "./useWakeLock";
+import { askGetOffPermission, cancelGetOff, scheduleGetOff } from "./getOffAlert";
+import { getOffAlertEnabled, useGetOffAlertEnabled } from "./settings";
+import { navText } from "./strings";
 
 // ---------------------------------------------------------------------------
 // Le guidage d'un trajet en transports.
@@ -34,14 +50,15 @@ import { useWakeLock } from "./useWakeLock";
 //   1. **l'horaire** de Navitia, qui donne l'action en cours à tout instant ;
 //   2. **le GPS**, quand il revient — en surface, sur un quai aérien, dans un
 //      bus — et qui confirme alors qu'on est bien à l'arrêt annoncé ;
-//   3. **l'utilisateur**, par deux boutons, parce qu'un train en retard rend
-//      l'horaire faux et qu'il faut pouvoir le dire.
+//   3. **le premier train qui passe** : arrivé sur le quai, on monte dans le
+//      premier qui part, pas forcément celui du calcul (14 octobre 2026 : le 9
+//      d'avant pris, l'horaire avait trois minutes de retard sur le voyageur).
+//      Ses horaires réels recalent toute la ligne (`retimeLeg`).
 //
-// Le geste manuel se garde sous la forme d'un **décalage en nombre d'actions**
-// et non d'une action figée : le trajet continue d'avancer tout seul, avec une
-// action d'avance ou de retard, ce qui est précisément ce qu'on constate quand
-// une ligne prend du retard. Un relevé GPS qui reconnaît un arrêt remet ce
-// décalage à ce qu'il devrait être.
+// Les deux flèches ne servent qu'à **regarder** les autres étapes (demande
+// explicite, 15 octobre 2026) : elles ne déplacent plus la position. Revenu
+// quatre étapes en arrière, le guidage plaçait le point bleu au Parc de
+// Saint-Maur alors qu'on roulait dans Paris.
 // ---------------------------------------------------------------------------
 
 /** Cadence de l'horloge du guidage. */
@@ -59,6 +76,20 @@ const MAX_ACCURACY_METERS = 60;
 
 /** Au-delà de cet âge, un relevé ne dit plus où l'on est : on est sans doute sous terre. */
 const FRESH_FIX_MS = 20_000;
+
+/**
+ * **Dans le train, la position est crue plus largement** (demande explicite,
+ * 15 octobre 2026) : sous terre elle vient souvent de la 4G du tunnel, à
+ * 100–300 m près, et le 14 octobre c'est elle qui avait raison contre
+ * l'horaire. Les stations du métro étant à ~500 m, cela suffit à dire entre
+ * lesquelles on roule — à condition que le relevé tombe sur la ligne.
+ * shortcut: seuils estimés, pas mesurés — à reprendre sur un relevé réel sous terre.
+ */
+const RIDE_ACCURACY_METERS = 250;
+const RIDE_FIX_MS = 60_000;
+
+/** Écart à l'horaire, mesuré par la position, au-delà duquel la ligne est recalée. */
+const RIDE_RETIME_MS = 30_000;
 
 /**
  * Après l'heure du départ, le temps laissé avant de tenir le véhicule pour
@@ -104,14 +135,15 @@ export interface TransitNavSession {
   rideStops: TransitStop[];
   /**
    * Où l'on est entre la première de ces stations et la suivante, de 0 à 1 :
-   * le point bleu de la liste (`ridePosition`).
+   * le point bleu de la liste (`ridePosition`). `null` : pas de point, on
+   * regarde une autre étape.
    */
-  rideFraction: number;
+  rideFraction: number | null;
   /** La sortie à prendre en descendant, quand la station en déclare une. */
   exit: StationExit | null;
   /** À une descente sans sortie : la ligne à rejoindre par les couloirs. */
   connection: TransitLine | null;
-  /** Décalage manuel, en nombre d'actions, par rapport à l'horaire. */
+  /** Étape regardée aux flèches, en nombre d'actions depuis celle où l'on est (0 : aucune). */
   offset: number;
   /**
    * L'heure du départ est passée mais on n'est pas monté : on attend à l'arrêt
@@ -124,6 +156,8 @@ export interface TransitNavSession {
   replanned: boolean;
   advance: () => void;
   back: () => void;
+  /** Revient à l'étape où l'on est. */
+  follow: () => void;
   simulating: boolean;
   toggleSimulation: () => void;
   start: (journey: TransitJourney) => void;
@@ -133,8 +167,8 @@ export interface TransitNavSession {
 
 export function useTransitNavigation(): TransitNavSession {
   const [journey, setJourney] = useState<TransitJourney | null>(null);
-  // Le geste manuel (les deux flèches), en nombre d'actions.
-  const [offset, setOffset] = useState(0);
+  // L'étape regardée aux flèches, `null` quand on suit celle où l'on est.
+  const [viewing, setViewing] = useState<number | null>(null);
   // L'action où le GPS nous a reconnus (`anchoredStep`).
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [replanning, setReplanning] = useState(false);
@@ -142,6 +176,8 @@ export function useTransitNavigation(): TransitNavSession {
   // Le dernier relevé est-il encore frais ? Remis à jour par l'horloge : un
   // relevé qui vieillit ne redessine rien de lui-même.
   const [fixFresh, setFixFresh] = useState(false);
+  // Le même, avec la tolérance du trajet en train (`RIDE_FIX_MS`).
+  const [rideFixFresh, setRideFixFresh] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [exit, setExit] = useState<StationExit | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -156,8 +192,8 @@ export function useTransitNavigation(): TransitNavSession {
 
   const steps = useMemo(() => (journey ? buildTransitSteps(journey) : []), [journey]);
 
-  const live = useNavPosition(active && !simulating);
-  const fix = live.fix;
+  const navPosition = useNavPosition(active && !simulating);
+  const fix = navPosition.fix;
   const fixRef = useLatest(fix);
   const journeyRef = useLatest(journey);
 
@@ -174,6 +210,7 @@ export function useTransitNavigation(): TransitNavSession {
       const next = real + simulatedRef.current;
       const latest = fixRef.current;
       setFixFresh(!!latest && real - latest.at < FRESH_FIX_MS);
+      setRideFixFresh(!!latest && real - latest.at < RIDE_FIX_MS);
       // L'horloge bat chaque seconde pour ne pas rater l'instant d'une action,
       // mais ne **redessine** que si elle change ce qu'on voit : l'action prévue
       // ou le nombre d'arrêts restants. Sinon, toute l'application se
@@ -194,13 +231,21 @@ export function useTransitNavigation(): TransitNavSession {
   const scheduled = steps.length ? scheduledStep(steps, now) : 0;
   // Où l'horaire et le recalage nous placent, avant la porte de la montée.
   const based = anchoredStep(scheduled, anchor);
-  const planned = steps.length ? clamp(based + offset, 0, steps.length - 1) : 0;
+  const planned = steps.length ? clamp(based, 0, steps.length - 1) : 0;
 
   // Le relevé qui compte : frais et précis. Sous terre, il n'y en a pas, et
   // l'horaire reste seul maître.
   const here = useMemo(
     () => (fix && fixFresh && !simulating && fix.accuracy <= MAX_ACCURACY_METERS ? { lon: fix.lon, lat: fix.lat } : null),
     [fix, fixFresh, simulating],
+  );
+  // Dans le train : le relevé plus large, et la distance à la ligne qu'il tolère.
+  const rideHere = useMemo(
+    () =>
+      fix && rideFixFresh && !simulating && fix.accuracy <= RIDE_ACCURACY_METERS
+        ? { point: { lon: fix.lon, lat: fix.lat }, tolerance: Math.max(150, fix.accuracy) }
+        : null,
+    [fix, rideFixFresh, simulating],
   );
 
   // La porte de la montée (`boardingGate`) : on n'est pas dans le véhicule
@@ -219,7 +264,6 @@ export function useTransitNavigation(): TransitNavSession {
     if (result.index > planned) {
       // Monté avant l'horaire : c'est une position reconnue, comme un recalage.
       setAnchor({ index: result.index, scheduled: scheduledRef.current });
-      setOffset(0);
     }
     const hold = result.hold;
     setHeld((previous) =>
@@ -231,30 +275,24 @@ export function useTransitNavigation(): TransitNavSession {
     );
   }, [here, planned, journey, steps]);
 
-  const index = held && held.planned === planned ? held.index : planned;
-  const hold = held && held.planned === planned ? held.hold : null;
+  // `live` : l'action où l'on est ; `index` : celle qu'on montre, regardée aux flèches.
+  const live = held && held.planned === planned ? held.index : planned;
+  const browsing = viewing !== null && viewing !== live && viewing < steps.length;
+  const index = browsing ? viewing : live;
+  const hold = held && held.planned === planned && !browsing ? held.hold : null;
   const current = steps[index] ?? null;
 
   const indexRef = useRef(index);
   indexRef.current = index;
-  const basedRef = useRef(based);
-  basedRef.current = based;
+  const liveRef = useLatest(live);
 
-  /**
-   * Place le guidage sur une action précise, **à la main**. Le geste vaut
-   * preuve : on dit qu'on est monté, la porte de la montée ne retient plus.
-   */
-  const goTo = useCallback(
-    (target: number) => {
-      const step = steps[target];
-      if (step) gateRef.current = { leg: step.legIndex, reached: true, boarded: true };
-      setOffset(target - basedRef.current);
-    },
-    [steps],
+  const look = useCallback(
+    (target: number) => setViewing(target === liveRef.current ? null : target),
+    [liveRef],
   );
-
-  const advance = useCallback(() => goTo(Math.min(indexRef.current + 1, steps.length - 1)), [goTo, steps.length]);
-  const back = useCallback(() => goTo(Math.max(indexRef.current - 1, 0)), [goTo]);
+  const advance = useCallback(() => look(Math.min(indexRef.current + 1, steps.length - 1)), [look, steps.length]);
+  const back = useCallback(() => look(Math.max(indexRef.current - 1, 0)), [look]);
+  const follow = useCallback(() => setViewing(null), []);
 
   // Là où mène le trajet : c'est vers lui qu'un recalcul repart.
   const destinationRef = useRef<LonLat | null>(null);
@@ -283,7 +321,7 @@ export function useTransitNavigation(): TransitNavSession {
           const next = list[0];
           if (!next || controller.signal.aborted) return;
           setJourney(next);
-          setOffset(0);
+          setViewing(null);
           setAnchor(null);
           gateRef.current = null;
           setNow(Date.now());
@@ -321,9 +359,48 @@ export function useTransitNavigation(): TransitNavSession {
   // Chaque changement d'action laisse une trace (`outils/journal.sh`) : le
   // 8 octobre 2026, rien ne permettait de dire pourquoi le guidage avait sauté.
   useEffect(() => {
-    if (current) note("tc.step", { index, kind: current.kind, hold, horaire: scheduled, lieu: current.place });
+    const step = steps[live];
+    if (step) note("tc.step", { index: live, kind: step.kind, hold, horaire: scheduled, lieu: step.place });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, hold, journey]);
+  }, [live, hold, journey]);
+
+  // Le premier train qui passe. Arrivé à l'étape « prendre la ligne », on
+  // demande ses départs réels au quai (un appel par montée, sur le quota
+  // partagé) et l'on suppose qu'on monte dans le premier après l'arrivée sur
+  // le quai : l'heure prévue de cette arrivée, ou maintenant si l'on est en
+  // avance. Toute la ligne glisse alors d'autant (`retimeLeg`).
+  const retimedRef = useRef(new Set<string>());
+  const liveStep = steps[live];
+  const retimeKey =
+    liveStep?.kind === "board" && journey && !simulating ? `${journey.id}:${liveStep.legIndex}` : null;
+  useEffect(() => {
+    const followed = journeyRef.current;
+    const step = liveStep;
+    if (!retimeKey || !followed || !step || retimedRef.current.has(retimeKey)) return;
+    const leg = followed.legs[step.legIndex];
+    if (!leg?.lineId || !leg.stopPointId) return;
+    retimedRef.current.add(retimeKey);
+    const controller = new AbortController();
+    // `getNextDepartures` rend les départs strictement après cette heure.
+    const onPlatform = new Date(Math.min(step.at.getTime(), Date.now()) - 1000);
+    getNextDepartures(leg.lineId, leg.stopPointId, onPlatform, controller.signal)
+      .then((departures) => {
+        const first = departures[0]?.at;
+        const latest = journeyRef.current;
+        if (!first || !latest || latest.id !== followed.id) return;
+        const planned = latest.legs[step.legIndex]?.departure;
+        if (!planned || Math.abs(first.getTime() - planned.getTime()) < 30_000) return;
+        note("tc.retime", { leg: step.legIndex, prevu: planned.toISOString(), pris: first.toISOString() });
+        setJourney(retimeLeg(latest, step.legIndex, first));
+        setNow(Date.now());
+      })
+      .catch((e: unknown) => {
+        retimedRef.current.delete(retimeKey);
+        note("tc.retime.error", { message: e instanceof Error ? e.message : String(e) });
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retimeKey]);
 
   const endReplan = useCallback(() => {
     replanAbortRef.current?.abort();
@@ -342,8 +419,11 @@ export function useTransitNavigation(): TransitNavSession {
     const tail = last?.geometry?.coordinates?.[last.geometry.coordinates.length - 1];
     destinationRef.current = end ? { lon: end.lon, lat: end.lat } : tail ? { lon: tail[0], lat: tail[1] } : null;
     note("tc.start", { legs: next.legs.length, source: next.source });
+    retimedRef.current.clear();
+    // Dans le geste de « Démarrer » : la demande de permission s'y comprend.
+    if (getOffAlertEnabled()) askGetOffPermission();
     setJourney(next);
-    setOffset(0);
+    setViewing(null);
     setSimulating(false);
     setExit(null);
     simulatedRef.current = 0;
@@ -368,8 +448,9 @@ export function useTransitNavigation(): TransitNavSession {
   const stop = useCallback(() => {
     endReplan();
     note("tc.stop");
+    cancelGetOff();
     setJourney(null);
-    setOffset(0);
+    setViewing(null);
     setSimulating(false);
     setExit(null);
     simulatedRef.current = 0;
@@ -393,7 +474,7 @@ export function useTransitNavigation(): TransitNavSession {
       steps,
       journey.legs,
       { lon: fix.lon, lat: fix.lat },
-      indexRef.current,
+      liveRef.current,
       Date.now(),
       resyncRef.current
     );
@@ -401,11 +482,10 @@ export function useTransitNavigation(): TransitNavSession {
     if (target !== null) {
       // Une position reconnue, pas un décalage : voir `anchoredStep`.
       setAnchor({ index: target, scheduled: scheduledRef.current });
-      setOffset(0);
     }
     // Hors du chemin, plusieurs relevés de suite : le plan ne vaut plus.
     const stray = strayRef.current;
-    if (strayed(steps, journey.legs, indexRef.current, { lon: fix.lon, lat: fix.lat })) {
+    if (strayed(steps, journey.legs, liveRef.current, { lon: fix.lon, lat: fix.lat })) {
       stray.count += 1;
       stray.since ||= Date.now();
       if (stray.count >= STRAY_FIXES && Date.now() - stray.since >= STRAY_MS) replan("strayed");
@@ -413,7 +493,7 @@ export function useTransitNavigation(): TransitNavSession {
       stray.count = 0;
       stray.since = 0;
     }
-  }, [fix, active, steps, journey, replan]);
+  }, [fix, active, steps, journey, replan, liveRef]);
 
   // La sortie à prendre, cherchée pour la descente en cours ou imminente. Un
   // appel de plus au réseau : il n'est fait qu'au moment où l'indication va
@@ -452,19 +532,95 @@ export function useTransitNavigation(): TransitNavSession {
   stepsRef.current = steps;
   const legRef = useRef(leg);
   legRef.current = leg;
-  const stopsLeft = current?.kind === "alight" ? remainingStops(leg, now) : null;
+  const stopsLeft = current?.kind === "alight" && !browsing ? remainingStops(leg, now) : null;
   // Les stations depuis celle où l'on est, et le point bleu entre elle et la
   // suivante. Sur le quai, on est à la première. Dedans : le GPS s'il répond,
   // sinon l'horaire — l'horloge redessine à chaque quart de tronçon (plus haut).
-  const riding = current?.kind === "alight";
-  const position = current?.kind === "board" ? 0 : riding ? ridePosition(leg, now, here) : null;
+  // Une étape regardée aux flèches montre toute sa ligne, sans point bleu : on
+  // n'y est pas.
+  const onLine = current?.kind === "board" || current?.kind === "alight";
+  const position =
+    !onLine || browsing
+      ? null
+      : current?.kind === "board"
+        ? 0
+        : ridePosition(leg, now, rideHere?.point ?? null, rideHere?.tolerance);
   const rideFrom = position === null ? 0 : Math.min(Math.floor(position), (leg?.stops?.length ?? 1) - 1);
   const rideStops = useMemo(
-    () => (position === null ? NO_STOPS : (leg?.stops?.slice(rideFrom) ?? NO_STOPS)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [leg, rideFrom, position === null],
+    () => (!onLine ? NO_STOPS : (leg?.stops?.slice(rideFrom) ?? NO_STOPS)),
+    [leg, rideFrom, onLine],
   );
-  const rideFraction = position === null ? 0 : position - rideFrom;
+  const rideFraction = position === null ? null : position - rideFrom;
+
+  // **L'horaire se recale sur la position** : quand le relevé place le train
+  // ailleurs que l'horaire, toute la ligne glisse de l'écart (`retimeLeg`).
+  // Liste, arrêts restants, arrivée et alerte de descente suivent ; si la
+  // position se tait ensuite, l'estimation repart de là. Une fois toutes les
+  // trente secondes au plus.
+  const ridingRetimeRef = useRef(0);
+  useEffect(() => {
+    const followed = journeyRef.current;
+    const step = liveStep;
+    if (!rideHere || !followed || step?.kind !== "alight") return;
+    if (Date.now() - ridingRetimeRef.current < RIDE_RETIME_MS) return;
+    const riding = followed.legs[step.legIndex];
+    if (!riding) return;
+    const at = linePosition(riding, rideHere.point, rideHere.tolerance);
+    const expected = at === null ? null : timeAtPosition(riding, at);
+    if (at === null || expected === null) return;
+    const gap = Date.now() - expected;
+    if (Math.abs(gap) < RIDE_RETIME_MS) return;
+    ridingRetimeRef.current = Date.now();
+    note("tc.retime", { leg: step.legIndex, position: Math.round(at * 10) / 10, ecart: Math.round(gap / 1000) });
+    setJourney(retimeLeg(followed, step.legIndex, new Date(riding.departure.getTime() + gap)));
+    setNow(Date.now());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rideHere]);
+
+  // L'alerte de descente (`getOffAlert.ts`) : quand le train quitte
+  // l'avant-dernière station de la ligne où l'on est, d'après son horaire —
+  // recalé sur le train pris. Programmée dès la montée, elle arrive écran
+  // éteint (`getOffTime`).
+  const alertOn = useGetOffAlertEnabled();
+  const alertLegIndex = liveStep?.kind === "board" || liveStep?.kind === "alight" ? liveStep.legIndex : null;
+  const alertLeg = alertLegIndex === null ? undefined : journey?.legs[alertLegIndex];
+  const alertStops = alertLeg?.stops;
+  const alertAt = alertLeg ? getOffTime(alertLeg) : null;
+  const alertKey = alertLeg && journey ? `${journey.id}:${alertLegIndex}` : null;
+  const alertExit = !browsing && current?.kind === "alight" ? exit : null;
+  const alertBody = alertLeg
+    ? [alertLeg.to ?? "", alertExit ? exitLabel(alertExit) : ""].filter(Boolean).join(" · ")
+    : "";
+  // Les lignes dont l'alerte est partie par le GPS : l'horaire ne la redonne pas.
+  const firedRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!alertOn || simulating || !alertKey || alertAt === null) {
+      cancelGetOff();
+      return;
+    }
+    // Déjà donnée par le GPS, ou passée depuis plus d'une minute : rien à refaire.
+    if (firedRef.current.has(alertKey) || alertAt < Date.now() - 60_000) return;
+    scheduleGetOff(Math.max(alertAt, Date.now()), navText("transit.getOffTitle"), alertBody);
+    note("tc.getoff", { leg: alertLegIndex, at: new Date(alertAt).toISOString() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertOn, simulating, alertKey, alertAt, alertBody]);
+
+  // Le GPS ne fait qu'**avancer** l'alerte : en surface (bus, tram, RER
+  // aérien), application ouverte, passer l'avant-dernier arrêt plus tôt que
+  // l'horaire la donne tout de suite. `ridePosition` ne dépasse l'horaire que
+  // quand le relevé est sur la ligne.
+  // shortcut: le GPS n'avance l'alerte que page ouverte ; dans la poche, seul l'horaire compte — un service de position serait la suite.
+  useEffect(() => {
+    if (!alertOn || simulating || !alertKey || alertAt === null || !here) return;
+    if (liveStep?.kind !== "alight" || !alertStops || alertStops.length < 3) return;
+    if (firedRef.current.has(alertKey) || Date.now() >= alertAt) return;
+    const at = ridePosition(alertLeg, Date.now(), here);
+    if (at === null || at < alertStops.length - 2) return;
+    firedRef.current.add(alertKey);
+    scheduleGetOff(Date.now(), navText("transit.getOffTitle"), alertBody);
+    note("tc.getoff", { leg: alertLegIndex, gps: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [here]);
 
   // Le cadrage : l'étape en cours, et non la position. Sous terre il n'y a pas
   // de position, et voir le tronçon qu'on parcourt vaut mieux qu'une carte
@@ -508,12 +664,13 @@ export function useTransitNavigation(): TransitNavSession {
     rideFraction,
     exit,
     connection: journey && current?.kind === "alight" ? connectionTo(steps, index, journey.legs) : null,
-    offset,
+    offset: index - live,
     hold,
     replanning,
     replanned: replannedAt !== 0,
     advance,
     back,
+    follow,
     simulating,
     toggleSimulation: useCallback(() => {
       simulatedRef.current = 0;
@@ -526,6 +683,10 @@ export function useTransitNavigation(): TransitNavSession {
 }
 
 const NO_STOPS: TransitStop[] = [];
+
+function exitLabel(exit: StationExit): string {
+  return exit.number ? navText("transit.exit", { number: exit.number, name: exit.name }) : navText("transit.exitUnnumbered", { name: exit.name });
+}
 
 function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value));
