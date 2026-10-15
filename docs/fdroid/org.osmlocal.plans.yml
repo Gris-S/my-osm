@@ -45,6 +45,9 @@
 # reproduite sur leur CI (pipeline 2942724505). 0.1.0-alpha.98 (14 octobre
 # 2026) : aucune dépendance de plus, deux styles Android pour les sélecteurs
 # de date et d'heure ; reproduite sur leur CI (pipeline 2947066510).
+# 0.1.0-alpha.115 (15 octobre 2026) : aucune dépendance de plus — deux
+# greffons natifs (alarme et vibration de l'alerte de descente, fichier ouvert
+# depuis une autre application : API Android) ; scanner passé sur l'APK.
 # Attention : fdroidserver
 # 2.4.5 en local remet `UpdateCheckData` sur une ligne, leur CI le veut sur deux
 # (échec de `rewritemeta` constaté) — garder la forme sur deux lignes.
@@ -87,11 +90,11 @@ Repo: https://github.com/Gris-S/my-osm.git
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.98
-    versionCode: 1000098
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.98, pas le tag :
+  - versionName: 0.1.0-alpha.115
+    versionCode: 1000115
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.115, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: f8d49e57d7fd1dd6a12623426351cbdf9cfe82fa
+    commit: f430c7e565b58f575610d62d633c5aee8886f85f
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -168,5 +171,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.98
-CurrentVersionCode: 1000098
+CurrentVersion: 0.1.0-alpha.115
+CurrentVersionCode: 1000115
