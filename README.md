@@ -141,7 +141,9 @@ Because a map should not be the price of knowing where you are.
 - **Nothing goes to Google.** No Firebase, no Analytics, no Play Services, no
   Google Maps. Android's cloud backup and device-to-device transfer are turned
   off for this app, and the WebView's own telemetry and Safe Browsing are
-  disabled. The built-in web browser blocks every Google host outright.
+  disabled. The built-in web browser blocks every Google host outright. One
+  thing the app cannot switch off: when Google is the phone's autofill service,
+  Android's system WebView may still contact Google's autofill servers.
 - **No account needed.** Nothing to sign up for. The only sign-in is to your
   own OpenStreetMap account, and only if you choose to add places to it.
 - **Your data stays on the phone.** Saved places, home and work addresses, trip

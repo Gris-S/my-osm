@@ -4,6 +4,7 @@ import { groupFromTags } from "../filters";
 import { searchOffline } from "./offline";
 import { t } from "../i18n";
 import { cleanAddress } from "./webPlace";
+import { hasNativeRescue, rescuedFetch } from "./native";
 
 interface PhotonFeature {
   geometry: { coordinates: [number, number] };
@@ -233,16 +234,21 @@ export async function searchPlacesDetailed(
 
   // Hors ligne déclaré par le navigateur : inutile d'attendre que trois
   // géocodeurs distants expirent l'un après l'autre, on va droit aux zones
-  // téléchargées.
-  if (!navigator.onLine) return { places: await searchOffline(query), degraded: false };
+  // téléchargées. Sauf dans l'APK, où Photon a un secours natif : le drapeau
+  // peut y mentir (WebView coincée, voir `native.ts`).
+  if (!navigator.onLine && !hasNativeRescue(url.toString())) {
+    return { places: await searchOffline(query), degraded: false };
+  }
 
   try {
-    const res = await fetch(url.toString(), { signal });
+    const res = await rescuedFetch(url.toString(), { signal });
     if (!res.ok) throw new Error(`Recherche échouée (${res.status})`);
     const data: PhotonResponse = await res.json();
     return { places: data.features.map(toPlace), degraded: false };
   } catch (error) {
     if (signal?.aborted) throw error;
+    // Vraiment hors ligne (le secours natif a échoué aussi) : droit aux zones téléchargées.
+    if (!navigator.onLine) return { places: await searchOffline(query), degraded: false };
     // Géocodeur injoignable : les adresses d'abord — c'est le repli d'origine,
     // et il vaut mieux qu'une zone partielle quand le réseau est là — puis les
     // zones téléchargées si la BAN ne répond pas non plus.

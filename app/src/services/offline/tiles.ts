@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import { CONFIG } from "../../config";
+import { currentLocale } from "../../i18n";
 import { areaTileCounts, areaTiles, tileBbox, type Area } from "./area";
 
 /** Emprise géographique, dans l'ordre de MapLibre : ouest, sud, est, nord. */
@@ -142,11 +143,18 @@ export function estimateContourBytes(f: Footprint, maxZoom: number): number {
   return footprintCount(f, maxZoom, CONFIG.CONTOUR_MIN_ZOOM) * CONFIG.CONTOUR_BYTES_PER_TILE_HINT;
 }
 
-/** « 57 Mo », « 1,1 Go » — l'unité suit la taille, jamais de 1024 Mo. */
+/** « 57 Mo », « 1,1 Go » (« 1.1 GB » en anglais) — l'unité suit la taille, jamais de 1024 Mo. */
 export function formatBytes(bytes: number): string {
-  if (bytes < 1_000_000) return `${Math.round(bytes / 1000)} ko`;
-  if (bytes < 1_000_000_000) return `${Math.round(bytes / 1_000_000)} Mo`;
-  return `${(bytes / 1_000_000_000).toFixed(1).replace(".", ",")} Go`;
+  const [unit, value, digits] =
+    bytes < 1_000_000 ? ["kilobyte", bytes / 1000, 0]
+    : bytes < 1_000_000_000 ? ["megabyte", bytes / 1_000_000, 0]
+    : ["gigabyte", bytes / 1_000_000_000, 1];
+  return new Intl.NumberFormat(currentLocale(), {
+    style: "unit",
+    unit,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
 }
 
 /**

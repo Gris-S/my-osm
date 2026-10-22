@@ -143,7 +143,9 @@ Parce qu'une carte ne devrait pas être le prix à payer pour savoir où l'on es
   Google Maps. La sauvegarde cloud d'Android et le transfert d'appareil à
   appareil sont coupés pour cette application, et les statistiques comme le Safe
   Browsing de la WebView sont désactivés. Le navigateur intégré bloque purement
-  et simplement tous les hôtes Google.
+  et simplement tous les hôtes Google. Une chose échappe à l'application : quand
+  Google est le service de saisie automatique du téléphone, la WebView système
+  d'Android peut encore joindre ses serveurs de saisie automatique.
 - **Aucun compte nécessaire.** Rien à créer. La seule connexion possible est à
   votre propre compte OpenStreetMap, et seulement si vous choisissez d'y ajouter
   des lieux.

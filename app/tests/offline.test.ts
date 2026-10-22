@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { areaContains, areaTileCounts, areaTiles, tileBbox, type Area } from "../src/services/offline/area";
 import { cacheKeyFor, isStyleAssetUrl, tileRefFromUrl } from "../src/services/offline/keys";
 import { assetPath, pathOf } from "../src/services/offline/blobStore";
-import { countTiles } from "../src/services/offline/tiles";
+import { countTiles, formatBytes } from "../src/services/offline/tiles";
+import { setLang } from "../src/i18n";
 
 describe("keys — reconnaître une tuile et la ranger sous une clé stable", () => {
   it("ignore la version datée des tuiles vectorielles", () => {
@@ -99,5 +100,16 @@ describe("imagerie hors ligne : l'IGN seul, donc la France seule", () => {
     const londres = { bbox: [-0.2, 51.45, 0.0, 51.55] as [number, number, number, number] };
     expect(estimateRasterBytes(paris, 15)).toBeGreaterThan(0);
     expect(estimateRasterBytes(londres, 15)).toBe(0);
+  });
+});
+
+describe("formatBytes — l'unité suit la langue", () => {
+  it("ko/Mo/Go et virgule en français, kB/MB/GB et point en anglais", () => {
+    const plain = (text: string) => text.replace(/\s/g, " ");
+    setLang("fr");
+    expect([2_400_000_000, 57_000_000, 0].map((b) => plain(formatBytes(b)))).toEqual(["2,4 Go", "57 Mo", "0 ko"]);
+    setLang("en");
+    expect([2_400_000_000, 57_000_000, 0].map((b) => plain(formatBytes(b)))).toEqual(["2.4 GB", "57 MB", "0 kB"]);
+    setLang("fr");
   });
 });

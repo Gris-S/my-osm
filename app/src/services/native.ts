@@ -115,14 +115,18 @@ export async function relayedFetch(
 // natif que s'il échoue. Si le téléphone est vraiment hors ligne, le natif
 // échoue aussi, tout de suite, et l'erreur d'origine remonte.
 //
-// Réservé à ce dont un trajet ne peut pas se passer — le fond de carte et le
-// calcul d'itinéraire (`RESCUE_HOSTS`) : une requête native sort des règles
+// Réservé à ce dont un trajet ne peut pas se passer — le fond de carte, la
+// recherche d'un lieu (Photon) et le calcul d'itinéraire (`RESCUE_HOSTS`).
+// La recherche s'y est ajoutée après une relecture F-Droid (21 octobre 2026) :
+// la WebView coincée hors ligne au démarrage d'un VPN, les tuiles passaient
+// mais « Hauptplatz » ne trouvait plus rien. Une requête native sort des règles
 // d'origine et de la politique de contenu de la page, elle ne doit pas devenir
 // la voie ordinaire. Dans un navigateur (version Docker), rien ne change.
 // ---------------------------------------------------------------------------
 
 const RESCUE_HOSTS = new Set([
   "tiles.openfreemap.org",
+  new URL(CONFIG.PHOTON_URL).host,
   new URL(CONFIG.TOMTOM_ROUTING_URL).host,
   new URL(CONFIG.OSRM_ROUTING.driving).host,
 ]);

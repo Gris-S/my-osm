@@ -51,7 +51,9 @@ PRIVACY
 No Firebase, no Analytics, no Play Services, no Google Maps. Android's cloud
 backup and device-to-device transfer are disabled for this app, and the
 WebView's own telemetry and Safe Browsing are turned off. The built-in browser
-blocks every Google host outright. There is no account to create — only an
+blocks every Google host outright. One thing the app cannot switch off: when
+Google is the phone's autofill service, Android's system WebView may still
+contact Google's autofill servers. There is no account to create — only an
 OpenStreetMap one, if you choose to add places — and no server to leave to: saved places, home and work addresses, trip history and downloaded
 maps stay on the device.
 
