@@ -14,6 +14,7 @@ import { pointFromText } from "../services/webPlace";
 import { designatesSpecificPlace, groupStops, looksLikeStation, resultKind, stationsFirstEnabled, type SearchEntry } from "../search/searchResults";
 import { useStopBadges } from "../search/useStopBadges";
 import type { LineChip } from "../utils/markerImage";
+import { LiveResults, type LiveSearchRow } from "../live";
 
 /**
  * Les mots qui désignent chaque rôle, en plus de son libellé affiché. On tape
@@ -65,9 +66,14 @@ interface SearchBarProps {
    * Béziers et Moscou avant l'arrêt d'à côté.
    */
   near?: LonLat;
+  /**
+   * Une ligne des modes en direct a été choisie (`src/live/search.ts`) :
+   * afficher toutes les stations, ouvrir l'une d'elles, partir sur un réseau.
+   */
+  onLiveAction?: (row: LiveSearchRow) => void;
 }
 
-export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, children, onOpenChange, onClear, near }: SearchBarProps) {
+export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, children, onOpenChange, onClear, near, onLiveAction }: SearchBarProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -365,6 +371,20 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
               </button>
             );
           })}
+          {/* Stations-service, bornes et vélos (`src/live/`) : avant les
+              résultats du géocodeur, qui ne les connaît pas en direct. Rien
+              pendant qu'on définit Maison ou Travail. */}
+          {!assigning && (
+            <LiveResults
+              query={trimmed}
+              near={near ?? CONFIG.DEFAULT_CENTER}
+              onAction={(row) => {
+                setOpen(false);
+                (document.activeElement as HTMLElement | null)?.blur();
+                onLiveAction?.(row);
+              }}
+            />
+          )}
           {!loading &&
             firstStations.map((entry) => (
               <ResultRow key={entry.place.id} entry={entry} badges={badges} onSelect={handleSelect} />
@@ -487,3 +507,4 @@ function ResultRow({
     </button>
   );
 }
+

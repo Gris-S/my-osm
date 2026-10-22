@@ -1,5 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { Box, Camera, Layers, Map as MapIcon, Mountain, Satellite, TrafficCone } from "lucide-react";
+import { Box, Camera, Fuel, Layers, Map as MapIcon, Mountain, PlugZap, Satellite, TrafficCone } from "lucide-react";
+import { setChargersShown, setFuelLayerOn, useFuelLayerOn, useFuelModeEnabled, useFuelType, useShowingChargers } from "../live";
+import { fuelLabel } from "../live/labels";
 import { hasMapillaryToken } from "../hooks/useMapillary";
 import type { Basemap } from "../hooks/useBasemap";
 import { useI18n, type TranslationKey } from "../i18n";
@@ -69,6 +71,10 @@ export function MapOptionsMenu({
   const noteAround = t("layers.streetPhotosNote").split("{file}");
 
   useBackClose(open, () => onOpenChange(false));
+  const fuelMode = useFuelModeEnabled();
+  const fuelLayer = useFuelLayerOn();
+  const fuelType = useFuelType();
+  const chargers = useShowingChargers();
 
   // Fermeture au clic à l'extérieur et à la touche Échap (même comportement
   // que le menu de filtres).
@@ -152,6 +158,37 @@ export function MapOptionsMenu({
               <span className="toggle-switch-knob" />
             </span>
           </button>
+
+          {/* Carburants et recharge (`src/live/`), quand le mode est allumé dans
+              « Modes ». La ligne suit « Mon carburant » : des prix, ou les
+              bornes pour l'électrique (demande explicite : un seul calque). */}
+          {fuelMode && (
+            <button
+              className="map-options-row"
+              onClick={() => {
+                setFuelLayerOn(!fuelLayer);
+                // Les bornes demandées depuis la recherche ne survivent pas à un calque coupé.
+                if (fuelLayer) setChargersShown(false);
+              }}
+              role="switch"
+              aria-checked={fuelLayer}
+            >
+              <span className="map-options-row-label">
+                {chargers ? <PlugZap size={17} /> : <Fuel size={17} />}
+                <span className="map-options-row-stack">
+                  {t(chargers ? "live.layer.chargers" : "live.layer.fuel")}
+                  <small>
+                    {chargers
+                      ? t(fuelType === "ev" ? "live.layer.chargersMine" : "live.layer.chargersAsked")
+                      : t("live.layer.fuelHint", { fuel: t(fuelLabel(fuelType)) })}
+                  </small>
+                </span>
+              </span>
+              <span className={`toggle-switch ${fuelLayer ? "is-on" : ""}`} aria-hidden="true">
+                <span className="toggle-switch-knob" />
+              </span>
+            </button>
+          )}
 
           <button
             className="map-options-row"

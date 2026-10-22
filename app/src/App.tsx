@@ -54,6 +54,7 @@ import type { NavMode } from "./navigation/route";
 import type { BookmarkFolder } from "./hooks/useBookmarks";
 import { GeoFileCard } from "./components/GeoFileCard";
 import { GEOFILE_COLOR } from "./components/MapView";
+import { LiveSheet, setChargersShown, setFuelLayerOn, useLiveItems, type LiveItem, type LiveSearchRow } from "./live";
 
 // « + OSM » ne sert qu'à qui contribue, option éteinte par défaut : la fenêtre
 // est chargée à sa première ouverture, et le démarrage n'en porte rien.
@@ -106,6 +107,14 @@ export default function App() {
 
   const [poiStatus, setPoiStatus] = useState<PoiStatus>("idle");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  // Une station de vélos, une station-service ou une borne touchée (`src/live/`).
+  // Elle a sa propre fiche ; ouvrir un lieu la referme, et inversement.
+  const [liveItem, setLiveItem] = useState<LiveItem | null>(null);
+  const liveItems = useLiveItems();
+  const handleLivePick = useCallback((item: LiveItem) => {
+    setSelectedPlace(null);
+    setLiveItem(item);
+  }, []);
   // Le fichier GPX, KML ou GeoJSON ouvert (`services/geoFile.ts`) : depuis une
   // autre application, le menu, ou un glisser-déposer. `file` nul : illisible.
   const [opened, setOpened] = useState<{ name: string; file: GeoFile | null; savedIn: string | null } | null>(null);
@@ -424,8 +433,45 @@ export default function App() {
     // Toucher de nouveau le lieu déjà ouvert rafraîchit ce qui a une fraîcheur :
     // les prochains passages d'un arrêt (voir `TransitDepartures`).
     if (selectedPlace?.id === place.id) setSheetRefresh((count) => count + 1);
+    setLiveItem(null);
     setSelectedPlace(place);
     setFlyTarget({ lon: place.lon, lat: place.lat, zoom: 16 });
+  }
+
+  /** Une station en direct devient un lieu ordinaire pour l'itinéraire. */
+  function liveAsPlace(item: LiveItem): Place {
+    if (item.kind === "charger") {
+      const c = item.charger;
+      return { id: `live/${c.id}`, name: c.address || c.name, group: null, lon: c.lon, lat: c.lat, address: c.address };
+    }
+    if (item.kind === "bike") {
+      const s = item.station;
+      return { id: `live/${s.id}`, name: s.name, group: null, lon: s.lon, lat: s.lat };
+    }
+    const s = item.station;
+    const address = [s.address, s.city].filter(Boolean).join(", ");
+    return { id: `live/${s.id}`, name: s.brand ?? s.address, group: null, lon: s.lon, lat: s.lat, address };
+  }
+
+  /** Une ligne des modes en direct choisie dans la recherche (`src/live/search.ts`). */
+  function handleLiveAction(row: LiveSearchRow) {
+    closeBrand();
+    if (row.kind === "all") {
+      if (row.target === "bikes") {
+        // Les vélos s'affichent avec la catégorie Transports (demande explicite).
+        if (!filters.isSelected("transport")) filters.toggle("transport");
+      } else {
+        setFuelLayerOn(true);
+        setChargersShown(row.target === "chargers");
+      }
+    } else if (row.kind === "network") {
+      // Un réseau d'une autre ville : la carte part sur elle (demande explicite).
+      setFlyTarget({ lon: row.network.lon, lat: row.network.lat, zoom: 14 });
+    } else if (row.kind === "item") {
+      const at = row.item.kind === "charger" ? row.item.charger : row.item.station;
+      handleLivePick(row.item);
+      setFlyTarget({ lon: at.lon, lat: at.lat, zoom: 16 });
+    }
   }
 
   /** Vrai pendant un guidage, à pied, en voiture comme en transports. */
@@ -479,6 +525,7 @@ export default function App() {
   function handleRouteTo(place: Place) {
     setStops([{ kind: "current" }, { kind: "place", place }]);
     setSelectedPlace(null);
+    setLiveItem(null);
     // La position est redemandée par `useItinerary` si elle n'est pas fraîche.
   }
 
@@ -811,7 +858,7 @@ export default function App() {
     <div
       className={`app-shell ${editingStop !== null ? "is-picking" : ""} ${
         guiding && !choosingRoute ? "is-navigating" : ""
-      } ${sheetPlace && !photoExpanded && !searching ? "has-sheet" : ""} ${searching ? "is-searching" : ""} ${run.active ? "is-running" : ""} ${cramped ? `is-cramped-${cramped}` : ""}`}
+      } ${(sheetPlace || liveItem) && !photoExpanded && !searching ? "has-sheet" : ""} ${searching ? "is-searching" : ""} ${run.active ? "is-running" : ""} ${cramped ? `is-cramped-${cramped}` : ""}`}
     >
       {/* **Pendant la navigation voiture, aucun calque** (demande explicite) :
           ni POI (commerces, parkings, transports…), ni signets, ni relief,
@@ -859,6 +906,8 @@ export default function App() {
         }
         navigation={navigation.map ?? carNav.map ?? transitNav.map ?? run.map}
         onNavigationPan={carNav.active ? carNav.notifyPan : run.active ? run.notifyPan : navigation.notifyPan}
+        live={!carGuiding}
+        onLivePick={handleLivePick}
         theme={theme}
         basemap={basemap}
         is3D={is3D}
@@ -965,6 +1014,7 @@ export default function App() {
               onSearchBrand={runBrandSearch}
               onOpenChange={setSearching}
               near={weatherCoords}
+              onLiveAction={handleLiveAction}
               // Vider la barre quitte la recherche d'enseigne et son bandeau.
               onClear={closeBrand}
             >
@@ -1139,6 +1189,15 @@ export default function App() {
           onUnsave={() => bookmarks.removePlace(sheetPlace.id)}
           onHeightChange={setSheetHeight}
           onContribute={() => setPlaceToContribute(sheetPlace)}
+        />
+      )}
+      {liveItem && !sheetPlace && !photoExpanded && !searching && !transitPanelOpen && (
+        <LiveSheet
+          item={liveItem}
+          nearbyFuel={liveItems.flatMap((other) => (other.kind === "fuel" ? [other.station] : []))}
+          onClose={() => setLiveItem(null)}
+          onRoute={() => handleRouteTo(liveAsPlace(liveItem))}
+          onHeightChange={setSheetHeight}
         />
       )}
       {streetPhoto && (

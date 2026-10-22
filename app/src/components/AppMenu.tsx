@@ -11,6 +11,7 @@ import { ApiKeysSettings } from "./ApiKeysSettings";
 import { OsmAccountSettings } from "./OsmAccountSettings";
 import { setContribEnabled, useOsmContrib } from "../services/osmContrib";
 import { HistoryPanel, ModesSettings, navText, NavigationSettings } from "../navigation";
+import { LiveModesSettings } from "../live";
 import { HomeWorkSettings } from "./HomeWorkSettings";
 import { SourcesList } from "./SourcesList";
 import { useBackClose } from "../hooks/useBackClose";
@@ -497,6 +498,8 @@ export const AppMenu = memo(function AppMenu({ theme, center, credits, auto, aut
             </div>
 
             <ModesSettings />
+            {/* Vélos en libre-service, carburants et recharge (`src/live/`). */}
+            <LiveModesSettings />
             {/* « + OSM » sur la fiche d'un lieu trouvé sur le web, rangé dans
                 « Modes » (demande explicite). Hors de `ModesSettings`, qui
                 appartient au module de navigation et doit rester retirable

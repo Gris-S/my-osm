@@ -211,6 +211,11 @@ logiciels et non celui-ci. À lire avant d'ouvrir le chantier correspondant, et
   2026. Contient la distinction à ne pas confondre entre *dessiner par-dessus
   la carte* et *modifier les données OpenStreetMap*, et un ordre de priorité
   proposé si le sujet est ouvert ici.
+- `notes/velos-carburants.md` — deux API gratuites et sans clé retenues le
+  20 octobre 2026 : CityBikes et Pumperly, plus le flux officiel des prix
+  vérifié le 22. **Livré en alpha.119** (`src/live/`, section « Modes en
+  direct » plus bas) ; la note garde les décisions de l'utilisateur et
+  l'étape suivante (les prix le long du trajet en voiture).
 
 ## Architecture
 
@@ -2984,6 +2989,58 @@ Points de conception :
 - **Rien de tout cela n'est mis en cache par le Service Worker**, conformément à
   la règle du projet : un bouchon périmé servi sans que rien ne le signale est
   pire que pas de trafic du tout.
+
+### Modes en direct : vélos, carburants et recharge (`src/live/`, alpha.119)
+
+Deux modes de « Modes » (menu burger), **éteints par défaut** : chacun envoie
+la zone affichée à un service tiers. Décisions de l'utilisateur (22 octobre
+2026, maquette jouable à l'appui) : les vélos s'affichent **avec la catégorie
+Transports** ; carburants et recharge sont **une ligne des calques** qui suit
+« Mon carburant » (réglé dans « Modes » seulement, électrique compris :
+électrique → bornes au lieu des prix) ; la recherche les connaît.
+
+- **Trois sources.** CityBikes (vélos, ~800 réseaux, origine croisée
+  autorisée, 300 requêtes/h) ; le **flux officiel** prix-carburants.gouv.fr
+  (servi par data.economie.gouv.fr, Opendatasoft, `in_bbox`, 100 par page) ;
+  **Pumperly** (39 pays et les bornes d'Open Charge Map) **par le relais**
+  `/api/pumperly/stations` — trois copies comme le trafic, et son propre
+  plafond nginx (`zone=pumperly`, 60/min) : le relais du trafic (10/min)
+  aurait coupé au troisième déplacement de carte.
+- **Pour chaque prix, le plus récent l'emporte** (demande explicite), avec un
+  piège mesuré : Pumperly date un prix **du jour de sa collecte** — un prix
+  vieux d'un mois y paraissait d'aujourd'hui. Ses prix français sont ceux du
+  flux officiel (même identifiant, `externalId`) : à prix égal on garde la
+  date officielle, la date ne décide que s'ils diffèrent (`mergeStations`,
+  testé). Codes Pumperly relevés dans sa documentation : B7, E10, E5, E5_98,
+  LPG, EV — **pas d'E85** (400) : E85 vient du flux officiel seul.
+- **Le flux officiel n'a pas d'enseigne** : elle vient du commerce des tuiles le
+  plus proche à 150 m (`fuelPoisRef`, relevé dans `refreshPois`). Les
+  stations-service, bornes et stations de vélos des tuiles **cèdent leur place**
+  aux repères en direct quand ceux-ci sont affichés (filtre par `rawType`).
+- **Repères : des points à toutes les échelles, et des étiquettes par-dessus**
+  (pictogramme + chiffre) qui se décombrent ; une étiquette évincée laisse son
+  point. Les images sont dessinées à la demande (`buildPillImage`) et
+  ajoutées **avant** les données : le résolveur d'images manquantes est pris
+  par les cartouches de route. La moins chère de la zone en vert, un prix de
+  plus de 7 jours avec un point orange, une station qui ne vend pas ce
+  carburant en gris « — » (sans elle, on la croirait absente).
+- **`useLiveLayer` est appelé après l'effet qui crée la carte** dans `MapView` :
+  les effets tournent dans l'ordre de déclaration, et placé plus haut il
+  trouvait la carte absente et ne repartait jamais. Et **`isStyleLoaded` reste
+  faux tant que des tuiles arrivent** : sans l'attente de `idle`, les repères
+  disparaissaient au premier zoom.
+- **Fiche** (`LiveSheet`) : « Station-service <enseigne> » en titre, l'adresse
+  dessous (demande explicite) ; prix à trois décimales avec leur âge ;
+  « En rupture » (temporaire) et « Non vendu ici » (définitif) — jamais
+  « plus vendu ». Vélos : mécaniques, électriques, places libres.
+- **Recherche** (`liveSearch`, pure et testée, rendue par `LiveResults` — un
+  composant à part : mêlé aux mémorisations de `SearchBar`, il faisait renoncer
+  le compilateur React à les garder) : « essence », « station service »,
+  « borne », « vélib »… donnent « Afficher toutes les … » puis les plus
+  proches ; un réseau d'une autre ville (« Vélo'v ») recentre la carte sur
+  elle ; un mode éteint le dit.
+- **Rien pendant la navigation voiture** (`live={!carGuiding}`), comme les
+  autres calques. Les prix le long du trajet sont l'étape suivante.
 
 ### Photos de rue (Mapillary)
 

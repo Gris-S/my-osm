@@ -458,7 +458,7 @@ const WAVES_ICON: IconNode = [
   ["path", { d: "M2 19q2.5 2 5 0t5 0 5 0 5 0" }],
   ["path", { d: "M2 5q2.5 2 5 0t5 0 5 0 5 0" }],
 ];
-const BIKE_ICON: IconNode = [
+export const BIKE_ICON: IconNode = [
   ["circle", { cx: "18.5", cy: "17.5", r: "3.5" }],
   ["circle", { cx: "5.5", cy: "17.5", r: "3.5" }],
   ["circle", { cx: "15", cy: "5", r: "1" }],

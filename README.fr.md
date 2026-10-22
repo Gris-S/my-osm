@@ -126,7 +126,7 @@ encore.
 
 **Et le reste**
 - Météo, qualité de l'air, pollens et vigilances de Météo-France
-- Imagerie satellite, relief, courbes de niveau, bâtiments en 3D, calque du trafic
+- Données en direct à activer, éteintes tant qu'on ne les allume pas : vélos en libre-service avec vélos et places libres (CityBikes, environ 800 réseaux), et prix du jour des carburants ou bornes de recharge (prix-carburants.gouv.fr, Pumperly)
 - Photos de rue de Mapillary
 - Lieux enregistrés dans des dossiers de couleur, avec leurs traces
 - Thèmes clair et sombre, le sombre suivant le capteur de lumière

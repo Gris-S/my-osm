@@ -702,6 +702,7 @@ export const CONFIG = {
   RELAY_TARGETS: {
     "/api/traffic/events":
       "https://tipi.bison-fute.gouv.fr/bison-fute-ouvert/publicationsDIR/Evenementiel-DIR/grt/RRN/content.xml",
+    "/api/pumperly/stations": "https://pumperly.com/api/stations",
   } as Record<string, string>,
   get TOMTOM_KEY(): string {
     return apiKey("tomtom");
@@ -733,6 +734,29 @@ export const CONFIG = {
   // Le flux est republié en continu ; le relire plus souvent ne rendrait pas
   // des bouchons plus frais, et chaque lecture coûte deux cents kilo-octets.
   TRAFFIC_TTL_MS: 3 * 60 * 1000,
+
+  // Vélos en libre-service et carburants (`src/live/`, Réglages › Modes) :
+  // deux modes éteints par défaut, chacun demandant la zone affichée à son
+  // service. Relevé du 22 octobre 2026 dans `notes/velos-carburants.md`.
+  //
+  // CityBikes : environ 800 réseaux, sans clé, origine croisée autorisée,
+  // 300 requêtes par heure et par adresse. Un réseau se lit d'un bloc
+  // (Vélib' : 1 516 stations, 650 Ko) : d'où un cache de deux minutes.
+  CITYBIKES_URL: "https://api.citybik.es/v2/networks",
+  BIKES_TTL_MS: 2 * 60 * 1000,
+  // Un réseau n'est demandé que si son centre est à moins de cette distance de
+  // la carte : CityBikes ne donne pas l'emprise d'un réseau, seulement un point.
+  BIKES_NETWORK_RADIUS_KM: 40,
+  // Prix officiels des carburants (France) : la vraie date de chaque prix, les
+  // ruptures et les carburants non vendus. Origine croisée autorisée.
+  FUEL_OFFICIAL_URL:
+    "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records",
+  // Pumperly : 39 pays et les bornes de recharge (Open Charge Map). Pas
+  // d'origine croisée : il passe par le relais, comme le trafic.
+  PUMPERLY_STATIONS_URL: "/api/pumperly/stations",
+  FUEL_TTL_MS: 5 * 60 * 1000,
+  // En deçà, la zone affichée est trop grande : on ne demande rien.
+  LIVE_MIN_ZOOM: 12,
   // En dessous de ce zoom, les événements se superposent en un cordon illisible
   // à l'échelle du pays, et il y en a plus de deux mille.
   TRAFFIC_MIN_ZOOM: 8,

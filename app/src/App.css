@@ -44,6 +44,8 @@
 @import "./styles/ui/map-options.css";
 @import "./styles/ui/map-status.css";
 @import "./styles/ui/download.css";
+/* Après la fiche, les menus et la recherche, qu'elle complète. */
+@import "./styles/ui/live.css";
 /* Navigation guidée — voir `src/navigation/README.md`. Elle vient en dernier :
    elle se pose par-dessus tout le reste, et retirer cette ligne suffit à la
    décrocher de l'application. */

@@ -126,6 +126,7 @@ It is **alpha** software: it works, it is used daily, and it still changes.
 **And the rest**
 - Weather, air quality, pollen and official French weather warnings
 - Satellite imagery, terrain relief, contour lines, 3D buildings, live traffic layer
+- Opt-in live data, off until you turn it on: bike-sharing stations with free bikes and docks (CityBikes, about 800 networks), and today's fuel prices or EV charging points (prix-carburants.gouv.fr, Pumperly)
 - Street-level photos from Mapillary
 - Saved places in colour-coded folders, with their tracks
 - Light and dark themes, the dark one following the ambient light sensor

@@ -40,6 +40,7 @@ import { followConnectivity, installOfflineTiles, offlineTransformRequest } from
 import { POI_SOURCE_ID, POI_LAYER_ID, POI_ICONS_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
 import { subscribeCompass } from "../navigation/compass";
 import { useLatest } from "../hooks/useLatest";
+import { applyLive, pickLive, useBikesModeEnabled, useFuelLayerOn, useFuelModeEnabled, useLiveLayer, useShowingChargers, type LiveItem } from "../live";
 import { STOP_COLOR, pinElement, waypointPinElement, streetViewElement, dotElement, choiceBubbleElement, incidentElement, navArrowElement } from "./map/markers";
 import { NAV_GLIDE_MIN_MS, NAV_GLIDE_MAX_MS, NAV_GLIDE_JUMP_METERS, NAV_FRAME_SLACK_MS, navTuning, subscribeNavTuning, NAV_CAMERA_EASE_MS, type NavCameraPose, type NavGlide, idleGlide, shortestTurn, lerp, easeInOut, samePose } from "./map/navGlide";
 
@@ -150,6 +151,13 @@ interface MapViewProps {
   navigation: NavMapState | null;
   /** L'utilisateur a déplacé la carte pendant le guidage : le suivi s'arrête. */
   onNavigationPan: () => void;
+  /**
+   * Les modes en direct (`src/live/`) peuvent-ils s'afficher ? Faux pendant la
+   * navigation voiture, comme tous les autres calques.
+   */
+  live: boolean;
+  /** Une station de vélos, une station-service ou une borne a été touchée. */
+  onLivePick: (item: LiveItem) => void;
 }
 
 // Protégée contre les rendus inutiles (`memo`), comme les autres composants qui
@@ -197,6 +205,8 @@ export const MapView = memo(function MapView({
   onAttributionChange,
   navigation,
   onNavigationPan,
+  live,
+  onLivePick,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -306,6 +316,23 @@ export const MapView = memo(function MapView({
   const gapsTimer = useRef<number | null>(null);
   const gapsAbort = useRef<AbortController | null>(null);
   const refreshPoisLatest = useRef<() => void>(() => {});
+  // Modes en direct : les vélos suivent la catégorie Transports, les carburants
+  // la ligne des calques. Leurs stations remplacent celles des tuiles.
+  const bikesMode = useBikesModeEnabled();
+  const fuelMode = useFuelModeEnabled();
+  const fuelLayer = useFuelLayerOn();
+  const chargersShown = useShowingChargers();
+  const liveShow = { bikes: live && bikesMode && groups.includes("transport"), fuel: live && fuelMode && fuelLayer };
+  // Ce que les repères en direct remplacent parmi les commerces des tuiles.
+  const liveReplaces = liveShow.fuel ? (chargersShown ? "charging_station" : "fuel") : null;
+  const liveReplacesRef = useLatest(liveReplaces);
+  const liveShowRef = useLatest(liveShow);
+  const onLivePickRef = useLatest(onLivePick);
+  const fuelPoisRef = useRef<{ lon: number; lat: number; name: string }[]>([]);
+  // Allumer ou couper un mode change les commerces à montrer (voir `refreshPois`).
+  useEffect(() => {
+    refreshPoisLatest.current();
+  }, [liveShow.bikes, liveReplaces]);
   const refreshTransitStops = useCallback((map: MLMap) => {
     const center = map.getCenter();
     if (!capabilityAt(center.lng, center.lat, "stops")) return;
@@ -479,6 +506,15 @@ export const MapView = memo(function MapView({
         refreshTransitStops(map);
       }
     }
+    // Les stations-service et de vélos des tuiles cèdent la place aux repères
+    // en direct, qui disent la même chose et davantage. Le nom des premières
+    // sert d'enseigne à la fiche (le flux officiel des prix n'en a pas).
+    fuelPoisRef.current = places.filter((p) => p.rawType === "fuel" && p.name).map(({ lon, lat, name }) => ({ lon, lat, name }));
+    const bikesReplaced = liveShowRef.current.bikes;
+    const replaced = liveReplacesRef.current;
+    if (bikesReplaced || replaced) {
+      places = places.filter((p) => p.rawType !== replaced && !(bikesReplaced && p.rawType === "bicycle_rental"));
+    }
     placesRef.current = places;
     // **Rien à renvoyer si rien n'a changé.** `setLayoutProperty` relance le
     // placement de tous les pictogrammes et `setData` le découpage de la couche,
@@ -522,7 +558,7 @@ export const MapView = memo(function MapView({
     // Leur échec, lui, se dit.
     const gapsFailed = zoom >= GAP_MIN_ZOOM && gapsRef.current.failed && gapsPending.current === null;
     onPoiStatusRef.current(tilesPending ? "loading" : gapsFailed ? "partial" : "idle");
-  }, [refreshStopLines, refreshTransitStops, refreshTileGaps]);
+  }, [refreshStopLines, refreshTransitStops, refreshTileGaps, liveShowRef, liveReplacesRef]);
 
   // Les arrêts de Transitous arrivent après coup : la couche se relit alors.
   useEffect(() => {
@@ -624,6 +660,7 @@ export const MapView = memo(function MapView({
         boldRouteRef.current,
         routeTrafficToGeoJSON(choicesRef.current, navTrafficRef.current, boldRouteRef.current)
       );
+      applyLive(map, liveShownRef.current);
       refreshPois();
     });
 
@@ -714,6 +751,14 @@ export const MapView = memo(function MapView({
     });
 
     map.on("click", (e: MapMouseEvent) => {
+      // Une station en direct d'abord : son étiquette est dessinée par-dessus
+      // tout le reste. Pas pendant qu'une question d'itinéraire est posée.
+      const livePick = pickingRef.current ? null : pickLive(map, e.point);
+      const liveItem = livePick ? liveItemsRef.current.get(livePick.id) : undefined;
+      if (liveItem) {
+        onLivePickRef.current(liveItem);
+        return;
+      }
       let hitPlace: Place | undefined;
       try {
         // Pas la première pastille renvoyée — celle du dessus — mais la plus
@@ -1716,6 +1761,10 @@ export const MapView = memo(function MapView({
       map.off("zoomstart", notify);
     };
   }, [navigating]);
+
+  // Modes en direct (`src/live/`). Après la création de la carte : les effets
+  // tournent dans l'ordre de déclaration, et celui-ci a besoin d'elle.
+  const { shownRef: liveShownRef, itemsRef: liveItemsRef } = useLiveLayer(mapRef, liveShow, fuelPoisRef);
 
   // Calque « Trafic ». Le flux est lu à l'allumage, puis relu à l'intervalle de
   // son cache (`services/traffic.ts`) : trois minutes, la cadence à laquelle la

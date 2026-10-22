@@ -67,6 +67,46 @@ server {
         add_header Cache-Control "no-cache" always;
     }
 
+    # Relais vers Pumperly (prix des carburants hors de France, bornes de
+    # recharge), sans origine croisée lui non plus. Mêmes règles que celui du
+    # trafic, et mêmes trois copies : `app/vite.config.ts`, `CONFIG.RELAY_TARGETS`.
+    # La chaîne de requête (emprise, carburant) suit ; rien d'autre.
+    location = /api/pumperly/stations {
+        limit_except GET { deny all; }
+        limit_req zone=pumperly burst=20 nodelay;
+
+        set $pumperly "https://pumperly.com";
+        proxy_pass $pumperly/api/stations$is_args$args;
+        proxy_http_version 1.1;
+        proxy_pass_request_headers off;
+        proxy_pass_request_body off;
+        proxy_set_header Host pumperly.com;
+        proxy_set_header Accept "application/json";
+        proxy_set_header Accept-Encoding "gzip";
+        proxy_set_header User-Agent "MY-OSM (+https://github.com/Gris-S/my-osm)";
+        proxy_set_header Connection "";
+
+        proxy_ssl_server_name on;
+        proxy_ssl_name pumperly.com;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
+
+        proxy_cache relay_cache;
+        proxy_cache_key "pumperly-$args";
+        proxy_cache_valid 200 5m;
+        proxy_cache_lock on;
+        proxy_cache_use_stale error timeout updating;
+        proxy_ignore_headers Set-Cookie Cache-Control Expires;
+        proxy_hide_header Set-Cookie;
+
+        include /etc/nginx/myosm/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
     # Toute autre adresse de /api/ n'existe pas : sans cette règle, elle
     # rendrait la page de l'application avec un 200, et un service mal
     # configuré passerait pour une réponse.

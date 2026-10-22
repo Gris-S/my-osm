@@ -205,3 +205,78 @@ export function buildLineMarkerImage(chips: LineChip[], extra: number, pixelRati
 
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
+
+/** Une étiquette de la carte : pictogramme et texte, sur une pilule. */
+export interface PillStyle {
+  background: string;
+  color: string;
+  /** Cerne blanc épais autour de la pilule (borne rapide). */
+  ring?: boolean;
+  /** Petite pastille après le texte (prix ancien, vélos électriques). */
+  dot?: string;
+}
+
+const PILL_HEIGHT = 22;
+const PILL_GLYPH = 14;
+const PILL_FONT = "700 12.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+/**
+ * Dessine une étiquette des modes en direct (`src/live/`) : vélo et nombre de
+ * vélos, pompe et prix, prise et puissance. Le même canevas que les pastilles
+ * de catégorie, pour que tout se lise comme une seule carte.
+ */
+export function buildPillImage(icon: IconNode, label: string, style: PillStyle, pixelRatio: number): ImageData {
+  const measure = document.createElement("canvas").getContext("2d");
+  if (!measure) throw new Error("Canvas 2D indisponible");
+  measure.font = PILL_FONT;
+  const textWidth = Math.ceil(measure.measureText(label).width);
+  const dotWidth = style.dot ? 9 : 0;
+  const inner = 6 + PILL_GLYPH + (label ? 3 + textWidth : 0) + dotWidth + 7;
+  const width = inner + PADDING * 2;
+  const height = PILL_HEIGHT + PADDING * 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(width * pixelRatio);
+  canvas.height = Math.round(height * pixelRatio);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D indisponible");
+  ctx.scale(pixelRatio, pixelRatio);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+  ctx.shadowBlur = 2.5;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = "#ffffff";
+  roundedRect(ctx, PADDING - (style.ring ? 1.5 : 0), PADDING - (style.ring ? 1.5 : 0), inner + (style.ring ? 3 : 0), PILL_HEIGHT + (style.ring ? 3 : 0), PILL_HEIGHT / 2 + 1.5);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = style.background;
+  roundedRect(ctx, PADDING + 1.25, PADDING + 1.25, inner - 2.5, PILL_HEIGHT - 2.5, PILL_HEIGHT / 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(PADDING + 6, PADDING + (PILL_HEIGHT - PILL_GLYPH) / 2);
+  ctx.scale(PILL_GLYPH / 24, PILL_GLYPH / 24);
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = GLYPH_STROKE;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const node of icon) strokeElement(ctx, node);
+  ctx.restore();
+
+  ctx.fillStyle = style.color;
+  ctx.font = PILL_FONT;
+  ctx.textBaseline = "middle";
+  const textX = PADDING + 6 + PILL_GLYPH + 3;
+  if (label) ctx.fillText(label, textX, PADDING + PILL_HEIGHT / 2 + 0.5);
+
+  if (style.dot) {
+    ctx.fillStyle = style.dot;
+    ctx.beginPath();
+    ctx.arc(textX + textWidth + 6, PADDING + PILL_HEIGHT / 2, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}

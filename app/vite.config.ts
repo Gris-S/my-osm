@@ -29,7 +29,17 @@ const TRAFFIC_PROXY = {
   },
 }
 
-const PROXY = { ...TRAFFIC_PROXY }
+// Pumperly (prix des carburants hors de France, bornes de recharge) n'autorise
+// pas non plus l'origine croisée. La chaîne de requête suit telle quelle.
+const PUMPERLY_PROXY = {
+  '/api/pumperly/stations': {
+    target: 'https://pumperly.com',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/pumperly\/stations/, '/api/stations'),
+  },
+}
+
+const PROXY = { ...TRAFFIC_PROXY, ...PUMPERLY_PROXY }
 
 /**
  * Vrai quand on compile pour l'empaquetage Android (`../apk`).
