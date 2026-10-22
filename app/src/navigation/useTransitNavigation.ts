@@ -600,7 +600,8 @@ export function useTransitNavigation(): TransitNavSession {
     }
     // Déjà donnée par le GPS, ou passée depuis plus d'une minute : rien à refaire.
     if (firedRef.current.has(alertKey) || alertAt < Date.now() - 60_000) return;
-    scheduleGetOff(Math.max(alertAt, Date.now()), navText("transit.getOffTitle"), alertBody);
+    const watched = alertStops?.map((stop) => ({ lat: stop.lat, lon: stop.lon, at: stop.at.getTime() }));
+    scheduleGetOff(alertKey, Math.max(alertAt, Date.now()), navText("transit.getOffTitle"), alertBody, watched);
     note("tc.getoff", { leg: alertLegIndex, at: new Date(alertAt).toISOString() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertOn, simulating, alertKey, alertAt, alertBody]);
@@ -609,7 +610,7 @@ export function useTransitNavigation(): TransitNavSession {
   // aérien), application ouverte, passer l'avant-dernier arrêt plus tôt que
   // l'horaire la donne tout de suite. `ridePosition` ne dépasse l'horaire que
   // quand le relevé est sur la ligne.
-  // shortcut: le GPS n'avance l'alerte que page ouverte ; dans la poche, seul l'horaire compte — un service de position serait la suite.
+  // Dans la poche, c'est le natif qui suit le train (`GetOffWatchService`).
   useEffect(() => {
     if (!alertOn || simulating || !alertKey || alertAt === null || !here) return;
     if (liveStep?.kind !== "alight" || !alertStops || alertStops.length < 3) return;
@@ -617,7 +618,7 @@ export function useTransitNavigation(): TransitNavSession {
     const at = ridePosition(alertLeg, Date.now(), here);
     if (at === null || at < alertStops.length - 2) return;
     firedRef.current.add(alertKey);
-    scheduleGetOff(Date.now(), navText("transit.getOffTitle"), alertBody);
+    scheduleGetOff(alertKey, Date.now(), navText("transit.getOffTitle"), alertBody);
     note("tc.getoff", { leg: alertLegIndex, gps: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [here]);

@@ -15,8 +15,16 @@ import { useSyncExternalStore } from "react";
 // valent que page ouverte.
 // ---------------------------------------------------------------------------
 
+/** Une station de la ligne, pour que le natif suive le train application fermée (`GetOffWatchService`). */
+export interface GetOffStop {
+  lat: number;
+  lon: number;
+  /** Heure de passage prévue, en millisecondes. */
+  at: number;
+}
+
 interface GetOffAlertPlugin {
-  schedule(options: { at: number; title: string; body: string }): Promise<{ exact: boolean }>;
+  schedule(options: { at: number; title: string; body: string; key: string; stops?: GetOffStop[] }): Promise<{ exact: boolean; watching: boolean }>;
   cancel(): Promise<void>;
   status(): Promise<GetOffStatus>;
   requestNotifications(): Promise<GetOffStatus>;
@@ -43,11 +51,16 @@ function plugin(): GetOffAlertPlugin | null {
 
 let webTimer = 0;
 
-/** Programme l'alerte (remplace la précédente). Ne lève jamais : sans alerte, la navigation continue. */
-export function scheduleGetOff(at: number, title: string, body: string): void {
+/**
+ * Programme l'alerte (remplace la précédente). Avec les stations de la ligne,
+ * le natif suit aussi le train au GPS, application fermée, et recale l'heure.
+ * Ne lève jamais : sans alerte, la navigation continue.
+ */
+export function scheduleGetOff(key: string, at: number, title: string, body: string, stops?: GetOffStop[]): void {
   const native = plugin();
   if (native) {
-    void native.schedule({ at, title, body }).catch(() => {});
+    // `key` : la ligne du trajet. Une alerte déjà donnée pour elle ne se redonne pas.
+    void native.schedule({ at, title, body, key, stops }).catch(() => {});
     return;
   }
   window.clearTimeout(webTimer);

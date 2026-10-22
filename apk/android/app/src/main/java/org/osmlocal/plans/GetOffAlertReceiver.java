@@ -1,11 +1,13 @@
 package org.osmlocal.plans;
 
+import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.VibrationAttributes;
@@ -46,6 +48,57 @@ public class GetOffAlertReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        // L'horaire a parlé avant le GPS : le suivi n'a plus d'objet.
+        GetOffWatchService.stop(context);
+        alert(context, intent.getStringExtra("title"), intent.getStringExtra("body"));
+    }
+
+    /** L'alarme de l'alerte : une seule à la fois, la même pour la programmer et l'annuler. */
+    static PendingIntent pending(Context context, String title, String body) {
+        Intent intent = new Intent(context, GetOffAlertReceiver.class);
+        if (title != null) intent.putExtra("title", title);
+        if (body != null) intent.putExtra("body", body);
+        return PendingIntent.getBroadcast(context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static boolean exactAllowed(Context context) {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+            || context.getSystemService(AlarmManager.class).canScheduleExactAlarms();
+    }
+
+    /** Programme l'alerte à `at` (remplace la précédente). Rend vrai si l'heure sera tenue à la seconde. */
+    static boolean schedule(Context context, long at, String title, String body) {
+        AlarmManager alarms = context.getSystemService(AlarmManager.class);
+        PendingIntent intent = pending(context, title, body);
+        boolean exact = exactAllowed(context);
+        if (exact) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent);
+        else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent);
+        return exact;
+    }
+
+    static void cancel(Context context) {
+        context.getSystemService(AlarmManager.class).cancel(pending(context, null, null));
+    }
+
+    // La ligne de l'alerte programmée, puis celle de la dernière alerte donnée :
+    // rouverte après une alerte du suivi (`GetOffWatchService`), la page
+    // reprogrammerait sinon la même ligne, et le téléphone vibrerait deux fois.
+    private static SharedPreferences memory(Context context) {
+        return context.getSharedPreferences("get-off", Context.MODE_PRIVATE);
+    }
+
+    static void arm(Context context, String key) {
+        memory(context).edit().putString("armed", key).apply();
+    }
+
+    static boolean alreadyGiven(Context context, String key) {
+        return key != null && key.equals(memory(context).getString("given", null));
+    }
+
+    /** Vibre et prévient, tout de suite. */
+    static void alert(Context context, String title, String body) {
+        memory(context).edit().putString("given", memory(context).getString("armed", null)).apply();
         vibrate(context);
 
         NotificationManager manager = context.getSystemService(NotificationManager.class);
@@ -63,8 +116,8 @@ public class GetOffAlertReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_get_off)
-            .setContentTitle(intent.getStringExtra("title"))
-            .setContentText(intent.getStringExtra("body"))
+            .setContentTitle(title)
+            .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVibrate(PATTERN)

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { Box, Camera, Layers, Map as MapIcon, Mountain, Satellite, TrafficCone } from "lucide-react";
 import { hasMapillaryToken } from "../hooks/useMapillary";
 import type { Basemap } from "../hooks/useBasemap";
@@ -89,7 +89,11 @@ export function MapOptionsMenu({
   }, [open, onOpenChange]);
 
   return (
-    <div className="map-options" ref={wrapRef} style={{ bottom: offsetBottom }}>
+    <div
+      className="map-options"
+      ref={wrapRef}
+      style={{ bottom: offsetBottom, "--options-offset": `${offsetBottom}px` } as CSSProperties}
+    >
       {open && (
         <div className="map-options-panel" role="group" aria-label={t("layers.aria")}>
           <div className="map-options-title">{t("layers.type")}</div>

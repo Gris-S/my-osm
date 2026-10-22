@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="get_off_channel">Alertes de descente</string>
+    <string name="get_off_watch_channel">Suivi de l\'alerte de descente</string>
+    <string name="get_off_watch_title">Alerte de descente : suivi du train en cours</string>
 </resources>

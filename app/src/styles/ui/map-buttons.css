@@ -29,6 +29,11 @@
   transition: bottom 0.25s ease;
 }
 
+/* Ouvert, le menu passe devant le bandeau de navigation et la météo. */
+.map-options:has(.map-options-panel) {
+  z-index: 21;
+}
+
 .map-options {
   display: flex;
   flex-direction: column;

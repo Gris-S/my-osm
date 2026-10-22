@@ -1,9 +1,6 @@
 package org.osmlocal.plans;
 
 import android.Manifest;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -11,6 +8,7 @@ import android.provider.Settings;
 
 import androidx.core.app.NotificationManagerCompat;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -29,31 +27,16 @@ import com.getcapacitor.annotation.PermissionCallback;
  * sous terre. Une seule alerte à la fois : en programmer une remplace la
  * précédente.
  *
- * L'heure n'est tenue à la seconde que si « Alarmes et rappels » est accordé
- * (`SCHEDULE_EXACT_ALARM`, refusé d'office depuis Android 14) ; sinon Android
- * peut la retarder quand le téléphone dort, et `status` le dit.
+ * L'heure est tenue à la seconde grâce à `USE_EXACT_ALARM`, accordée à
+ * l'installation depuis Android 13. Sur Android 12, il faut « Alarmes et
+ * rappels » (`SCHEDULE_EXACT_ALARM`) ; sans elle, Android peut retarder
+ * l'alarme quand le téléphone dort, et `status` le dit.
  */
 @CapacitorPlugin(
     name = "GetOffAlert",
     permissions = { @Permission(strings = { Manifest.permission.POST_NOTIFICATIONS }, alias = "notifications") }
 )
 public class GetOffAlertPlugin extends Plugin {
-
-    private PendingIntent pending(String title, String body) {
-        Intent intent = new Intent(getContext(), GetOffAlertReceiver.class);
-        if (title != null) intent.putExtra("title", title);
-        if (body != null) intent.putExtra("body", body);
-        return PendingIntent.getBroadcast(getContext(), 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    private AlarmManager alarms() {
-        return (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
-    }
-
-    private boolean exactAllowed() {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms().canScheduleExactAlarms();
-    }
 
     @PluginMethod
     public void schedule(PluginCall call) {
@@ -63,18 +46,33 @@ public class GetOffAlertPlugin extends Plugin {
             return;
         }
         long at = (long) call.getData().optDouble("at");
-        PendingIntent intent = pending(call.getString("title"), call.getString("body"));
-        boolean exact = exactAllowed();
-        if (exact) alarms().setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent);
-        else alarms().setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent);
+        String title = call.getString("title");
+        String body = call.getString("body");
+        String key = call.getString("key");
+        if (GetOffAlertReceiver.alreadyGiven(getContext(), key)) {
+            JSObject given = new JSObject();
+            given.put("exact", GetOffAlertReceiver.exactAllowed(getContext()));
+            given.put("watching", false);
+            call.resolve(given);
+            return;
+        }
+        GetOffAlertReceiver.arm(getContext(), key);
+        boolean exact = GetOffAlertReceiver.schedule(getContext(), at, title, body);
+        // Les stations de la ligne : le GPS suit le train, application fermée.
+        JSArray stops = call.getArray("stops");
+        boolean watching = stops != null && stops.length() >= 2
+            && GetOffWatchService.start(getContext(), at, title, body, stops);
+        if (!watching) GetOffWatchService.stop(getContext());
         JSObject result = new JSObject();
         result.put("exact", exact);
+        result.put("watching", watching);
         call.resolve(result);
     }
 
     @PluginMethod
     public void cancel(PluginCall call) {
-        alarms().cancel(pending(null, null));
+        GetOffAlertReceiver.cancel(getContext());
+        GetOffWatchService.stop(getContext());
         call.resolve();
     }
 
@@ -82,7 +80,7 @@ public class GetOffAlertPlugin extends Plugin {
     public void status(PluginCall call) {
         JSObject result = new JSObject();
         result.put("notifications", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
-        result.put("exact", exactAllowed());
+        result.put("exact", GetOffAlertReceiver.exactAllowed(getContext()));
         call.resolve(result);
     }
 

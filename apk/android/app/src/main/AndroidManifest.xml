@@ -160,6 +160,13 @@
              l'envoie (`exported="false"`). -->
         <receiver android:name=".GetOffAlertReceiver" android:exported="false" />
 
+        <!-- Le suivi du train pour cette alerte, application fermée
+             (`GetOffWatchService`) : le temps d'un trajet, sous une notification. -->
+        <service
+            android:name=".GetOffWatchService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -197,11 +204,20 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- Alerte de descente (`GetOffAlertPlugin`) : vibrer, prévenir, et tenir
-         l'heure même téléphone endormi. `SCHEDULE_EXACT_ALARM` s'accorde dans
-         « Alarmes et rappels » ; sans elle, l'alerte peut arriver en retard. -->
+         l'heure même téléphone endormi. Depuis Android 13, `USE_EXACT_ALARM`
+         est accordée à l'installation : `SCHEDULE_EXACT_ALARM`, refusée d'office
+         depuis Android 14, laissait l'alarme approximative, et Android la
+         repoussait en veille — vibration manquée ou donnée une fois descendu
+         (constaté en octobre 2026). Avant Android 13, seule la seconde existe. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <!-- Le suivi du train dans la poche (`GetOffWatchService`) : un service au
+         premier plan qui lit la position, lancé application ouverte — la
+         position « pendant l'utilisation » suffit, pas d'accès en arrière-plan. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>
