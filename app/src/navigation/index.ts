@@ -24,6 +24,7 @@ export { CarNavigationPanel } from "./car/CarNavigationPanel";
 export { useTransitNavigation } from "./useTransitNavigation";
 export type { TransitNavSession } from "./useTransitNavigation";
 export { TransitNavigationPanel } from "./TransitNavigationPanel";
+export { collapseTransitPanel } from "./transitPanel";
 export { StartNavigationButton } from "./StartNavigationButton";
 export { NavigationSettings } from "./NavigationSettings";
 export { ModesSettings } from "./ModesSettings";

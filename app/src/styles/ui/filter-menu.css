@@ -71,7 +71,7 @@
   /* Le panneau pousse vers le haut depuis le bouton : sa hauteur est bornée
      par ce qui reste d'écran au-dessus de lui (bouton + gouttière compris),
      sinon la liste sortait par le haut dès qu'une fiche remontait la colonne. */
-  max-height: min(560px, calc(100dvh - var(--filter-offset, 200px) - 78px));
+  max-height: min(560px, calc(100dvh - var(--filter-offset, 200px) - var(--menu-top, 78px)));
   /* Le titre reste en place, seule la liste défile. */
   display: flex;
   flex-direction: column;

@@ -31,7 +31,7 @@ import { reverseGeocode } from "./services/geocode";
 // Navigation guidée pas à pas — voir `src/navigation/README.md`. Tout tient
 // dans ce dossier ; l'application ne fait que l'appeler, lui donner un parcours
 // et passer deux valeurs à la carte.
-import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, useCarEta, useCarNavigation, hasLiveEngine, withMargin, useNavigation, RunButton, RunPanel, useNavDockClearance, useNavBannerBottom, crampedLevel, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
+import { CarNavigationPanel, NavigationPanel, TransitNavigationPanel, collapseTransitPanel, useCarEta, useCarNavigation, hasLiveEngine, withMargin, useNavigation, RunButton, RunPanel, useNavDockClearance, useNavBannerBottom, crampedLevel, useRunModeEnabled, useRunSession, useTransitNavigation } from "./navigation";
 import { CONFIG } from "./config";
 import type { LonLat, Place, RouteStop } from "./types";
 import "./App.css";
@@ -98,6 +98,12 @@ export default function App() {
   // Ouverture du menu des calques : son panneau se déploie sur le bouton des
   // catégories, qui s'efface le temps qu'il est ouvert.
   const [mapOptionsOpen, setMapOptionsOpen] = useState(false);
+  // navigation/ : ouvrir un menu de droite (catégories, calques — les signets
+  // le font eux-mêmes) réduit le panneau des transports, qui ne se cogne plus
+  // dessus. Sans navigation en transports, le magasin n'est lu par personne.
+  useEffect(() => {
+    if (filterMenuOpen || mapOptionsOpen) collapseTransitPanel();
+  }, [filterMenuOpen, mapOptionsOpen]);
 
   // Orientation de la carte, arrondie au degré, et demande de remise au nord.
   // Le cap est ici et non dans `MapView` parce que c'est la boussole, posée
@@ -982,6 +988,7 @@ export default function App() {
               onLaunch={onLaunchFolder}
               offsetBottom={locateButtonOffset + 168}
               covered={mapOptionsOpen || filterMenuOpen}
+              onOpen={collapseTransitPanel}
             />
           )}
           {(!searching || wide) && (

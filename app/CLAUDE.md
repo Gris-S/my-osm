@@ -1955,6 +1955,18 @@ a pas de position à suivre.
   `position` et `ecart`. La porte de la montée, le recalage d'étape et le
   « chemin quitté » gardent les seuils stricts. **Seuils estimés, pas
   mesurés** : un relevé réel sous terre doit les confirmer.
+- **Le panneau du bas se réduit** (demande explicite du 3 novembre 2026,
+  `transitPanel.ts`, scénario `panneau-transports`) : une poignée en haut
+  (toucher, ou glisser vers le bas / le haut) ; réduit, restent la musique, une
+  ligne pour la suite (« 16:44 · 111 · Descendre à Rue des Remises »), les
+  flèches et « Terminer » — mesuré 342 → 122 px. **Ouvrir un menu de droite le
+  réduit** (catégories, calques, signets), et il **reste réduit** à la
+  fermeture du menu (demande explicite) ; chaque navigation repart ouverte.
+  La colonne de droite suit la hauteur réelle (`useNavDockClearance`) et
+  retrouve ses boutons. Pendant toute navigation, les menus de droite
+  s'arrêtent sous la météo et la boussole (`--menu-top`, `navigation.css`) :
+  ils montaient sur le bandeau. En transports, les catégories n'y montrent
+  alors que deux ou trois lignes, et la liste défile.
 - **La liste du bas ne montre que ce qui reste.** Une action franchie disparaît :
   ce qui est encore écrit est ce qu'il reste à faire, lisible d'un coup d'œil
   dans une rame bondée.

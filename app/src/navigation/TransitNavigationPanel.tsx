@@ -1,5 +1,5 @@
 import { BellRing, ChevronLeft, ChevronRight, Flag, Footprints, Play, Square, X } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { StationExit } from "./exits";
 import { useNavBannerRef, useNavDockRef } from "./dockClearance";
 import { MusicCard } from "./music/MusicCard";
@@ -8,6 +8,7 @@ import type { TransitLine, TransitStop } from "../transport/journeyView";
 import { setGetOffAlertEnabled, useGetOffAlertEnabled, useTransitStationsEnabled } from "./settings";
 import { formatClock, navPlural, useNav } from "./strings";
 import type { TransitNavSession } from "./useTransitNavigation";
+import { setTransitPanelCollapsed, useTransitPanelCollapsed } from "./transitPanel";
 
 // ---------------------------------------------------------------------------
 // Ce qu'on a sous les yeux dans le couloir.
@@ -25,6 +26,9 @@ import type { TransitNavSession } from "./useTransitNavigation";
 // ligne qu'on vient de prendre.
 // ---------------------------------------------------------------------------
 
+/** Glissement minimal sur la poignée pour réduire ou rouvrir le panneau. */
+const SWIPE_PX = 24;
+
 export function TransitNavigationPanel({ session }: { session: TransitNavSession }) {
   const { nav } = useNav();
   // Hauteur de la colonne du bas, lue par `App` pour y ranger les boutons de droite.
@@ -33,6 +37,11 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
   const bannerRef = useNavBannerRef();
   const { current, upcoming, offset } = session;
   const stationList = useTransitStationsEnabled();
+  // Réduit : la carte en grand, la musique et les commandes restent (voir `transitPanel.ts`).
+  const collapsed = useTransitPanelCollapsed();
+  // Chaque navigation repart le panneau ouvert.
+  useEffect(() => setTransitPanelCollapsed(false), [session.journey]);
+  const swipe = useRef<{ y: number; swiped: boolean }>({ y: 0, swiped: false });
 
   if (!session.active || !current) return null;
 
@@ -70,7 +79,40 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
       <div className="nav-dock" ref={dockRef}>
         {/* Musique en cours : l'encart n'existe que s'il y en a une (voir `music/`). */}
         <MusicCard mode="transit" />
-        <div className="nav-bar is-transit">
+        <div className={`nav-bar is-transit ${collapsed ? "is-collapsed" : ""}`}>
+          {/* La poignée : un toucher bascule, un glissement vers le bas réduit,
+              vers le haut rouvre. Sur elle seule — la liste du dessous défile. */}
+          <button
+            className="transit-handle"
+            aria-expanded={!collapsed}
+            aria-label={nav(collapsed ? "transit.expand" : "transit.collapse")}
+            onPointerDown={(e) => {
+              swipe.current = { y: e.clientY, swiped: false };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerUp={(e) => {
+              const dy = e.clientY - swipe.current.y;
+              if (Math.abs(dy) < SWIPE_PX) return;
+              swipe.current.swiped = true;
+              setTransitPanelCollapsed(dy > 0);
+            }}
+            onClick={() => {
+              if (swipe.current.swiped) swipe.current.swiped = false;
+              else setTransitPanelCollapsed(!collapsed);
+            }}
+          >
+            <span aria-hidden="true" />
+          </button>
+          {collapsed ? (
+            // Réduit, une ligne : ce qui vient ensuite.
+            upcoming[0] && (
+              <p className="transit-summary">
+                <span className="transit-step-time">{formatClock(clockOf(upcoming[0]))}</span>
+                <Badge step={upcoming[0]} />
+                <span className="transit-step-text">{shortText(upcoming[0], nav)}</span>
+              </p>
+            )
+          ) : (
           <div className="transit-remaining">
             {stationList && session.rideStops.length > 1 && (
               <Stations stops={session.rideStops} fraction={session.rideFraction} color={current.line?.color} />
@@ -89,6 +131,7 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
               ))}
             </ol>
           </div>
+          )}
 
           <div className="nav-bar-main">
             {/* Deux flèches pour regarder les autres étapes, sans changer

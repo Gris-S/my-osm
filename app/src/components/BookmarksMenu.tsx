@@ -199,11 +199,13 @@ interface BookmarksMenuProps {
   offsetBottom: number;
   /** Vrai quand un menu voisin se déploie par-dessus ce bouton. */
   covered: boolean;
+  /** Le menu s'ouvre : en navigation transports, le panneau du bas se réduit. */
+  onOpen?: () => void;
 }
 
 // Protégé contre les rendus inutiles (`memo`) : `App` se redessine à chaque
 // relevé GPS d'une navigation, et ce composant n'a alors rien de neuf à montrer.
-export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlace, onLaunch, offsetBottom, covered }: BookmarksMenuProps) {
+export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlace, onLaunch, offsetBottom, covered, onOpen }: BookmarksMenuProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -297,7 +299,10 @@ export const BookmarksMenu = memo(function BookmarksMenu({ bookmarks, onOpenPlac
 
       <button
         className={`bookmarks-button ${open ? "is-open" : ""}`}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (!open) onOpen?.();
+          setOpen(!open);
+        }}
         aria-label={t("bookmarks.aria")}
         aria-expanded={open}
         title={t("bookmarks.aria")}

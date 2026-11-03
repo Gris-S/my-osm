@@ -649,6 +649,18 @@
    s'efface.
    Plancher seulement, depuis le 19 septembre 2026 : le bandeau des transports
    dépasse ce décalage, et il publie son bas réel (`useNavBannerRef`). */
+/* Les menus de droite (catégories, calques, signets) s'ouvrent vers le haut :
+   pendant une navigation, ils s'arrêtent sous la météo et la boussole, qui
+   sont elles-mêmes sous le bandeau — 116 px de colonne, plus le bouton du
+   menu (56 px, compté dans la formule de chaque panneau) et une marge. Le
+   test `panneau-transports` voyait les catégories monter sur le bandeau, puis
+   sur la boussole (3 novembre 2026). */
+.app-shell.is-navigating {
+  --menu-top: calc(
+    max(calc(max(16px, env(safe-area-inset-top)) + 132px), calc(var(--nav-banner-bottom, 0px) + 12px)) + 180px
+  );
+}
+
 .app-shell.is-navigating .app-menu,
 .app-shell.is-navigating .map-dock {
   top: max(
@@ -1403,6 +1415,53 @@
 
 .nav-bar.is-transit .nav-bar-main {
   border-top: 1px solid var(--hairline);
+}
+
+/* Poignée du panneau (demande explicite du 3 novembre 2026) : une barre
+   grise centrée, dans une zone de toucher sur toute la largeur. */
+.transit-handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 22px;
+  padding: 0;
+  touch-action: none; /* le glissement est pour elle, pas pour la page */
+  cursor: grab;
+}
+
+.transit-handle > span {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-secondary);
+  opacity: 0.35;
+}
+
+.transit-handle + .transit-remaining {
+  padding-top: 0;
+}
+
+/* Réduit : une ligne pour la suite, puis les commandes. */
+.transit-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 14px 10px;
+  min-width: 0;
+}
+
+.transit-summary .transit-step-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-bar.is-transit.is-collapsed .transit-remaining {
+  display: none;
 }
 
 /* =========================================================================

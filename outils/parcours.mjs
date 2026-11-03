@@ -2735,6 +2735,126 @@ const SCENARIOS = [
   },
 
   {
+    id: "panneau-transports",
+    titre: "En transports : le panneau se réduit, et les menus de droite ne se cognent plus dessus",
+    /**
+     * Demande du 3 novembre 2026 : réduire le panneau du bas pour voir la carte,
+     * et l'ouvrir d'un menu de droite le réduit (il reste réduit ensuite). Trois
+     * trajets de longueurs différentes — le panneau est plus ou moins haut —, puis
+     * la marche et le vélo, menus ouverts, sans recouvrement.
+     */
+    async executer() {
+      const MENUS = [
+        ["catégories", ".filter-burger"],
+        ["calques", ".map-options-button"],
+        ["signets", ".bookmarks-button"],
+      ];
+      const ouvrirMenu = async (selecteur) => {
+        await js(`(()=>{const b=document.querySelector('${selecteur}');if(b)b.click();return !!b})()`);
+        await dodo(900);
+      };
+      // Refermer en touchant le même bouton : Échap n'existe pas au doigt.
+      const fermerMenu = ouvrirMenu;
+      const hauteurDock = () => js("Math.round(document.querySelector('.nav-dock')?.getBoundingClientRect().height ?? 0)");
+      const reduit = () => js("!!document.querySelector('.nav-bar.is-transit.is-collapsed')");
+      const versItineraire = async (lat, lon) => {
+        // Après « Terminer », le panneau d'itinéraire peut rester ouvert : la
+        // barre de recherche est alors cachée. On le referme d'abord.
+        await js("(()=>{const b=document.querySelector('.itinerary-close');if(b)b.click();return true})()");
+        await dodo(800);
+        await saisir(`${lat}, ${lon}`);
+        await attendre(".search-result.is-brand");
+        await cliquer(".search-result.is-brand");
+        if (!(await attendre(".sheet"))) return false;
+        await cliquer(".sheet-action-primary");
+        return attendre(".itinerary-panel");
+      };
+
+      await scene({ filtres: '["transport","food"]' });
+      await positionSimulee(48.8726, 2.3311); // Auber
+      await cliquer(".locate-button");
+      await dodo(1500);
+
+      // Trois destinations : courte (Nation), longue (La Défense), à correspondances (Vincennes).
+      const trajets = [["Nation", 48.8483, 2.3959], ["La Défense", 48.8919, 2.2381], ["Château de Vincennes", 48.8443, 2.4396]];
+      for (const [nom, lat, lon] of trajets) {
+        await carteVers(2.3311, 48.8726, 15);
+        if (!verifier(`${nom} : l'itinéraire s'ouvre`, await versItineraire(lat, lon))) continue;
+        await js("(()=>{const m=[...document.querySelectorAll('.itinerary-mode')].find(b=>/transport/i.test(b.getAttribute('aria-label')||''));if(m)m.click();return !!m})()");
+        if (!verifier(`${nom} : un trajet en transports est proposé`, await attendreQue("document.querySelectorAll('.journey-step-mark.is-alight').length > 0", 30_000))) {
+          await js("(()=>{const b=document.querySelector('.itinerary-close');if(b)b.click();return true})()");
+          continue;
+        }
+        await cliquer(".nav-start");
+        if (!verifier(`${nom} : la navigation démarre`, await attendre(".nav-banner .nav-maneuver", 15_000))) continue;
+        await dodo(1200);
+        // Le panneau le plus haut : jusqu'à la montée, la liste des stations paraît.
+        for (let k = 0; k < 4 && !(await js("!!document.querySelector('.transit-stations')")); k++) {
+          await js("(()=>{const b=document.querySelectorAll('.transit-nudge button')[1];if(b)b.click();return true})()");
+          await dodo(600);
+        }
+        const ouvert = await hauteurDock();
+        verifier(`${nom} : ouvert, rien ne se recouvre`, (await chevauchements()) === "", `${ouvert} px — ${await chevauchements()}`);
+        capture(`60-${nom}-ouvert`);
+
+        // La poignée réduit, puis rouvre.
+        await cliquer(".transit-handle");
+        await dodo(700);
+        const ferme = await hauteurDock();
+        verifier(`${nom} : la poignée réduit le panneau`, (await reduit()) && ferme < ouvert, `${ouvert} → ${ferme} px`);
+        verifier(`${nom} : réduit, la suite tient en une ligne et « Terminer » reste`,
+          await js("!!document.querySelector('.transit-summary') && !document.querySelector('.transit-remaining') && !!document.querySelector('.nav-stop')"));
+        verifier(`${nom} : réduit, rien ne se recouvre`, (await chevauchements()) === "", await chevauchements());
+        capture(`61-${nom}-reduit`);
+        await cliquer(".transit-handle");
+        await dodo(700);
+        verifier(`${nom} : la poignée rouvre le panneau`, !(await reduit()));
+
+        // Chaque menu de droite, panneau ouvert : il se réduit, et reste réduit.
+        for (const [menu, selecteur] of MENUS) {
+          if (await reduit()) { await cliquer(".transit-handle"); await dodo(600); }
+          await ouvrirMenu(selecteur);
+          verifier(`${nom} : ouvrir les ${menu} réduit le panneau`, await reduit());
+          verifier(`${nom} : ${menu} ouverts, rien ne se recouvre`, (await chevauchements()) === "", await chevauchements());
+          capture(`62-${nom}-${menu}`);
+          await fermerMenu(selecteur);
+          verifier(`${nom} : ${menu} refermés, le panneau reste réduit`, await reduit());
+        }
+        await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+        await dodo(1200);
+      }
+
+      // À pied et à vélo : pas de poignée, mais les menus ne doivent rien recouvrir.
+      for (const [mode, rang] of [["à pied", 1], ["à vélo", 2]]) {
+        await carteVers(2.3311, 48.8726, 15);
+        if (!verifier(`${mode} : l'itinéraire s'ouvre`, await versItineraire(48.8566, 2.3522))) continue;
+        await js(`(()=>{const m=document.querySelectorAll('.itinerary-mode');if(m[${rang}])m[${rang}].click();return true})()`);
+        if (!(await attendre(".itinerary-result", 25_000))) { verifier(`${mode} : un itinéraire est calculé`, false); continue; }
+        await cliquer(".nav-start");
+        // Le vélo propose d'abord deux parcours : on prend le premier.
+        if (await attendre(".route-choice-bubble, .nav-maneuver-icon", 20_000) && (await js("!!document.querySelector('.route-choice-bubble')"))) {
+          await cliquer(".route-choice-bubble");
+          await dodo(600);
+          await cliquer(".route-choice-bubble");
+        }
+        if (!verifier(`${mode} : la navigation démarre`, await attendre(".nav-maneuver-icon", 30_000))) continue;
+        await dodo(1500);
+        for (const [menu, selecteur] of MENUS) {
+          await ouvrirMenu(selecteur);
+          verifier(`${mode} : ${menu} ouverts, rien ne se recouvre`, (await chevauchements()) === "", await chevauchements());
+          capture(`63-${mode}-${menu}`);
+          await fermerMenu(selecteur);
+        }
+        await js("(()=>{const b=document.querySelector('.nav-stop');if(b)b.click();return true})()");
+        await dodo(1500);
+        // La fiche de fin de trajet, s'il y en a une : touchée hors d'elle, elle se ferme.
+        await js("(()=>{const b=document.querySelector('.modal-backdrop');if(b)b.click();return true})()");
+        await dodo(800);
+      }
+    },
+  },
+
+  {
     id: "position-retour",
     titre: "« Ma position » se refait au retour dans l'application",
     /**

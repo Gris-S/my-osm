@@ -113,6 +113,11 @@ dossier :
    des paramètres, l'entrée « Historique » du menu et son `<HistoryPanel />`,
    l'entrée « Modes » et son `<ModesSettings />`.
 
+Le panneau réductible des transports (`transitPanel.ts`, 3 novembre 2026) en
+ajoute un, dans `App.tsx` : l'appel à `collapseTransitPanel()` quand un menu
+de droite s'ouvre (catégories et calques par un effet, signets par la prop
+`onOpen` de `BookmarksMenu`, seule ligne hors de `App` et du module).
+
 La navigation voiture en ajoute deux, et pas davantage :
 
 6. **`src/config.ts`** — la ligne `TOMTOM_ROUTING_URL`.

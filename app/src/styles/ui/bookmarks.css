@@ -39,7 +39,7 @@
 .bookmarks-panel {
   /* 340 et non 300 : le bouton ▶ d'un dossier mangeait son nom (« Boucl… »). */
   width: min(340px, calc(100vw - 32px));
-  max-height: min(560px, calc(100dvh - var(--bookmarks-offset, 200px) - 78px));
+  max-height: min(560px, calc(100dvh - var(--bookmarks-offset, 200px) - var(--menu-top, 78px)));
   overflow-y: auto;
   background: var(--surface-solid);
   border-radius: var(--radius-card);

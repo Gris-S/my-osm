@@ -10,7 +10,9 @@
   /* Jamais plus haut que l'écran : en navigation transports avec la musique,
      le bouton remonte et le panneau passait sous le bandeau d'en haut
      (capture du 17 octobre 2026). 54 px : le bouton et l'écart au-dessus. */
-  max-height: calc(100dvh - var(--options-offset, 0px) - 54px - max(16px, env(safe-area-inset-top)));
+  /* `--menu-top` : la place réservée en haut pendant une navigation (bandeau,
+     météo, boussole — `navigation.css`). */
+  max-height: calc(100dvh - var(--options-offset, 0px) - var(--menu-top, calc(54px + max(16px, env(safe-area-inset-top)))));
   overflow-y: auto;
 }
 
