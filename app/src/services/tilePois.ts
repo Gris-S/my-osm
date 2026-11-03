@@ -2,6 +2,7 @@ import type { GeoJSONFeature, Map as MLMap } from "maplibre-gl";
 import { FILTER_GROUPS, groupFromTags, type FilterGroupId } from "../filters";
 import type { Place } from "../types";
 import { distance as metersBetween } from "../navigation/geo";
+import { normalizeText, normalizedTextScore } from "../search/textMatch";
 
 // ---------------------------------------------------------------------------
 // Les commerces affichés sur la carte viennent des **tuiles vectorielles du
@@ -225,6 +226,57 @@ export function collectTilePois(map: MLMap, { groups, showBusStops, bbox, limit 
   // l'écran, MapLibre garde celle qui vient en premier.
   visible.sort((a, b) => a.rank - b.rank);
   return mergeNearbyStops(visible.map((entry) => entry.place)).slice(0, limit);
+}
+
+/** Nom normalisé de chaque lieu retenu, calculé une fois (la recherche instantanée en lit des milliers). */
+const normalizedNames = new Map<string, string>();
+function normalizedName(name: string): string {
+  let n = normalizedNames.get(name);
+  if (n === undefined) {
+    n = normalizeText(name);
+    if (normalizedNames.size > SEEN_LIMIT) normalizedNames.clear();
+    normalizedNames.set(name, n);
+  }
+  return n;
+}
+
+/** Un lieu de la carte qui répond à la saisie : sa ressemblance au nom et sa distance. */
+export interface SeenPoiMatch {
+  place: Place;
+  /** De 0 à 1 (`textScore`) ; 1 pour un lieu de la catégorie cherchée. */
+  text: number;
+  meters: number;
+}
+
+/**
+ * Recherche **instantanée** parmi les lieux déjà lus dans les tuiles de la
+ * carte (le souvenir `seen`) : aucune requête, quelques millisecondes, et donc
+ * une réponse à chaque lettre pendant que Photon réfléchit encore. Par nom
+ * (début de mots, fautes tolérées), ou par catégorie (`value`, la valeur du
+ * tag : `pharmacy`) — on garde alors les plus proches du point regardé.
+ * `categoryText` : ce que vaut un lieu de la catégorie quand on n'en a tapé
+ * que le début (« boulang ») — moins qu'un nom qui répond mot pour mot.
+ */
+export function searchSeenPois(
+  query: string,
+  focus: { lon: number; lat: number },
+  { category, categoryText = 1, maxMeters, limit = 30 }: { category?: string; categoryText?: number; maxMeters: number; limit?: number }
+): SeenPoiMatch[] {
+  const q = normalizeText(query);
+  if (!q && !category) return [];
+  const out: SeenPoiMatch[] = [];
+  for (const { place } of seen.values()) {
+    if (place.group === "transport" && category) continue;
+    const named = normalizedTextScore(q, normalizedName(place.name));
+    const text = category && place.rawType === category ? Math.max(categoryText, named) : named;
+    if (text < 0.5) continue;
+    const meters = metersBetween(focus, place);
+    if (meters > maxMeters) continue;
+    out.push({ place, text, meters });
+  }
+  // Les plus ressemblants d'abord, à ressemblance voisine les plus proches.
+  out.sort((a, b) => b.text - a.text || a.meters - b.meters);
+  return out.slice(0, limit);
 }
 
 /**

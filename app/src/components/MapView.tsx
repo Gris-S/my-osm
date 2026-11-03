@@ -7,6 +7,7 @@ import { CONFIG } from "../config";
 import type { Basemap } from "../hooks/useBasemap";
 import type { Theme } from "../hooks/useTheme";
 import type { FilterGroupId } from "../filters";
+import { setSearchMap } from "../search/mapFocus";
 import { collectTilePois, rememberPlaces, VECTOR_SOURCE_ID } from "../services/tilePois";
 import { gapCellsKey, GAP_MIN_ZOOM, loadTileGaps } from "../services/tileGaps";
 import { isTransitStop } from "../services/idfm";
@@ -610,6 +611,7 @@ export const MapView = memo(function MapView({
       attributionControl: false,
     });
     mapRef.current = map;
+    setSearchMap(map);
     // Diagnostic par le câble (`window.__myosm.map`) : mesurer une navigation
     // demande de lire le tracé et la caméra depuis la console de la WebView.
     // Absent de la version release (`__DIAGNOSTICS__`).
@@ -834,6 +836,7 @@ export const MapView = memo(function MapView({
       if (gapsTimer.current !== null) window.clearTimeout(gapsTimer.current);
       gapsAbort.current?.abort();
       stopFollowingConnectivity?.();
+      setSearchMap(null);
       map.remove();
       mapRef.current = null;
     };

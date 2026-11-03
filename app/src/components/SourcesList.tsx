@@ -38,6 +38,8 @@ const GROUPS: { title: TranslationKey; entries: SourceEntry[] }[] = [
     entries: [
       { name: "Photon", role: "sources.role.photon", url: CONFIG.ATTRIBUTION_LINKS.photon },
       { name: "Base Adresse Nationale", role: "sources.role.ban", url: CONFIG.ATTRIBUTION_LINKS.ban },
+      { name: "iD Tagging Schema", role: "sources.role.idTaggingSchema", url: CONFIG.ATTRIBUTION_LINKS.idTaggingSchema, licence: "sources.licence.isc" },
+      { name: "Name Suggestion Index", role: "sources.role.nameSuggestionIndex", url: CONFIG.ATTRIBUTION_LINKS.nameSuggestionIndex, licence: "sources.licence.bsd3" },
       { name: "OSRM (FOSSGIS)", role: "sources.role.osrm", url: CONFIG.ATTRIBUTION_LINKS.osrm },
       { name: "Valhalla (FOSSGIS)", role: "sources.role.valhalla", url: CONFIG.ATTRIBUTION_LINKS.valhalla },
       { name: "BRouter", role: "sources.role.brouter", url: CONFIG.ATTRIBUTION_LINKS.brouter },

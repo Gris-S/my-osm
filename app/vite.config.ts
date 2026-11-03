@@ -171,7 +171,9 @@ export default defineConfig({
         // jamais, et qui contredirait son chargement à la demande. Il est mis
         // en cache s'il sert, pas avant.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        globIgnores: ['**/mapillary*'],
+        // Les catégories de la recherche non plus : une langue n'est chargée
+        // que si le téléphone la parle, et mise en cache à ce moment-là.
+        globIgnores: ['**/mapillary*', '**/search-categories-*'],
       },
     }),
   ].filter(Boolean),
@@ -224,6 +226,12 @@ export default defineConfig({
         entryFileNames: (chunk) =>
           chunk.name === 'maplibre-gl-worker'
             ? 'assets/maplibre-gl-worker.mjs'
+            : 'assets/[name]-[hash].js',
+        // Les catégories de la recherche, une par langue (`search/dictionaries.ts`) :
+        // un préfixe commun pour que le Service Worker ne précharge pas les 69.
+        chunkFileNames: (chunk) =>
+          chunk.facadeModuleId?.includes('/search/data/categories/')
+            ? 'assets/search-categories-[name]-[hash].js'
             : 'assets/[name]-[hash].js',
       },
     },

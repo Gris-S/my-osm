@@ -296,6 +296,8 @@ export const CONFIG = {
     openfreemap: "https://openfreemap.org/",
     idfm: "https://prim.iledefrance-mobilites.fr/",
     photon: "https://photon.komoot.io/",
+    idTaggingSchema: "https://github.com/openstreetmap/id-tagging-schema",
+    nameSuggestionIndex: "https://github.com/osmlab/name-suggestion-index",
     ban: "https://adresse.data.gouv.fr/",
     osrm: "https://routing.openstreetmap.de/",
     valhalla: "https://github.com/valhalla/valhalla",
@@ -522,6 +524,25 @@ export const CONFIG = {
   // réunion des arrêts d'une même station (voir `search/searchResults.ts`).
   SEARCH_FETCH_RESULTS: 20,
   SEARCH_SHOWN_RESULTS: 8,
+  // Réglage de Photon (`photonSearchUrl`, mesures dans son commentaire) : le
+  // zoom de la vue, borné — en vue du pays, rester large ; au pied d'un
+  // immeuble, ne pas se limiter à la rue — et la prime à la notoriété d'un nom.
+  SEARCH_BIAS_MIN_ZOOM: 5,
+  SEARCH_BIAS_MAX_ZOOM: 17,
+  SEARCH_NAME_PROMINENCE: 0.2,
+  // Attente après la dernière lettre avant d'interroger Photon. Les lieux de
+  // la carte, eux, répondent à chaque lettre (`searchSeenPois`).
+  SEARCH_DEBOUNCE_MS: 150,
+  // Réponses de Photon gardées en mémoire : revenir sur une saisie (effacer
+  // une lettre) ne coûte rien. Par saisie, centre arrondi et zoom.
+  SEARCH_CACHE_SIZE: 60,
+  SEARCH_CACHE_TTL_MS: 10 * 60_000,
+  // Une catégorie (« pharmacie ») cherche aussi dans OpenStreetMap autour du
+  // point regardé (Overpass) : les lieux dont le nom ne contient pas le mot
+  // — « Maison Dupont » pour une boulangerie. Rayon selon le zoom, borné.
+  SEARCH_CATEGORY_MIN_METERS: 800,
+  SEARCH_CATEGORY_MAX_METERS: 15_000,
+  SEARCH_CATEGORY_TIMEOUT_MS: 8_000,
 
   // Âge maximal de la position quand « Ma position » devient le point de
   // départ (ou une étape) d'un itinéraire. Au-delà, on redemande un relevé et

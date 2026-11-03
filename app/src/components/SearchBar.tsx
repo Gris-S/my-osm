@@ -6,6 +6,7 @@ import { usePlaceSearch } from "../hooks/usePlaceSearch";
 import { matchHistory, useSearchHistory, type SearchHistoryEntry } from "../hooks/useSearchHistory";
 import { HOME_WORK_ROLES, type HomeWork, type HomeWorkRole } from "../hooks/useHomeWork";
 import { suggestBrands } from "../services/tilePois";
+import { matchBrands, matchCategory } from "../search/dictionaries";
 import { matchesBrand, normalizeBrand } from "../services/geocode";
 import { useI18n } from "../i18n";
 import { useBackClose } from "../hooks/useBackClose";
@@ -86,7 +87,7 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
     onOpenChange?.(open);
     return () => onOpenChange?.(false);
   }, [open, onOpenChange]);
-  const { results, loading, degraded } = usePlaceSearch(query, near);
+  const { results, loading, degraded, dictionaries } = usePlaceSearch(query, near, { followMap: true });
   const { history, remember } = useSearchHistory();
   /**
    * Le rôle qu'on est en train de définir. Comme dans les champs d'itinéraire,
@@ -167,6 +168,9 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
    */
   const suggestions = useMemo(() => {
     if (trimmed.length < 2) return [];
+    // Une catégorie tapée (« pharmacie ») : ses lieux les plus proches sont la
+    // réponse, pas « Afficher tous les Pharmacie du Marais ».
+    if (dictionaries && matchCategory(dictionaries, trimmed)?.exact) return [];
     const wanted = normalizeBrand(trimmed);
 
     const repeated = new Map<string, number>();
@@ -177,8 +181,12 @@ export function SearchBar({ onSelectPlace, homeWork, onRouteTo, onSearchBrand, c
     }
     const fromResults = [...repeated].filter(([, count]) => count >= 2).map(([name]) => name);
 
-    return [...new Set([...suggestBrands(trimmed), ...fromResults])].slice(0, 3);
-  }, [trimmed, results]);
+    // Les enseignes du monde entier (name-suggestion-index) : le nom exact, un
+    // surnom connu, ou un début de nom assez long (`matchBrands`) — une seule,
+    // pour ne pas noyer la liste sous « Afficher tous les … ».
+    const fromDictionary = dictionaries ? matchBrands(dictionaries, trimmed, 1) : [];
+    return [...new Set([...suggestBrands(trimmed), ...fromResults, ...fromDictionary])].slice(0, 3);
+  }, [trimmed, results, dictionaries]);
 
   /**
    * Des coordonnées ou un lien de carte collés (Google Maps, Plans, OSM, Waze…)

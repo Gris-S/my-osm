@@ -216,12 +216,26 @@ export async function searchPlaces(query: string, near = CONFIG.DEFAULT_CENTER, 
  * silencieux sur « Fromagerie Collet » passait pour une absence du lieu
  * (constaté le 30 septembre 2026).
  */
-export async function searchPlacesDetailed(
-  query: string,
-  near = CONFIG.DEFAULT_CENTER,
-  signal?: AbortSignal
-): Promise<{ places: Place[]; degraded: boolean }> {
-  if (!query.trim()) return { places: [], degraded: false };
+/** Ce qui oriente une recherche Photon : le zoom de la vue, et la catégorie tapée s'il y en a une. */
+export interface SearchBias {
+  /** Zoom de la carte regardée ; plus il est fort, plus la recherche reste près du centre. */
+  zoom?: number;
+  /** La saisie est une catégorie (« pharmacie ») : seuls ses lieux, les plus proches. */
+  category?: { key: string; value: string } | null;
+}
+
+/**
+ * L'adresse de la recherche Photon (pure, testée dans `tests/searchBias.test.ts`).
+ *
+ * Mesuré le 3 novembre 2026 depuis le centre de Paris : sans `zoom` ni
+ * `location_bias_scale`, « pharmacie » rendait le Kremlin-Bicêtre, Saint-Denis,
+ * Noisy-le-Grand et des arrêts de bus « Pharmacie » ; avec un zoom de rue et
+ * aucune prime à la notoriété, cinq pharmacies à 200–300 m. Mais sans
+ * notoriété du tout, « tour eiffel » depuis Lyon trouvait la tour de Soing et
+ * plus celle de Paris : un **nom** garde la prime par défaut (0,2), une
+ * **catégorie** n'en a aucune et filtre sur son tag.
+ */
+export function photonSearchUrl(query: string, near: LonLat, bias: SearchBias = {}): string {
   const url = new URL(CONFIG.PHOTON_URL);
   url.searchParams.set("q", query);
   url.searchParams.set("lang", "fr");
@@ -229,8 +243,27 @@ export async function searchPlacesDetailed(
   // bus, ses points d'arrêt — cinq résultats sur huit pour « Opéra ». Réunis
   // (`groupStops`), ils laissent la place aux autres lieux du même nom.
   url.searchParams.set("limit", String(CONFIG.SEARCH_FETCH_RESULTS));
-  url.searchParams.set("lat", String(near.lat));
-  url.searchParams.set("lon", String(near.lon));
+  url.searchParams.set("lat", near.lat.toFixed(5));
+  url.searchParams.set("lon", near.lon.toFixed(5));
+  const zoom = Math.round(Math.min(CONFIG.SEARCH_BIAS_MAX_ZOOM, Math.max(CONFIG.SEARCH_BIAS_MIN_ZOOM, bias.zoom ?? CONFIG.DEFAULT_ZOOM)));
+  url.searchParams.set("zoom", String(zoom));
+  if (bias.category) {
+    url.searchParams.set("location_bias_scale", "0");
+    url.searchParams.set("osm_tag", `${bias.category.key}:${bias.category.value}`);
+  } else {
+    url.searchParams.set("location_bias_scale", String(CONFIG.SEARCH_NAME_PROMINENCE));
+  }
+  return url.toString();
+}
+
+export async function searchPlacesDetailed(
+  query: string,
+  near = CONFIG.DEFAULT_CENTER,
+  signal?: AbortSignal,
+  bias: SearchBias = {}
+): Promise<{ places: Place[]; degraded: boolean }> {
+  if (!query.trim()) return { places: [], degraded: false };
+  const url = new URL(photonSearchUrl(query, near, bias));
 
   // Hors ligne déclaré par le navigateur : inutile d'attendre que trois
   // géocodeurs distants expirent l'un après l'autre, on va droit aux zones

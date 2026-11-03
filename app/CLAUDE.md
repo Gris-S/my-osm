@@ -13,6 +13,7 @@ npm test                   # vitest : calculs de navigation, trafic, hors-ligne 
 npm run build:dark-style   # régénère src/styles/appleDark.ts (voir plus bas)
 npm run build:icons        # régénère les icônes de public/
 npm run build:car-data     # régénère les péages et les radars (voir plus bas)
+npm run build:search-data  # régénère les catégories et enseignes de la recherche
 ```
 
 **Tests** : `npm test` (vitest, `tests/`, configuration `vitest.config.ts`). Ils
@@ -2309,6 +2310,67 @@ Chaque frappe interrompt la recherche de la précédente (`AbortController`,
 passé jusqu'à `searchPlaces`) : une réponse lente à « gare de ly » arrivait
 sinon après celle à « gare de lyon » et l'écrasait. Les résultats précédents
 restent affichés pendant qu'on tape, pour que la liste ne clignote pas.
+
+### La recherche refaite (alpha.120, 3 novembre 2026)
+
+Demande explicite : « lente et peu précise », viser Google Maps en résultats
+et en réactivité, **services publics seulement** (pas de serveur à soi, pas de
+clé commerciale), **monde entier**. Mesuré avant : Photon répond en ~1 s (3 à
+5 s certains jours), plus 300 ms d'attente, rien à l'écran en attendant ; et
+« pharmacie » au centre de Paris rendait Saint-Denis et des arrêts de bus.
+
+- **Trois sources fondues** (`hooks/usePlaceSearch.ts`, classement pur dans
+  `search/rank.ts`) : les **lieux de la carte**, à chaque lettre, sans réseau
+  (`searchSeenPois`, `tilePois.ts`, dans le souvenir `seen`) ; **Photon**, 150 ms
+  après la dernière lettre (`SEARCH_DEBOUNCE_MS`), réponses gardées dix minutes
+  par saisie, centre arrondi et zoom ; pour une **catégorie entière**, Overpass
+  autour du point regardé (`fetchTaggedPlaces`) — les lieux dont le nom ne dit
+  pas la catégorie (« Paul » pour une boulangerie). Mesuré à l'essai : premiers
+  résultats en 130–200 ms, Photon mettant ce jour-là 3 à 5 s.
+- **On cherche autour de ce que la carte montre** (demande explicite : à
+  Paris, regardant Lyon, on cherche à Lyon) : `search/mapFocus.ts`, déclaré par
+  `MapView`, lu au moment de la saisie (`followMap`, barre principale
+  seulement — les champs d'itinéraire gardent `near`). Remplace « la recherche
+  part de la position » du 19 septembre : la carte s'ouvre sur la position,
+  c'est donc le même point tant qu'on ne l'a pas déplacée.
+- **Photon est réglé** (`photonSearchUrl`, testé) : `zoom` de la vue (borné 5–17)
+  et `location_bias_scale`. **Un nom garde la prime à la notoriété (0,2), une
+  catégorie n'en a aucune et filtre sur son tag** (`osm_tag`) — sans notoriété,
+  « tour eiffel » depuis Lyon trouvait la tour de Soing.
+- **Classement** (`rankResults`) : ressemblance du nom (`search/textMatch.ts` :
+  début de mots, accents ignorés, une faute dès 5 lettres, deux dès 9), proximité
+  à l'échelle du zoom (`proximityScale` : 2,5 km au zoom 14), rang de Photon.
+  Une catégorie : ses lieux du plus proche au plus loin, puis le reste.
+  **Les stations en premier restent** (`stationsFirst`, appliqué après, dans
+  `SearchBar` — demande explicite).
+- **Deux dictionnaires engendrés** (`npm run build:search-data`,
+  `scripts/build-search-data.mjs`, fichiers dans `search/data/` — ne pas les
+  éditer à la main) : les catégories d'iD (`@openstreetmap/id-tagging-schema`,
+  ISC, 496 catégories en 69 langues, une langue chargée seulement si le
+  téléphone la parle, plus le français et l'anglais) et les enseignes de
+  `name-suggestion-index` (BSD-3, 15 580). **Pas dans `package.json`** : 150 Mo
+  décompressés pour quelques centaines de Ko utiles, que la construction
+  F-Droid n'a pas à installer. Crédités dans « Sources et licences ».
+- **Pièges relevés sur les vrais dictionnaires** (`matchCategory`), chacun dans
+  un test : le nom d'une catégorie l'emporte sur un synonyme (« restaurant »
+  n'est pas un café) ; la valeur du tag compte comme un mot (iD nomme la
+  pharmacie « Pharmacy Counter » en anglais) ; un synonyme partagé est ambigu ;
+  une faute n'est tolérée qu'à une lettre, dès six, et jamais sur une enseigne
+  (« carrefour » n'est pas « carreleur ») ; un début de mot doit en faire 60 %
+  et ne pas être un mot entier d'une autre catégorie (« opera » n'est pas
+  « opérateur », « station » pas « stationery ») ; `emergency` est écarté
+  (« station » désignait un poste de sauvetage) ; « poste » est ajouté à la main
+  au bureau de poste (`EXTRA_NAMES`), seule entorse.
+- **Une catégorie tapée ne propose pas « Afficher tous les … »** : la liste se
+  remplissait de « tous les Pharmacie du Marais ». Les enseignes du
+  dictionnaire s'ajoutent aux propositions : nom exact, surnom, ou début d'au
+  moins la moitié du nom (« gare » ne propose pas « GarentaDAY »).
+- **Le Service Worker ne précharge pas les catégories** (`search-categories-*`
+  dans `globIgnores`) : une langue se met en cache quand elle sert.
+- **Écartés, à ne pas reprendre** : Nominatim (sa politique interdit la
+  recherche pendant la frappe) ; les instances Photon de bénévoles (des
+  inconnus recevraient saisies et positions — contraire à la promesse de
+  l'application) ; les géocodeurs commerciaux (refus explicite).
 
 ### Recherche sur le web (`services/webSearch.ts`, `services/webPlace.ts`)
 

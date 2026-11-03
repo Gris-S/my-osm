@@ -1,7 +1,7 @@
 {
   "name": "my-osm",
   "private": true,
-  "version": "0.1.0-alpha.119",
+  "version": "0.1.0-alpha.120",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "build:dark-style": "node scripts/build-apple-dark-style.mjs",
     "build:light-style": "node scripts/build-apple-light-style.mjs",
     "build:icons": "node scripts/build-icons.mjs",
-    "build:car-data": "node scripts/build-car-data.mjs"
+    "build:car-data": "node scripts/build-car-data.mjs",
+    "build:search-data": "node scripts/build-search-data.mjs"
   },
   "dependencies": {
     "@types/geojson": "^7946.0.16",
