@@ -98,6 +98,20 @@ export default function App() {
   // Ouverture du menu des calques : son panneau se déploie sur le bouton des
   // catégories, qui s'efface le temps qu'il est ouvert.
   const [mapOptionsOpen, setMapOptionsOpen] = useState(false);
+  // Hauteur réelle de la colonne météo/boussole, pour que les menus de droite
+  // s'arrêtent juste dessous pendant une navigation (`--menu-top`,
+  // `navigation.css`) — elle change quand la météo se déplie.
+  const mapDockObserver = useRef<ResizeObserver | null>(null);
+  const publishMapDockHeight = useCallback((dock: HTMLDivElement | null) => {
+    mapDockObserver.current?.disconnect();
+    mapDockObserver.current = null;
+    if (!dock) return;
+    const observer = new ResizeObserver(() =>
+      document.documentElement.style.setProperty("--map-dock-height", `${Math.round(dock.getBoundingClientRect().height)}px`)
+    );
+    observer.observe(dock);
+    mapDockObserver.current = observer;
+  }, []);
   // navigation/ : ouvrir un menu de droite (catégories, calques — les signets
   // le font eux-mêmes) réduit le panneau des transports, qui ne se cogne plus
   // dessus. Sans navigation en transports, le magasin n'est lu par personne.
@@ -959,7 +973,7 @@ export default function App() {
               avec le reste la ferait disparaître au moment où l'on tape
               dedans. */}
           {(!searching || wide) && (
-          <div className="map-dock">
+          <div className="map-dock" ref={publishMapDockHeight}>
             <WeatherCard coords={weatherCoords} placeName={selectedPlace?.name ?? null} />
             <CompassButton bearing={mapBearing} onClick={requestNorth} />
           </div>

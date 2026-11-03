@@ -103,16 +103,22 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
           >
             <span aria-hidden="true" />
           </button>
-          {collapsed ? (
-            // Réduit, une ligne : ce qui vient ensuite.
-            upcoming[0] && (
-              <p className="transit-summary">
-                <span className="transit-step-time">{formatClock(clockOf(upcoming[0]))}</span>
-                <Badge step={upcoming[0]} />
-                <span className="transit-step-text">{shortText(upcoming[0], nav)}</span>
-              </p>
-            )
-          ) : (
+          {/* Les deux contenus restent montés et glissent l'un sur l'autre
+              (`.transit-fold`, transition de hauteur) : basculer de l'un à
+              l'autre d'un coup faisait sauter le panneau. */}
+          <div className={`transit-fold is-summary ${collapsed ? "is-open" : ""}`} aria-hidden={!collapsed} inert={!collapsed}>
+            <div>
+              {upcoming[0] && (
+                <p className="transit-summary">
+                  <span className="transit-step-time">{formatClock(clockOf(upcoming[0]))}</span>
+                  <Badge step={upcoming[0]} />
+                  <span className="transit-step-text">{shortText(upcoming[0], nav)}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className={`transit-fold is-list ${collapsed ? "" : "is-open"}`} aria-hidden={collapsed} inert={collapsed}>
+            <div>
           <div className="transit-remaining">
             {stationList && session.rideStops.length > 1 && (
               <Stations stops={session.rideStops} fraction={session.rideFraction} color={current.line?.color} />
@@ -131,7 +137,8 @@ export function TransitNavigationPanel({ session }: { session: TransitNavSession
               ))}
             </ol>
           </div>
-          )}
+            </div>
+          </div>
 
           <div className="nav-bar-main">
             {/* Deux flèches pour regarder les autres étapes, sans changer

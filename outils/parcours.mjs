@@ -2756,6 +2756,14 @@ const SCENARIOS = [
       // Refermer en touchant le même bouton : Échap n'existe pas au doigt.
       const fermerMenu = ouvrirMenu;
       const hauteurDock = () => js("Math.round(document.querySelector('.nav-dock')?.getBoundingClientRect().height ?? 0)");
+      // Demande du 3 novembre 2026 : entre la boussole et le haut d'un menu
+      // ouvert, le même écart qu'entre deux boutons de la colonne de droite.
+      const ecarts = (panneau) =>
+        js(`(()=>{const r=(s)=>document.querySelector(s)?.getBoundingClientRect();const dock=r('.map-dock'),p=r('${panneau}'),
+          a=r('.map-options-button'),b=r('.locate-button');
+          const el=document.querySelector('${panneau}');const plein=el?(el.scrollHeight>el.clientHeight+1||!!el.querySelector('.filter-list')):false;
+          return {menu:dock&&p?Math.round(p.top-dock.bottom):null,boutons:a&&b?Math.round(b.top-a.bottom):null,plein}})()`);
+      const PANNEAUX = { ".filter-burger": ".filter-panel", ".map-options-button": ".map-options-panel", ".bookmarks-button": ".bookmarks-panel" };
       const reduit = () => js("!!document.querySelector('.nav-bar.is-transit.is-collapsed')");
       const versItineraire = async (lat, lon) => {
         // Après « Terminer », le panneau d'itinéraire peut rester ouvert : la
@@ -2797,13 +2805,16 @@ const SCENARIOS = [
         verifier(`${nom} : ouvert, rien ne se recouvre`, (await chevauchements()) === "", `${ouvert} px — ${await chevauchements()}`);
         capture(`60-${nom}-ouvert`);
 
-        // La poignée réduit, puis rouvre.
-        await cliquer(".transit-handle");
+        // La poignée réduit, puis rouvre — en glissant : à mi-course, une
+        // hauteur intermédiaire (demande du 3 novembre 2026, « ça fait laggy »).
+        const enCours = await js(`new Promise((ok)=>{document.querySelector('.transit-handle').click();
+          setTimeout(()=>ok(Math.round(document.querySelector('.nav-dock').getBoundingClientRect().height)),120)})`);
         await dodo(700);
         const ferme = await hauteurDock();
+        verifier(`${nom} : le panneau glisse au lieu de sauter`, enCours < ouvert && enCours > ferme, `${ouvert} → ${enCours} → ${ferme} px`);
         verifier(`${nom} : la poignée réduit le panneau`, (await reduit()) && ferme < ouvert, `${ouvert} → ${ferme} px`);
         verifier(`${nom} : réduit, la suite tient en une ligne et « Terminer » reste`,
-          await js("!!document.querySelector('.transit-summary') && !document.querySelector('.transit-remaining') && !!document.querySelector('.nav-stop')"));
+          await js("document.querySelector('.transit-fold.is-summary')?.getBoundingClientRect().height > 10 && document.querySelector('.transit-fold.is-list')?.getBoundingClientRect().height < 2 && !!document.querySelector('.nav-stop')"));
         verifier(`${nom} : réduit, rien ne se recouvre`, (await chevauchements()) === "", await chevauchements());
         capture(`61-${nom}-reduit`);
         await cliquer(".transit-handle");
@@ -2815,6 +2826,12 @@ const SCENARIOS = [
           if (await reduit()) { await cliquer(".transit-handle"); await dodo(600); }
           await ouvrirMenu(selecteur);
           verifier(`${nom} : ouvrir les ${menu} réduit le panneau`, await reduit());
+          const e = await ecarts(PANNEAUX[selecteur]);
+          // Un menu qui remplit la place s'arrête au même écart ; un menu court
+          // (deux signets) s'arrête plus bas, sans jamais passer au-dessus.
+          verifier(`${nom} : ${menu}, même écart sous la boussole qu'entre deux boutons`,
+            e.menu !== null && e.boutons !== null && (e.plein ? Math.abs(e.menu - e.boutons) <= 3 : e.menu >= e.boutons - 3),
+            `${e.menu} px contre ${e.boutons} px${e.plein ? "" : " (menu court)"}`);
           verifier(`${nom} : ${menu} ouverts, rien ne se recouvre`, (await chevauchements()) === "", await chevauchements());
           capture(`62-${nom}-${menu}`);
           await fermerMenu(selecteur);

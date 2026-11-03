@@ -651,13 +651,16 @@
    dépasse ce décalage, et il publie son bas réel (`useNavBannerRef`). */
 /* Les menus de droite (catégories, calques, signets) s'ouvrent vers le haut :
    pendant une navigation, ils s'arrêtent sous la météo et la boussole, qui
-   sont elles-mêmes sous le bandeau — 116 px de colonne, plus le bouton du
-   menu (56 px, compté dans la formule de chaque panneau) et une marge. Le
-   test `panneau-transports` voyait les catégories monter sur le bandeau, puis
-   sur la boussole (3 novembre 2026). */
+   sont elles-mêmes sous le bandeau. Le haut d'un panneau ouvert tombe à
+   `--menu-top` moins 54 px (son bouton de 44 px et l'écart de 10 px qui l'en
+   sépare) : on vise le bas de la colonne (hauteur mesurée, `--map-dock-height`)
+   plus 12 px — **l'écart entre deux boutons de la colonne** (demande explicite
+   du 3 novembre 2026 : un espace homogène). Le test `panneau-transports`
+   mesure les deux écarts. */
 .app-shell.is-navigating {
   --menu-top: calc(
-    max(calc(max(16px, env(safe-area-inset-top)) + 132px), calc(var(--nav-banner-bottom, 0px) + 12px)) + 180px
+    max(calc(max(16px, env(safe-area-inset-top)) + 132px), calc(var(--nav-banner-bottom, 0px) + 12px))
+      + var(--map-dock-height, 116px) + 12px + 54px
   );
 }
 
@@ -1438,8 +1441,33 @@
   opacity: 0.35;
 }
 
-.transit-handle + .transit-remaining {
+/* Réduire et rouvrir glissent : une rangée de grille qui passe de sa hauteur
+   à zéro (et l'inverse), ce que `height: auto` ne sait pas animer. */
+.transit-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.28s ease, opacity 0.2s ease;
+}
+
+.transit-fold.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.transit-fold > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.transit-fold.is-list .transit-remaining {
   padding-top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transit-fold {
+    transition: none;
+  }
 }
 
 /* Réduit : une ligne pour la suite, puis les commandes. */
@@ -1460,9 +1488,7 @@
   text-overflow: ellipsis;
 }
 
-.nav-bar.is-transit.is-collapsed .transit-remaining {
-  display: none;
-}
+
 
 /* =========================================================================
    Navigation voiture (`src/navigation/car/`)
