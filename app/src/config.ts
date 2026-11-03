@@ -370,6 +370,20 @@ export const CONFIG = {
     // le 17 septembre 2026. Il recevait la zone consultée dès que les trois
     // autres tardaient, et un exploitant de ce genre n'a pas à la connaître.
   ],
+  // Overpass Europe (dresel.systems), listé au wiki OSM : sans clé, 16 requêtes
+  // simultanées par adresse, données de la veille (extrait Geofabrik). Ajouté
+  // le 3 novembre 2026 (choix de l'utilisateur : « Europe seulement ») — ce
+  // jour-là overpass-api.de rendait des 502 et private.coffee ne répondait
+  // plus, d'où le message « certains commerces » presque permanent ; lui
+  // répondait en 2 à 3 s. Interrogé **en premier, et seulement pour une
+  // emprise entièrement dans `bbox`** [sud, ouest, nord, est] (un rectangle
+  // prudent, plus petit que l'extrait) : ailleurs il rendrait une réponse vide
+  // qu'on prendrait pour « aucun lieu ». Il tombe aussi : un échec passe
+  // aussitôt aux instances mondiales (`overpassUrlsFor`).
+  OVERPASS_EUROPE: {
+    url: "https://ovp.dresel.systems/api/interpreter",
+    bbox: [35.5, -10, 71, 32] as const,
+  },
 
   // Délai au-delà duquel on interroge *aussi* l'instance suivante, sans
   // abandonner la première. Une instance saturée peut mettre une minute à

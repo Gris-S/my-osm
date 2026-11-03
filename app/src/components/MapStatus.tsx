@@ -51,6 +51,11 @@ interface MapStatusProps {
   offsetBottom?: number;
 }
 
+/** Dernière fois que le manque de commerces a été dit (toute l'application). */
+let lastPartialAt = 0;
+const PARTIAL_COOLDOWN_MS = 5 * 60_000;
+const PARTIAL_VISIBLE_MS = 4000;
+
 export function MapStatus({ status, mapError, locationError, offsetBottom }: MapStatusProps) {
   const { t } = useI18n();
   const { offline, missingZone } = useOfflineState();
@@ -65,6 +70,24 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
       clearTimeout(timer);
       // Le prochain « aucune catégorie » se redira.
       setEmptyExpired(false);
+    };
+  }, [status]);
+
+  // Le manque de certains commerces se dit **discrètement** (demande explicite
+  // du 3 novembre 2026 : l'encart était là « presque tout le temps », les
+  // serveurs Overpass publics tombant souvent) : une ligne, quatre secondes,
+  // et pas plus d'une fois toutes les cinq minutes — sinon chaque déplacement
+  // de la carte le rouvrirait.
+  const [partialShown, setPartialShown] = useState(false);
+  useEffect(() => {
+    if (status !== "partial" || Date.now() - lastPartialAt < PARTIAL_COOLDOWN_MS) return;
+    lastPartialAt = Date.now();
+    const show = setTimeout(() => setPartialShown(true), 0);
+    const hide = setTimeout(() => setPartialShown(false), PARTIAL_VISIBLE_MS);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(hide);
+      setPartialShown(false);
     };
   }, [status]);
 
@@ -114,13 +137,9 @@ export function MapStatus({ status, mapError, locationError, offsetBottom }: Map
     );
   }
 
-  // Le manque de certains commerces reste dit **tant qu'il dure** : affiché
-  // huit secondes, il passait inaperçu, et une carte incomplète se prenait pour
-  // une carte complète (constaté sur la version Docker). Il s'efface au
-  // chargement réussi, que l'application retente seule chaque minute.
-  if (status === "partial") {
+  if (status === "partial" && partialShown) {
     return (
-      <div className="map-status is-warning" style={place} role="status">
+      <div className="map-status" style={place} role="status">
         <TriangleAlert size={15} />
         {t("mapStatus.partial")}
       </div>

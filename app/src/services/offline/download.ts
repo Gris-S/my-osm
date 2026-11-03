@@ -445,7 +445,7 @@ export function downloadRegion(
             // `politeAnswer` : attente du créneau sur un 429 ou un 504, puis
             // l'instance suivante. Un simple `fetch` laissait la maille vide
             // au premier « trop occupé », sans rien dire.
-            const data = (await politeAnswer(overpassQuery(chunk), signal, PLACES_TIMEOUT_MS)) as {
+            const data = (await politeAnswer(overpassQuery(chunk), signal, PLACES_TIMEOUT_MS, [chunk[1], chunk[0], chunk[3], chunk[2]])) as {
               elements: OverpassElement[];
             };
             const { places: p, entries, wiki } = harvest(data.elements, region.id);

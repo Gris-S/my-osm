@@ -2785,7 +2785,19 @@ sport, mémorial.
   Overpass est fragile — le même jour, `overpass-api.de` « trop occupé » en
   13 s et `private.coffee` muet. Un échec se retente au bout d'une minute, pas
   en boucle, et **se dit** : état `partial` de `MapStatus` (« certains
-  commerces n'ont pas pu être chargés »). Pas de manque silencieux.
+  commerces manquent »). Pas de manque silencieux — mais **discret** depuis le
+  3 novembre 2026 (demande explicite : l'encart était là « presque tout le
+  temps ») : une ligne, quatre secondes, une fois toutes les cinq minutes au
+  plus (`PARTIAL_COOLDOWN_MS`).
+- **Overpass Europe en tête pour une vue en Europe** (`overpassUrlsFor`,
+  `CONFIG.OVERPASS_EUROPE`, choix de l'utilisateur le 3 novembre 2026 :
+  « Europe seulement », pas VK). Ce jour-là, la requête réelle d'une vue
+  d'Ivry : overpass-api.de en 502 ou muet 30 s, private.coffee muet,
+  dresel.systems 2 à 3 s — puis, dix minutes plus tard, lui aussi refusait la
+  connexion : **aucune instance gratuite n'est fiable**, d'où l'ordre plutôt
+  qu'un remplacement. Seulement pour une emprise entièrement dans son
+  rectangle : ailleurs, une réponse vide passerait pour « aucun lieu ». Les
+  fiches de lieux ne s'en servent pas (l'API OSM y sert déjà de secours).
   En revanche, **leur chargement ne met pas la carte « en chargement »** : les
   autres commerces sont déjà là, et Overpass chargé peut mettre une minute.
 - **`idle` relit l'état de la carte** (`MapView`) : « Chargement des

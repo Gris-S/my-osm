@@ -25,7 +25,7 @@ export const fr = {
 
   // Bandeau d'état du chargement des commerces
   "mapStatus.empty": "Aucune catégorie affichée — ouvrez le menu en haut à gauche",
-  "mapStatus.partial": "Certains commerces (fromageries, salles de sport…) n'ont pas pu être chargés : OpenStreetMap ne répond pas. Nouvel essai au prochain déplacement.",
+  "mapStatus.partial": "Certains commerces manquent : OpenStreetMap ne répond pas.",
   "mapStatus.loading": "Chargement des commerces…",
   // Hors ligne. Le premier est permanent tant que la connexion manque ; le
   // second le remplace quand la carte a réellement dû laisser des cases vides,

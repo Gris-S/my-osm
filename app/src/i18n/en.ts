@@ -14,7 +14,7 @@ export const en: Dict = {
   "compass.aligned": "Map pointing north",
 
   "mapStatus.empty": "No category shown — open the menu in the top left",
-  "mapStatus.partial": "Some places (cheese shops, gyms…) could not be loaded: OpenStreetMap is not responding. Retrying on the next move.",
+  "mapStatus.partial": "Some places are missing: OpenStreetMap is not responding.",
   "mapStatus.loading": "Loading places…",
   "mapStatus.offline": "Offline",
   "mapStatus.offlineGap": "Offline — this area has not been downloaded",

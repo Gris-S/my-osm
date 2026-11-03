@@ -198,7 +198,7 @@ export async function searchBrandPlaces(
     `nwr["name"~"^${overpassPattern(query.trim())}",i](${south},${west},${north},${east});` +
     `out center ${CONFIG.BRAND_SEARCH_LIMIT};`;
 
-  const attempts = CONFIG.OVERPASS_URLS.map(
+  const attempts = overpassUrlsFor(bbox).map(
     (url) => (attemptSignal: AbortSignal) =>
       fetchJson(
         url,
@@ -225,6 +225,18 @@ export async function searchBrandPlaces(
  * vide ; quatre en laissent de l'ordre de 3 %.
  */
 const BUSY_ATTEMPTS = 4;
+
+/**
+ * Les instances à interroger pour une emprise `[sud, ouest, nord, est]` :
+ * Overpass Europe en tête quand l'emprise est entièrement en Europe
+ * (`CONFIG.OVERPASS_EUROPE`), sinon les seules instances mondiales. Testé dans
+ * `tests/overpassInstances.test.ts`.
+ */
+export function overpassUrlsFor(area?: readonly number[]): string[] {
+  const { url, bbox } = CONFIG.OVERPASS_EUROPE;
+  const inEurope = area && area[0] >= bbox[0] && area[1] >= bbox[1] && area[2] <= bbox[2] && area[3] <= bbox[3];
+  return inEurope ? [url, ...CONFIG.OVERPASS_URLS] : [...CONFIG.OVERPASS_URLS];
+}
 
 /** Réponse de l'instance qui dit « trop de requêtes » : on attend un créneau. */
 class RateLimited extends Error {}
@@ -259,9 +271,14 @@ async function slotWaitMs(url: string, signal?: AbortSignal): Promise<number> {
  * ce jour-là, et l'échec se lisait « AbortError » au bout de 25 s — la case de
  * « Fromagerie Collet » ne se chargeait jamais.
  */
-export async function politeAnswer(query: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<OsmResponse> {
+export async function politeAnswer(
+  query: string,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  area?: readonly number[]
+): Promise<OsmResponse> {
   let lastError: unknown = new Error("Aucune instance Overpass configurée");
-  for (const url of CONFIG.OVERPASS_URLS) {
+  for (const url of overpassUrlsFor(area)) {
     for (let attempt = 0; attempt < BUSY_ATTEMPTS; attempt++) {
       if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
       const controller = new AbortController();
@@ -317,7 +334,7 @@ export async function fetchTaggedPlaces(
     .map(([key, values]) => `nwr["${key}"~"^(${values.join("|")})$"]["name"](${area});`)
     .join("");
   const overpassQuery = `[out:json][timeout:20];(${parts});out center tags;`;
-  const data = await politeAnswer(overpassQuery, signal, timeoutMs);
+  const data = await politeAnswer(overpassQuery, signal, timeoutMs, bbox);
   const places: Place[] = [];
   for (const element of data.elements) {
     const place = elementToPlace(element);
