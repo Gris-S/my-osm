@@ -4233,6 +4233,16 @@ au-dessus et garde ses appuis.
 - S'y ajoute l'hygiène : `noUnusedLocals`, `noUnusedParameters`,
   `erasableSyntaxOnly`, `verbatimModuleSyntax` — importer les types avec
   `import type`.
+- **Conventions de typage** (reprises des règles TypeScript d'ECC le 20 octobre
+  2026 ; le code les respectait déjà, les garder) : jamais `any` — ce qui vient
+  de l'extérieur (réponse d'API, `localStorage`, erreur d'un `catch`) se type
+  `unknown` puis se rétrécit ; paramètres et retour typés sur les fonctions
+  exportées (36 sur 548 n'ont pas de type de retour : l'ajouter quand on y
+  touche) ; props d'un composant dans une `interface` nommée, sans `React.FC` ;
+  unions de chaînes plutôt qu'`enum` (que `erasableSyntaxOnly` refuse de toute
+  façon) ; aucun `console.log` dans `src/` ; aucune clé ni secret en dur.
+  Écartés : Zod (une dépendance pour ce que font déjà les gardes de types), le
+  motif « Repository », Playwright (`outils/parcours.sh` joue ce rôle).
 - **Les méthodes récentes ne sont pas transpilées, seulement la syntaxe.**
   `AbortSignal.any` demande une WebView 116 et `AbortSignal.timeout` une 103,
   alors que l'application s'installe à partir d'Android 7 (`minSdkVersion 24`),

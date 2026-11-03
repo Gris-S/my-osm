@@ -1,0 +1,1 @@
+Stop alert now on time with the app closed: exact alarm, plus a location service with a notification during the ride. New optional modes, off by default: bike sharing (CityBikes) and fuel prices / EV charging (official French feed + Pumperly). Download sizes in your language. Search keeps working when the WebView is stuck offline. Layers menu fixes.
