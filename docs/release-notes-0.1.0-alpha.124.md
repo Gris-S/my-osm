@@ -36,4 +36,4 @@ The web version for larger screens is published with this release: `ghcr.io/gris
 
 ## File
 `MY-OSM-0.1.0-alpha.124.apk`
-SHA-256 `SHA_A_REMPLIR`
+SHA-256 `a3d5561995f1070ab27198a6f4cc491704379c0229af4a66aa4b39b74aaba793`

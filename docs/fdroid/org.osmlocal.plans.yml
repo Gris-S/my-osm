@@ -45,6 +45,8 @@
 # reproduite sur leur CI (pipeline 2942724505). 0.1.0-alpha.98 (14 octobre
 # 2026) : aucune dépendance de plus, deux styles Android pour les sélecteurs
 # de date et d'heure ; reproduite sur leur CI (pipeline 2947066510).
+# 0.1.0-alpha.124 (25 novembre 2026) : aucune dépendance de plus — un greffon
+# Vite retire le `new Function` de mapillary-js (CSP), rien côté Android.
 # 0.1.0-alpha.115 (15 octobre 2026) : aucune dépendance de plus — deux
 # greffons natifs (alarme et vibration de l'alerte de descente, fichier ouvert
 # depuis une autre application : API Android) ; scanner passé sur l'APK,
@@ -94,11 +96,11 @@ Repo: https://github.com/Gris-S/my-osm.git
 Binaries: https://github.com/Gris-S/my-osm/releases/download/v%v/MY-OSM-%v.apk
 
 Builds:
-  - versionName: 0.1.0-alpha.119
-    versionCode: 1000119
-    # L'identifiant **complet** du commit du tag v0.1.0-alpha.119, pas le tag :
+  - versionName: 0.1.0-alpha.124
+    versionCode: 1000124
+    # L'identifiant **complet** du commit du tag v0.1.0-alpha.124, pas le tag :
     # un tag se déplace, un commit non (demande du mainteneur, !49227).
-    commit: 354b763417da4365a4108edaeab9a2d9efeb77c2
+    commit: 6347903afdf2e44d30653fb94a0e2d09c634a10c
 
     # Gradle est lancé par F-Droid depuis ce dossier ; tout ce qui précède est
     # à notre charge. `prebuild:` et `build:` en partent aussi, d'où le
@@ -175,5 +177,5 @@ UpdateCheckMode: Tags ^v[0-9]
 UpdateCheckData: 'app/package.json|"version":\s*"0\.1\.0-alpha\.(\d+)"|app/package.json|"version":\s*"([^"]+)"'
 VercodeOperation:
   - 1000000 + %c
-CurrentVersion: 0.1.0-alpha.119
-CurrentVersionCode: 1000119
+CurrentVersion: 0.1.0-alpha.124
+CurrentVersionCode: 1000124
