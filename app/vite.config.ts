@@ -129,6 +129,24 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // `mapillary-js` fabrique, dès la création du visualiseur, un filtre
+    // d'images par `new Function` — ce que la politique de sécurité interdit
+    // (pas d'`eval`, `src/security.ts`) : en APK et en Docker, chaque photo de
+    // rue finissait en « Photo indisponible ». L'application ne pose jamais de
+    // filtre (`setFilter`) : le filtre vide, « tout passe », suffit.
+    {
+      name: 'mapillary-sans-eval',
+      transform(code: string, id: string) {
+        if (!/mapillary-js[/.].*\.m?js(\?|$)/.test(id)) return null
+        const out = code.replace(
+          'return new Function("node", "return " + this._compile(filter) + ";");',
+          'return () => true;',
+        )
+        // Une mise à jour de la bibliothèque qui déplace la ligne doit casser le build, pas les photos.
+        if (out === code) throw new Error('mapillary-sans-eval : new Function introuvable, revoir le correctif')
+        return { code: out, map: null }
+      },
+    },
     !FOR_APK &&
     VitePWA({
       // La nouvelle version prend la main au chargement suivant, sans rien

@@ -23,6 +23,7 @@ export type FilterGroupId =
   | "fashion"
   | "home"
   | "culture"
+  | "heritage"
   | "outdoors"
   | "sport"
   | "lodging"
@@ -196,8 +197,15 @@ const HOME = rules(
 
 const CULTURE = rules(
   tagRule("amenity", ["cinema", "theatre", "library", "arts_centre", "community_centre", "music_venue"]),
-  tagRule("tourism", ["museum", "gallery", "artwork", "attraction"]),
-  tagRule("historic", ["monument", "memorial", "castle", "ruins", "archaeological_site"])
+  tagRule("tourism", ["museum", "gallery"]),
+  tagRule("historic", ["monument", "castle", "ruins", "archaeological_site"])
+);
+
+// Plaques, mémoriaux, œuvres de rue, « attractions » (ponts, fontaines…) :
+// à part des musées, et décochés par défaut (demande du 25 novembre 2026).
+const HERITAGE = rules(
+  tagRule("tourism", ["artwork", "attraction"]),
+  tagRule("historic", ["memorial", "wayside_cross", "wayside_shrine", "boundary_stone", "milestone"])
 );
 
 const OUTDOORS = rules(
@@ -342,6 +350,11 @@ const LANDMARK_ICON: IconNode = [
   ["path", { d: "M18 18v-7" }],
   ["path", { d: "M3 22h18" }],
   ["path", { d: "M6 18v-7" }],
+];
+
+const SCROLL_ICON: IconNode = [
+  ["path", { d: "M19 17V5a2 2 0 0 0-2-2H4" }],
+  ["path", { d: "M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" }],
 ];
 
 const TREES_ICON: IconNode = [
@@ -607,8 +620,16 @@ export const FILTER_GROUPS: FilterGroup[] = [
     label: "filters.culture",
     color: "#32ADE6",
     icon: LANDMARK_ICON,
-    tileClasses: ["museum", "art_gallery", "cinema", "theatre", "attraction", "castle", "monument"],
+    tileClasses: ["museum", "art_gallery", "cinema", "theatre", "castle", "monument"],
     ...CULTURE,
+  },
+  {
+    id: "heritage",
+    label: "filters.heritage",
+    color: "#9C8B6E",
+    icon: SCROLL_ICON,
+    tileClasses: ["attraction"],
+    ...HERITAGE,
   },
   {
     id: "outdoors",
@@ -709,6 +730,9 @@ export const FILTER_GROUPS: FilterGroup[] = [
 ];
 
 export const ALL_GROUP_IDS: FilterGroupId[] = FILTER_GROUPS.map((g) => g.id);
+
+/** Catégories cochées au premier lancement : toutes, sauf les curiosités. */
+export const DEFAULT_GROUP_IDS: FilterGroupId[] = ALL_GROUP_IDS.filter((id) => id !== "heritage");
 
 const BY_ID = new Map(FILTER_GROUPS.map((g) => [g.id, g]));
 

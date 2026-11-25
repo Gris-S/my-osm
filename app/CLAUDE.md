@@ -2925,6 +2925,10 @@ fois, les props suivantes pilotent des effets. Points de vigilance :
   `style.load` sert au démarrage et à chaque changement de fond de carte.
 - Hors 3D, `maxPitch` est aussi remis à 0 pour que le geste d'inclinaison ne
   contredise pas le menu.
+- **Les bascules de calque testent `styleReady`, jamais `isStyleLoaded`**
+  (`map/layers.ts`, 25 novembre 2026). `isStyleLoaded()` reste faux tant
+  qu'une tuile arrive : relief, trafic ou photos touchés juste après un
+  déplacement étaient ignorés, et il fallait appuyer deux fois.
 
 ### Relief (`hooks/useRelief.ts`, `applyRelief` dans `MapView`)
 
@@ -3199,6 +3203,13 @@ connaître :
   cône sur le premier. Le marqueur est créé une fois puis déplacé, et son
   alignement est `map` — le cône appartient au sol, il doit suivre la rotation
   et l'inclinaison de la carte.
+- **`mapillary-js` appelle `new Function` à la création du visualiseur**
+  (filtre d'images), que la politique de sécurité refuse : en APK et en
+  Docker, toute photo finissait en « Photo indisponible », alors qu'en
+  développement (sans politique) tout marchait. Le greffon
+  `mapillary-sans-eval` de `vite.config.ts` remplace ce filtre par « tout
+  passe » — l'application n'appelle jamais `setFilter` — et casse le build si
+  une mise à jour déplace la ligne. Ne pas ouvrir `unsafe-eval` à la place.
 - **Le jeton est facultatif** (`VITE_MAPILLARY_TOKEN`) : sans lui l'option
   reste visible dans le menu d'affichage, mais inerte et expliquée — et
   `useMapillary` refuse de se rallumer au démarrage, un choix mémorisé du temps

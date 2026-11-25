@@ -6,6 +6,7 @@ import type { LonLat } from "../types";
 import { loadBikeStations, type BikeStation } from "./bikes";
 import { loadChargers, loadFuelStations, type Charger, type FuelStation } from "./fuel";
 import { applyLive, type LiveLayers } from "./layers";
+import { styleReady } from "../components/map/layers";
 import { useFuelType, useShowingChargers } from "./settings";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@ export function useLiveLayer(
     const applyNow = () => applyLive(map, shownRef.current);
     const put = (next: LiveLayers) => {
       shownRef.current = next;
-      if (map.isStyleLoaded()) applyNow();
+      if (styleReady(map)) applyNow();
       else {
         map.off("idle", applyNow);
         map.once("idle", applyNow);

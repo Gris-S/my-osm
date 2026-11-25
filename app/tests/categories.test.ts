@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILTER_GROUPS, groupFromTags, hasTypeIcon, normalizeGroupId, TYPE_ICONS } from "../src/filters";
+import { DEFAULT_GROUP_IDS, FILTER_GROUPS, groupFromTags, hasTypeIcon, normalizeGroupId, TYPE_ICONS } from "../src/filters";
 import { TILE_GAP_TAGS } from "../src/services/tileGaps";
 
 describe("catégories de l'alimentation (30 septembre 2026)", () => {
@@ -47,5 +47,20 @@ describe("pictogrammes par type", () => {
     for (const entry of TYPE_ICONS.filter((e) => e.group === "foodshop")) {
       expect(groupFromTags({ shop: entry.value }), entry.value).toBe("foodshop");
     }
+  });
+});
+
+describe("musées à part des curiosités (25 novembre 2026)", () => {
+  it("garde musées, galeries et monuments dans « culture »", () => {
+    for (const tags of [{ tourism: "museum" }, { tourism: "gallery" }, { historic: "monument" }, { amenity: "cinema" }]) {
+      expect(groupFromTags(tags), JSON.stringify(tags)).toBe("culture");
+    }
+  });
+  it("range plaques, œuvres de rue et attractions à part, décochées par défaut", () => {
+    for (const tags of [{ historic: "memorial" }, { tourism: "artwork" }, { tourism: "attraction" }]) {
+      expect(groupFromTags(tags), JSON.stringify(tags)).toBe("heritage");
+    }
+    expect(DEFAULT_GROUP_IDS).not.toContain("heritage");
+    expect(DEFAULT_GROUP_IDS).toContain("culture");
   });
 });

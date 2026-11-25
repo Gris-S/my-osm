@@ -38,7 +38,7 @@ import { geoFileBounds, type GeoFile } from "../services/geoFile";
 // dossier, et se retire avec lui.
 import type { NavChoice, NavMapState, CarTraffic } from "../navigation";
 import { followConnectivity, installOfflineTiles, offlineTransformRequest } from "../services/offline/nativeTiles";
-import { POI_SOURCE_ID, POI_LAYER_ID, POI_ICONS_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
+import { POI_SOURCE_ID, POI_LAYER_ID, POI_ICONS_LAYER_ID, LINE_SHAPE_SOURCE_ID, LINE_SHAPE_LAYER_ID, ROUTE_SOURCE_ID, ROUTE_LAYER_ID, CHOICE_SOURCE_ID, ROUTE_TRAFFIC_SOURCE_ID, RUN_TRACE_SOURCE_ID, RUN_TRACE_CASING_ID, RUN_TRACE_LAYER_ID, MAPILLARY_IMAGE_LAYER_ID, PITCH_3D, styleReady, styleKey, resolveStyle, placesToGeoJSON, emptyCollection, routeWidth, collectAttribution, EMPTY_COLLECTION, choicesToGeoJSON, routeTrafficToGeoJSON, routeToGeoJSON, installLineImages, applyRelief, applyBuildingRelief, installMapLayers, applyTraffic, applyMapillary, currentBbox, distanceBetween, applyAreaOutline, areaLabelLayers, AREA_LABEL_CLASSES } from "./map/layers";
 import { subscribeCompass } from "../navigation/compass";
 import { useLatest } from "../hooks/useLatest";
 import { applyLive, pickLive, useBikesModeEnabled, useFuelLayerOn, useFuelModeEnabled, useLiveLayer, useShowingChargers, type LiveItem } from "../live";
@@ -865,7 +865,7 @@ export const MapView = memo(function MapView({
     reliefRef.current = relief;
     // `style.load` peut n'être pas passé au premier rendu : la pose est alors
     // faite par `installMapLayers`, qui lit la même ref.
-    if (map.isStyleLoaded()) applyRelief(map, relief, is3D);
+    if (styleReady(map)) applyRelief(map, relief, is3D);
   }, [relief, is3D]);
 
   // Vue 3D : on incline la caméra. Les bâtiments en volume viennent du fond de
@@ -914,7 +914,7 @@ export const MapView = memo(function MapView({
   // réinstalle, comme le reste des couches applicatives.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !styleReady(map)) return;
     applyMapillary(map, mapillary);
   }, [mapillary]);
 
@@ -1584,7 +1584,7 @@ export const MapView = memo(function MapView({
       }
       // `isStyleLoaded` reste faux tant que des tuiles arrivent : sans nouvel
       // essai, un fichier ouvert pendant le chargement n'était jamais dessiné.
-      if (!map.isStyleLoaded()) {
+      if (!styleReady(map)) {
         map.once("idle", apply);
         return;
       }
@@ -1647,7 +1647,7 @@ export const MapView = memo(function MapView({
         source.setData(data);
         return;
       }
-      if (!map.isStyleLoaded()) {
+      if (!styleReady(map)) {
         map.once("idle", apply);
         return;
       }
@@ -1703,7 +1703,7 @@ export const MapView = memo(function MapView({
         source.setData(data);
         return;
       }
-      if (!map.isStyleLoaded()) return; // `style.load` le posera
+      if (!styleReady(map)) return; // `style.load` le posera
       map.addSource(RUN_TRACE_SOURCE_ID, { type: "geojson", data });
       map.addLayer({
         id: RUN_TRACE_CASING_ID,
@@ -1778,7 +1778,7 @@ export const MapView = memo(function MapView({
     if (!map) return;
     if (!traffic) {
       trafficEventsRef.current = [];
-      if (map.isStyleLoaded()) applyTraffic(map, false, []);
+      if (styleReady(map)) applyTraffic(map, false, []);
       return;
     }
 
@@ -1791,7 +1791,7 @@ export const MapView = memo(function MapView({
           if (cancelled) return;
           trafficEventsRef.current = events;
           const current = mapRef.current;
-          if (current?.isStyleLoaded()) applyTraffic(current, true, events);
+          if ((current && styleReady(current))) applyTraffic(current, true, events);
         })
         .catch(() => {
           // Source injoignable — pas de relais en production, réseau coupé :
@@ -1806,7 +1806,7 @@ export const MapView = memo(function MapView({
       controller.abort();
       window.clearInterval(timer);
       const current = mapRef.current;
-      if (current?.isStyleLoaded()) applyTraffic(current, false, []);
+      if ((current && styleReady(current))) applyTraffic(current, false, []);
     };
   }, [traffic]);
 
@@ -1844,7 +1844,7 @@ export const MapView = memo(function MapView({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => applyAreaOutline(map, areaOutline);
-    if (map.isStyleLoaded()) apply();
+    if (styleReady(map)) apply();
     map.on("style.load", apply);
     if (areaOutline) {
       let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;

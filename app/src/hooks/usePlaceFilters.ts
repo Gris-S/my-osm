@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ALL_GROUP_IDS, normalizeGroupId, type FilterGroupId } from "../filters";
+import { ALL_GROUP_IDS, DEFAULT_GROUP_IDS, normalizeGroupId, type FilterGroupId } from "../filters";
 
 // ---------------------------------------------------------------------------
 // Catégories de POI affichées sur la carte (menu des catégories).
 //
 // La sélection est mémorisée dans `localStorage`, comme le thème et le fond de
-// carte. Par défaut, tout est affiché.
+// carte. Par défaut, tout est affiché sauf « Patrimoine & curiosités ».
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = "osm-local:filters";
@@ -30,7 +30,7 @@ function readStored(): FilterGroupId[] | null {
 export type SelectionState = "all" | "none" | "some";
 
 export function usePlaceFilters() {
-  const [selected, setSelected] = useState<FilterGroupId[]>(() => readStored() ?? ALL_GROUP_IDS);
+  const [selected, setSelected] = useState<FilterGroupId[]>(() => readStored() ?? DEFAULT_GROUP_IDS);
 
   useEffect(() => {
     try {

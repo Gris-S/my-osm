@@ -191,6 +191,20 @@ export const SATELLITE_STYLE: StyleSpecification = {
  * clair, et les laisser intacts sur une imagerie assombrie les ferait ressortir
  * plus que la carte elle-même.
  */
+/**
+ * Le style est-il assez prêt pour qu'on y ajoute ou retire une couche ?
+ *
+ * `isStyleLoaded()` reste faux **tant qu'une tuile arrive** — juste après un
+ * déplacement, ou pendant que le relief qu'on vient d'allumer se télécharge.
+ * Les bascules de calque le testaient : le toucher était ignoré et il fallait
+ * appuyer deux fois. `addSource` et `addLayer` n'exigent pourtant que le style
+ * lui-même, ce que dit le drapeau interne `_loaded`.
+ */
+export function styleReady(map: MLMap): boolean {
+  // shortcut: champ privé de MapLibre 6 ; s'il disparaît, on retombe sur l'ancien test.
+  return map.isStyleLoaded() === true || (map as unknown as { style?: { _loaded?: boolean } }).style?._loaded === true;
+}
+
 const SATELLITE_DARK_PAINT = {
   "raster-brightness-max": 0.72,
   "raster-saturation": -0.2,

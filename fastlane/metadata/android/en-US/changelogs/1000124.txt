@@ -1,0 +1,1 @@
+Street photos open again (they showed "Photo unavailable"). Layer switches (relief, traffic, street photos) work on the first tap. Car navigation switches satellite to the standard map. Museums apart from plaques and memorials (new category, off by default). Instant search around the map you look at, in 69 languages. Collapsible transit panel. Faster Overpass in Europe.

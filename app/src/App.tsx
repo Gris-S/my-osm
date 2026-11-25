@@ -929,7 +929,8 @@ export default function App() {
         live={!carGuiding}
         onLivePick={handleLivePick}
         theme={theme}
-        basemap={basemap}
+        // En voiture, le plan : l'imagerie noie le tracé. Le choix revient à l'arrêt.
+        basemap={carGuiding ? "standard" : basemap}
         is3D={is3D}
         relief={relief && !carGuiding}
         mapillary={mapillary && !carGuiding}
